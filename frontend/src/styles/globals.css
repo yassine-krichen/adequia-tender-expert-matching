@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Brand tokens — docs/07-branding.md. Precise and calm, not gamified. */
+:root {
+  --color-background: #0b0f14;
+  --color-foreground: #e6e8eb;
+  --color-primary: #6c5ce7;
+  --color-secondary: #0f766e;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-muted: #64748b;
+  --radius: 0px;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+}

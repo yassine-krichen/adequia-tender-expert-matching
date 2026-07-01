@@ -1,0 +1,39 @@
+services:
+  api:
+    build: ./backend
+    ports: ["8000:8000"]
+    depends_on: [postgres, redis]
+    env_file: ./backend/.env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/adequia
+      - REDIS_URL=redis://redis:6379
+
+  worker:
+    build: ./backend
+    command: uv run python -m app.worker.rq_worker
+    depends_on: [postgres, redis]
+    env_file: ./backend/.env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/adequia
+      - REDIS_URL=redis://redis:6379
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=adequia
+    ports: ["5432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+
+  web:
+    build: ./frontend
+    ports: ["3000:3000"]
+    depends_on: [api]
+    env_file: ./frontend/.env
+
+volumes:
+  pgdata:

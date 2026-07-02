@@ -64,16 +64,26 @@ class ModelRouter:
             "groq": KeyPool("groq", parse_key_pool(settings.groq_api_keys)),
             "gemini": KeyPool("gemini", parse_key_pool(settings.gemini_api_keys)),
         }
+        # Explicit per-(provider, tier) map, not a dynamic getattr lookup —
+        # keeps every entry mypy-checkable against Settings' real fields.
+        self._models: dict[tuple[str, str], str] = {
+            ("groq", "extraction"): settings.groq_extraction_model,
+            ("groq", "reasoning"): settings.groq_reasoning_model,
+            ("gemini", "extraction"): settings.gemini_extraction_model,
+            ("gemini", "reasoning"): settings.gemini_reasoning_model,
+            ("ollama", "extraction"): settings.ollama_extraction_model,
+            ("ollama", "reasoning"): settings.ollama_reasoning_model,
+        }
 
     def invoke_extraction(
         self, messages: Sequence[BaseMessage], structured_output: type[Any] | None = None
     ) -> Any:
-        return self._invoke(self._settings.llm_extraction_model, messages, structured_output)
+        return self._invoke("extraction", messages, structured_output)
 
     def invoke_reasoning(
         self, messages: Sequence[BaseMessage], structured_output: type[Any] | None = None
     ) -> Any:
-        return self._invoke(self._settings.llm_reasoning_model, messages, structured_output)
+        return self._invoke("reasoning", messages, structured_output)
 
     def get_embedding_model(self) -> OllamaEmbeddings:
         return OllamaEmbeddings(
@@ -82,15 +92,17 @@ class ModelRouter:
 
     def _invoke(
         self,
-        model_name: str,
+        tier: str,
         messages: Sequence[BaseMessage],
         structured_output: type[Any] | None,
     ) -> Any:
         for provider, pool in self._pools.items():
+            model_name = self._models[(provider, tier)]
             result = self._try_pool(provider, pool, model_name, messages, structured_output)
             if result is not _POOL_EXHAUSTED:
                 return result
 
+        model_name = self._models[("ollama", tier)]
         logger.warning("llm.fallback_to_ollama model=%s", model_name)
         ollama_model = ChatOllama(model=model_name, base_url=self._settings.ollama_base_url)
         return _invoke_model(ollama_model, messages, structured_output)

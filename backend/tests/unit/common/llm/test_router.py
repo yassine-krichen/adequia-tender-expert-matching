@@ -17,8 +17,12 @@ def _make_settings(**overrides: str) -> Settings:
         "groq_api_keys": "groq-key-1,groq-key-2",
         "gemini_api_keys": "gemini-key-1",
         "ollama_base_url": "http://localhost:11434",
-        "llm_extraction_model": "test-extraction-model",
-        "llm_reasoning_model": "test-reasoning-model",
+        "groq_extraction_model": "test-groq-extraction-model",
+        "groq_reasoning_model": "test-groq-reasoning-model",
+        "gemini_extraction_model": "test-gemini-extraction-model",
+        "gemini_reasoning_model": "test-gemini-reasoning-model",
+        "ollama_extraction_model": "test-ollama-extraction-model",
+        "ollama_reasoning_model": "test-ollama-reasoning-model",
         "embedding_model": "nomic-embed-text",
     }
     defaults.update(overrides)
@@ -61,7 +65,31 @@ def test_router_falls_back_to_ollama_once_every_key_in_both_pools_is_rate_limite
     result = router.invoke_extraction([])
 
     assert result == "ollama-response"
-    assert _FakeOllamaModel.last_model_name == "test-extraction-model"
+    assert _FakeOllamaModel.last_model_name == "test-ollama-extraction-model"
+
+
+def test_invoke_uses_each_providers_own_model_name_not_a_shared_string(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Regression: Groq/Gemini/Ollama don't share a model-naming scheme, so
+    each attempt in the fallback chain must resolve its own model string,
+    not reuse whichever one the first provider was given.
+    """
+    seen_model_names: dict[str, str] = {}
+
+    def _fake_build(provider: str, model_name: str, api_key: str) -> Any:
+        seen_model_names[provider] = model_name
+        return _AlwaysRateLimitedModel()
+
+    monkeypatch.setattr("app.common.llm.router._build_chat_model", _fake_build)
+    monkeypatch.setattr("app.common.llm.router.ChatOllama", _FakeOllamaModel)
+
+    router = ModelRouter(_make_settings())
+    router.invoke_reasoning([])
+
+    assert seen_model_names["groq"] == "test-groq-reasoning-model"
+    assert seen_model_names["gemini"] == "test-gemini-reasoning-model"
+    assert _FakeOllamaModel.last_model_name == "test-ollama-reasoning-model"
 
 
 def test_is_rate_limited_detects_groq_429() -> None:

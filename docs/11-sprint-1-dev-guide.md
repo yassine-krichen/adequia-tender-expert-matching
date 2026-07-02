@@ -32,8 +32,9 @@ want to run the thing.
 cd backend
 cp .env.example .env
 # edit .env: paste real GROQ_API_KEYS / GEMINI_API_KEYS (comma-separated,
-# no spaces), pick LLM_EXTRACTION_MODEL / LLM_REASONING_MODEL — see
-# "Picking a model name" below before you do this.
+# no spaces). Model names are already filled in with sensible free-tier
+# defaults per provider — see "Picking a model name" below if you want to
+# change them, or if you're going Ollama-only with no keys yet.
 
 # 2. Frontend env
 cd ../frontend
@@ -55,29 +56,33 @@ cd ../frontend
 pnpm install
 ```
 
-### Picking a model name (read this or uploads will 500)
+### Picking a model name
 
-`LLM_EXTRACTION_MODEL`/`LLM_REASONING_MODEL` is a single string used
-against *whichever* backend actually serves the call — Groq, Gemini, or
-the Ollama fallback. These three don't share a model-naming scheme
-(`llama-3.1-8b-instant` is Groq-specific, Ollama wants `llama3.2`, Gemini
-wants `gemini-2.0-flash`). There's no per-provider model mapping yet — that's
-a real Sprint 1 simplification, not a bug you're missing.
+Groq, Gemini, and Ollama don't share a model-naming scheme, so each gets
+its own setting per tier (`{PROVIDER}_EXTRACTION_MODEL` /
+`{PROVIDER}_REASONING_MODEL`, 6 vars total) — the router resolves the
+right one for whichever provider actually ends up serving a given call,
+instead of reusing one string everywhere.
 
-Practical options:
-- **Have real Groq/Gemini keys** → pick model names for whichever provider
-  you'll actually hit first (Groq is tried first). Fallback to Ollama will
-  error with an unrecognized-model message if it ever triggers, since the
-  same string won't resolve there — acceptable for now, just know why.
-- **No keys yet, only Ollama** → leave `GROQ_API_KEYS`/`GEMINI_API_KEYS`
-  empty (both pools report exhausted immediately, no error), pull a real
-  Ollama model, and set `LLM_EXTRACTION_MODEL`/`LLM_REASONING_MODEL` to
-  that Ollama tag:
-  ```bash
-  ollama pull llama3.2
-  ollama pull nomic-embed-text   # needed regardless — this is EMBEDDING_MODEL
-  ```
-  Then in `.env`: `LLM_EXTRACTION_MODEL=llama3.2`, `LLM_REASONING_MODEL=llama3.2` (a stronger local tag if you have the disk/RAM for one, e.g. `llama3.1:70b` — otherwise reuse the same tag for both tiers).
+`.env.example` ships with real, currently-valid free-tier defaults:
+
+| Var | Default | Why |
+|---|---|---|
+| `GROQ_EXTRACTION_MODEL` | `llama-3.1-8b-instant` | Cheapest + most permissive free-tier rate limit (14,400 req/day) |
+| `GROQ_REASONING_MODEL` | `llama-3.3-70b-versatile` | Flagship, stronger judgment |
+| `GEMINI_EXTRACTION_MODEL` | `gemini-2.5-flash-lite` | Cheapest free-tier Gemini model |
+| `GEMINI_REASONING_MODEL` | `gemini-2.5-flash` | Stronger free-tier Gemini model — `gemini-2.5-pro` is paid-only, not usable here |
+| `OLLAMA_EXTRACTION_MODEL` | `hermes3:3b` | Whatever you've pulled locally |
+| `OLLAMA_REASONING_MODEL` | `hermes3:3b` | Same — pull a bigger local tag later if you want a real reasoning-tier split locally too |
+
+If you're going Ollama-only with no Groq/Gemini keys yet, leave
+`GROQ_API_KEYS`/`GEMINI_API_KEYS` empty (both pools report exhausted
+immediately, no error, falls straight through to Ollama) and just make
+sure the Ollama tags above are actually pulled:
+```bash
+ollama pull hermes3:3b
+ollama pull nomic-embed-text   # needed regardless — this is EMBEDDING_MODEL
+```
 
 ## Running it
 
@@ -112,7 +117,7 @@ Same URLs. `worker` isn't actually used yet (Sprint 1's uploads run synchronousl
 6. Confirm mission title, client, sector, and extracted expert positions render
 7. Try an unsupported file (e.g. a `.txt`) or a corrupted one on either page — confirm you get an inline error message (`role="alert"`), not a crashed page
 
-If nothing renders and you get a 500, check the backend terminal — most likely cause is the model-name mismatch above, or Ollama not running/model not pulled.
+If nothing renders and you get a 500, check the backend terminal — most likely cause is Ollama not running/model not pulled (if you're relying on the fallback), or a genuinely invalid/expired API key.
 
 ## Automated tests
 

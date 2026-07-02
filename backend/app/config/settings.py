@@ -19,8 +19,16 @@ class Settings(BaseSettings):
     groq_api_keys: str
     gemini_api_keys: str
     ollama_base_url: str
-    llm_extraction_model: str
-    llm_reasoning_model: str
+
+    # No shared model name across providers — Groq/Gemini/Ollama each use
+    # their own naming scheme, so the fallback chain needs one model per
+    # provider per tier, not one string reused everywhere.
+    groq_extraction_model: str
+    groq_reasoning_model: str
+    gemini_extraction_model: str
+    gemini_reasoning_model: str
+    ollama_extraction_model: str
+    ollama_reasoning_model: str
 
     embedding_model: str
     embedding_dimension: int = 768

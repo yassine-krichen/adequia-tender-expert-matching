@@ -170,8 +170,12 @@ cd frontend && pnpm lint && pnpm type-check
 | `GROQ_API_KEYS`        | Yes      | —             | Comma-separated pool of free-tier Groq keys, round-robin rotated     |
 | `GEMINI_API_KEYS`      | Yes      | —             | Comma-separated pool of free-tier Gemini keys, round-robin rotated   |
 | `OLLAMA_BASE_URL`      | Yes      | —             | Local Ollama endpoint — fallback once both key pools are exhausted   |
-| `LLM_EXTRACTION_MODEL` | Yes      | —             | Fast/cheap tier — structured extraction                              |
-| `LLM_REASONING_MODEL`  | Yes      | —             | Stronger tier — scoring judgment, report writing                     |
+| `GROQ_EXTRACTION_MODEL` | Yes     | `llama-3.1-8b-instant`    | Groq fast/cheap tier                                     |
+| `GROQ_REASONING_MODEL` | Yes      | `llama-3.3-70b-versatile` | Groq stronger tier                                       |
+| `GEMINI_EXTRACTION_MODEL` | Yes   | `gemini-2.5-flash-lite`   | Gemini fast/cheap tier                                   |
+| `GEMINI_REASONING_MODEL` | Yes    | `gemini-2.5-flash`        | Gemini stronger tier (`gemini-2.5-pro` is paid-only)      |
+| `OLLAMA_EXTRACTION_MODEL` | Yes   | —             | Local fallback model, fast/cheap tier                                |
+| `OLLAMA_REASONING_MODEL` | Yes    | —             | Local fallback model, stronger tier                                  |
 | `EMBEDDING_MODEL`      | Yes      | —             | Skill taxonomy + coarse retrieval embeddings (local Ollama `nomic-embed-text`) |
 | `EMBEDDING_DIMENSION`  | No       | `768`         | Must match the embedding model and `skill_taxonomy.embedding` column |
 | `LANGSMITH_API_KEY`    | No       | —             | Tracing — omit to disable                                            |
@@ -233,6 +237,5 @@ Built by Yassine Krichen · 2026
 - [ ] Add `docs/cover.png` — generate with: "AdéquIA — a dark, precise decision-support dashboard for matching expert CVs to tender requirements. Dark UI, high contrast, professional software screenshot aesthetic. Wide banner format, 1400×600px. No people, no text overlays." Place at `docs/cover.png`.
 - [ ] Add screenshots to `docs/demo/` once the dashboard pages from `docs/05-frontend-dashboard.md` exist — a Demo section belongs in this README as soon as there's something to show.
 - [ ] Confirm the data confidentiality policy with the company before any real CV reaches a cloud LLM API — see `docs/08-company-data-checklist.md`.
-- [ ] Populate `GROQ_API_KEYS` / `GEMINI_API_KEYS` and pick `LLM_EXTRACTION_MODEL` / `LLM_REASONING_MODEL` / `EMBEDDING_MODEL` — currently unset placeholders in `backend/.env.example`.
-- [ ] Run `uv sync` and `pnpm install` locally to generate `uv.lock` and `pnpm-lock.yaml` — not run yet, this repo is structure-only at this stage.
+- [ ] Populate real `GROQ_API_KEYS` / `GEMINI_API_KEYS` in `backend/.env` — model names already have working free-tier defaults in `.env.example`.
 - [ ] Add a LICENSE file if this ever moves beyond an internal internship deliverable.

@@ -1,13 +1,14 @@
 <div align="center">
-  <img src="docs/cover.png" alt="AdéquIA cover" width="100%" />
+  <img src="docs/readme-assets/cover.png" alt="AdéquIA cover" width="100%" />
   <h1>AdéquIA <sup><sub>v0.1.0</sub></sup></h1>
   <p><em>Le bon profil, pour la bonne mission.</em></p>
   <br/>
 
-  ![FastAPI](https://img.shields.io/badge/FastAPI-black?logo=fastapi&logoColor=white)
-  ![LangGraph](https://img.shields.io/badge/LangGraph-orchestration-black)
-  ![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=nextdotjs&logoColor=white)
-  ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-black?logo=postgresql&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-black?logo=fastapi&logoColor=white)
+![LangGraph](https://img.shields.io/badge/LangGraph-orchestration-black)
+![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=nextdotjs&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-black?logo=postgresql&logoColor=white)
+
 </div>
 
 ---
@@ -80,23 +81,24 @@ Extraction is a separate, once-per-document ingestion pipeline (`ingest` → `ex
 
 ## Tech Stack
 
-| Technology | Role | Why |
-|---|---|---|
-| FastAPI | Backend API, LangGraph host | Sits directly in the LangChain/LangGraph ecosystem; the eval harness (RAGAS/DeepEval) is Python-native |
-| LangGraph | Pipeline orchestration | Explicit branching and a checkpointed audit trail, over a plain chain or agent loop |
-| PostgreSQL + pgvector | Structured data + embeddings | One database instead of two; joins structured filters with vector similarity in a single query |
-| Redis + RQ | Background job queue, cache | Keeps CV/TDR batch processing off the request path; doubles as an embedding/taxonomy cache |
-| Next.js | HR dashboard | — |
-| shadcn/ui | Dashboard components | — |
-| Framer Motion | Dashboard transitions | — |
-| LangSmith / Langfuse | Tracing | Full per-node trace of a candidate's path through the graph, tagged by TDR/position |
-| RAGAS / DeepEval | Eval harness | Faithfulness/groundedness metrics on the RAG portion, wired into a CI regression gate |
+| Technology            | Role                         | Why                                                                                                    |
+| --------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------ |
+| FastAPI               | Backend API, LangGraph host  | Sits directly in the LangChain/LangGraph ecosystem; the eval harness (RAGAS/DeepEval) is Python-native |
+| LangGraph             | Pipeline orchestration       | Explicit branching and a checkpointed audit trail, over a plain chain or agent loop                    |
+| PostgreSQL + pgvector | Structured data + embeddings | One database instead of two; joins structured filters with vector similarity in a single query         |
+| Redis + RQ            | Background job queue, cache  | Keeps CV/TDR batch processing off the request path; doubles as an embedding/taxonomy cache             |
+| Next.js               | HR dashboard                 | —                                                                                                      |
+| shadcn/ui             | Dashboard components         | —                                                                                                      |
+| Framer Motion         | Dashboard transitions        | —                                                                                                      |
+| LangSmith / Langfuse  | Tracing                      | Full per-node trace of a candidate's path through the graph, tagged by TDR/position                    |
+| RAGAS / DeepEval      | Eval harness                 | Faithfulness/groundedness metrics on the RAG portion, wired into a CI regression gate                  |
 
 ---
 
 ## Getting Started
 
 ### Prerequisites
+
 - Python ≥ 3.12
 - [uv](https://docs.astral.sh/uv/)
 - Node.js ≥ 20
@@ -104,12 +106,14 @@ Extraction is a separate, once-per-document ingestion pipeline (`ingest` → `ex
 - Docker (for local Postgres/Redis)
 
 ### Clone
+
 ```bash
 git clone https://github.com/[user]/adequia.git
 cd adequia
 ```
 
 ### Backend
+
 ```bash
 cd backend
 cp .env.example .env
@@ -117,6 +121,7 @@ uv sync
 ```
 
 ### Frontend
+
 ```bash
 cd frontend
 cp .env.example .env
@@ -124,11 +129,13 @@ pnpm install
 ```
 
 ### Local infrastructure
+
 ```bash
 docker compose up -d postgres redis
 ```
 
 ### Run (development)
+
 ```bash
 # backend — http://localhost:8000
 cd backend && uv run uvicorn app.main:app --reload
@@ -138,11 +145,13 @@ cd frontend && pnpm dev
 ```
 
 ### Run everything via Docker Compose
+
 ```bash
 docker compose up -d
 ```
 
 ### Test
+
 ```bash
 cd backend && uv run pytest
 cd frontend && pnpm lint && pnpm type-check
@@ -154,25 +163,27 @@ cd frontend && pnpm lint && pnpm type-check
 
 ### `backend/.env`
 
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `DATABASE_URL` | Yes | — | Postgres connection string (pgvector-enabled) |
-| `REDIS_URL` | Yes | — | Job queue + cache |
-| `LLM_API_KEY` | Yes | — | Provider key for extraction and scoring/report calls |
-| `LLM_EXTRACTION_MODEL` | Yes | — | Fast/cheap tier — structured extraction |
-| `LLM_REASONING_MODEL` | Yes | — | Stronger tier — scoring judgment, report writing |
-| `EMBEDDING_MODEL` | Yes | — | Skill taxonomy + coarse retrieval embeddings |
-| `EMBEDDING_DIMENSION` | No | `1536` | Must match the embedding model and `skill_taxonomy.embedding` column |
-| `LANGSMITH_API_KEY` | No | — | Tracing — omit to disable |
-| `LANGSMITH_PROJECT` | No | `adequia` | Trace grouping |
-| `ENVIRONMENT` | No | `development` | — |
-| `LOG_LEVEL` | No | `INFO` | — |
+| Variable               | Required | Default       | Description                                                          |
+| ---------------------- | -------- | ------------- | -------------------------------------------------------------------- |
+| `DATABASE_URL`         | Yes      | —             | Postgres connection string (pgvector-enabled)                        |
+| `REDIS_URL`            | Yes      | —             | Job queue + cache                                                    |
+| `GROQ_API_KEYS`        | Yes      | —             | Comma-separated pool of free-tier Groq keys, round-robin rotated     |
+| `GEMINI_API_KEYS`      | Yes      | —             | Comma-separated pool of free-tier Gemini keys, round-robin rotated   |
+| `OLLAMA_BASE_URL`      | Yes      | —             | Local Ollama endpoint — fallback once both key pools are exhausted   |
+| `LLM_EXTRACTION_MODEL` | Yes      | —             | Fast/cheap tier — structured extraction                              |
+| `LLM_REASONING_MODEL`  | Yes      | —             | Stronger tier — scoring judgment, report writing                     |
+| `EMBEDDING_MODEL`      | Yes      | —             | Skill taxonomy + coarse retrieval embeddings (local Ollama `nomic-embed-text`) |
+| `EMBEDDING_DIMENSION`  | No       | `768`         | Must match the embedding model and `skill_taxonomy.embedding` column |
+| `LANGSMITH_API_KEY`    | No       | —             | Tracing — omit to disable                                            |
+| `LANGSMITH_PROJECT`    | No       | `adequia`     | Trace grouping                                                       |
+| `ENVIRONMENT`          | No       | `development` | —                                                                    |
+| `LOG_LEVEL`            | No       | `INFO`        | —                                                                    |
 
 ### `frontend/.env`
 
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `NEXT_PUBLIC_API_URL` | Yes | `http://localhost:8000` | Frontend → backend base URL |
+| Variable              | Required | Default                 | Description                 |
+| --------------------- | -------- | ----------------------- | --------------------------- |
+| `NEXT_PUBLIC_API_URL` | Yes      | `http://localhost:8000` | Frontend → backend base URL |
 
 ---
 
@@ -198,14 +209,14 @@ cd frontend && pnpm lint && pnpm type-check
 
 ## Roadmap
 
-| Status | Item |
-|---|---|
-| ✅ | Repo scaffold — FastAPI skeleton, Next.js skeleton, Postgres/Redis via Docker Compose, CI/build/eval workflow definitions |
-| 🔲 | Week 1 — document parsing, structured extraction into the Pydantic schemas, gold extraction set |
-| 🔲 | Week 2 — skill taxonomy, embedding retrieval + reranking + agentic retry, hybrid scoring, LangGraph wiring |
-| 🔲 | Week 3 — anomaly detection (rule-based + LLM), citation-backed report generation, RAGAS/DeepEval regression suite |
-| 🔲 | Week 4 — full dashboard (candidates, TDRs, matching, reports, metrics), tracing, metrics dashboard with real numbers |
-| 🔲 | Stretch — company-level capability check for the bid/no-bid decision from the firm side, once the core system is stable |
+| Status | Item                                                                                                                      |
+| ------ | ------------------------------------------------------------------------------------------------------------------------- |
+| ✅     | Repo scaffold — FastAPI skeleton, Next.js skeleton, Postgres/Redis via Docker Compose, CI/build/eval workflow definitions |
+| 🔲     | Week 1 — document parsing, structured extraction into the Pydantic schemas, gold extraction set                           |
+| 🔲     | Week 2 — skill taxonomy, embedding retrieval + reranking + agentic retry, hybrid scoring, LangGraph wiring                |
+| 🔲     | Week 3 — anomaly detection (rule-based + LLM), citation-backed report generation, RAGAS/DeepEval regression suite         |
+| 🔲     | Week 4 — full dashboard (candidates, TDRs, matching, reports, metrics), tracing, metrics dashboard with real numbers      |
+| 🔲     | Stretch — company-level capability check for the bid/no-bid decision from the firm side, once the core system is stable   |
 
 ---
 
@@ -222,6 +233,6 @@ Built by Yassine Krichen · 2026
 - [ ] Add `docs/cover.png` — generate with: "AdéquIA — a dark, precise decision-support dashboard for matching expert CVs to tender requirements. Dark UI, high contrast, professional software screenshot aesthetic. Wide banner format, 1400×600px. No people, no text overlays." Place at `docs/cover.png`.
 - [ ] Add screenshots to `docs/demo/` once the dashboard pages from `docs/05-frontend-dashboard.md` exist — a Demo section belongs in this README as soon as there's something to show.
 - [ ] Confirm the data confidentiality policy with the company before any real CV reaches a cloud LLM API — see `docs/08-company-data-checklist.md`.
-- [ ] Pick and lock in an LLM provider/model for `LLM_EXTRACTION_MODEL` / `LLM_REASONING_MODEL` / `EMBEDDING_MODEL` — currently unset placeholders in `backend/.env.example`.
+- [ ] Populate `GROQ_API_KEYS` / `GEMINI_API_KEYS` and pick `LLM_EXTRACTION_MODEL` / `LLM_REASONING_MODEL` / `EMBEDDING_MODEL` — currently unset placeholders in `backend/.env.example`.
 - [ ] Run `uv sync` and `pnpm install` locally to generate `uv.lock` and `pnpm-lock.yaml` — not run yet, this repo is structure-only at this stage.
 - [ ] Add a LICENSE file if this ever moves beyond an internal internship deliverable.

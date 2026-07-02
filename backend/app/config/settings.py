@@ -16,12 +16,14 @@ class Settings(BaseSettings):
     database_url: str
     redis_url: str
 
-    llm_api_key: str
+    groq_api_keys: str
+    gemini_api_keys: str
+    ollama_base_url: str
     llm_extraction_model: str
     llm_reasoning_model: str
 
     embedding_model: str
-    embedding_dimension: int = 1536
+    embedding_dimension: int = 768
 
     langsmith_api_key: str | None = None
     langsmith_project: str = "adequia"

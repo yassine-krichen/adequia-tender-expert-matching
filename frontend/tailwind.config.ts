@@ -1,28 +1,68 @@
 import type { Config } from 'tailwindcss';
 
+const rgbVar = (name: string) => `rgb(var(${name}) / <alpha-value>)`;
+
 const config: Config = {
   darkMode: 'class',
   content: ['./src/**/*.{ts,tsx}'],
   theme: {
     extend: {
       borderRadius: {
-        DEFAULT: '0px',
-        none: '0px',
+        lg: 'var(--radius-lg)',
+        md: 'var(--radius-md)',
+        sm: 'var(--radius-sm)',
+        xl: 'var(--radius-xl)',
         full: '9999px',
       },
       fontFamily: {
-        heading: ['var(--font-space-grotesk)'],
-        body: ['var(--font-inter)'],
+        heading: ['var(--font-heading)'],
+        body: ['var(--font-sans)'],
+        sans: ['var(--font-sans)'],
       },
       colors: {
-        background: '#0B0F14',
-        foreground: '#E6E8EB',
-        primary: '#6C5CE7',
-        secondary: '#0F766E',
-        success: '#22C55E',
-        warning: '#F59E0B',
-        danger: '#EF4444',
-        muted: '#64748B',
+        background: rgbVar('--background'),
+        foreground: rgbVar('--foreground'),
+        card: {
+          DEFAULT: rgbVar('--card'),
+          foreground: rgbVar('--card-foreground'),
+        },
+        popover: {
+          DEFAULT: rgbVar('--popover'),
+          foreground: rgbVar('--popover-foreground'),
+        },
+        primary: {
+          DEFAULT: rgbVar('--primary'),
+          foreground: rgbVar('--primary-foreground'),
+        },
+        secondary: {
+          DEFAULT: rgbVar('--secondary'),
+          foreground: rgbVar('--secondary-foreground'),
+        },
+        muted: {
+          DEFAULT: rgbVar('--muted'),
+          foreground: rgbVar('--muted-foreground'),
+        },
+        accent: {
+          DEFAULT: rgbVar('--accent'),
+          foreground: rgbVar('--accent-foreground'),
+        },
+        destructive: {
+          DEFAULT: rgbVar('--destructive'),
+          foreground: rgbVar('--destructive-foreground'),
+        },
+        success: {
+          DEFAULT: rgbVar('--success'),
+          foreground: rgbVar('--success-foreground'),
+        },
+        warning: {
+          DEFAULT: rgbVar('--warning'),
+          foreground: rgbVar('--warning-foreground'),
+        },
+        // border/input are subtle hairlines — a fixed low opacity on the
+        // foreground color, not an adjustable utility like the others.
+        border: 'rgb(var(--border) / 0.12)',
+        input: 'rgb(var(--input) / 0.15)',
+        ring: rgbVar('--ring'),
       },
     },
   },

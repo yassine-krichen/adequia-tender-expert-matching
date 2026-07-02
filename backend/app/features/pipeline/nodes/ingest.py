@@ -1,11 +1,70 @@
+from io import BytesIO
+from pathlib import Path
+from zipfile import BadZipFile
+
+from docx import Document
+from docx.opc.exceptions import PackageNotFoundError
+from pypdf import PdfReader
+from pypdf.errors import PdfReadError
+
+from app.common.exceptions import DomainError
 from app.features.pipeline.state import PipelineState
 
 
-def ingest(state: PipelineState) -> PipelineState:
-    """Parse raw CV/TDR files into text.
+class UnsupportedDocumentError(DomainError):
+    status_code = 422
 
-    Route scanned/image documents through OCR instead of plain text
-    extraction — confirm on real samples before assuming this is needed
-    (docs/08-company-data-checklist.md).
+
+class CorruptDocumentError(DomainError):
+    status_code = 422
+
+
+def extract_raw_text(file_bytes: bytes, filename: str) -> str:
+    """Parse a CV/TDR document (text-PDF or docx) into raw text.
+
+    Corrupt or unsupported files raise a typed DomainError — never a
+    silent empty string (ADQ-3).
     """
-    raise NotImplementedError
+    suffix = Path(filename).suffix.lower()
+    if suffix == ".pdf":
+        return _extract_pdf_text(file_bytes, filename)
+    if suffix == ".docx":
+        return _extract_docx_text(file_bytes, filename)
+    raise UnsupportedDocumentError(f"Unsupported document type: {suffix or 'unknown'}")
+
+
+def _extract_pdf_text(file_bytes: bytes, filename: str) -> str:
+    try:
+        reader = PdfReader(BytesIO(file_bytes))
+        text = "\n".join(page.extract_text() or "" for page in reader.pages).strip()
+    except PdfReadError as exc:
+        raise CorruptDocumentError(f"Could not read PDF: {filename}") from exc
+
+    if not text:
+        raise CorruptDocumentError(f"No extractable text found in PDF: {filename}")
+    return text
+
+
+def _extract_docx_text(file_bytes: bytes, filename: str) -> str:
+    try:
+        document = Document(BytesIO(file_bytes))
+    except (PackageNotFoundError, BadZipFile) as exc:
+        raise CorruptDocumentError(f"Could not read DOCX: {filename}") from exc
+
+    text = "\n".join(paragraph.text for paragraph in document.paragraphs).strip()
+    if not text:
+        raise CorruptDocumentError(f"No extractable text found in DOCX: {filename}")
+    return text
+
+
+def ingest(state: PipelineState) -> PipelineState:
+    """Matching-graph guard: cv_raw_text/tdr_raw_text are populated by the
+    upload endpoints before this graph runs (extract_raw_text above, called
+    from app.features.candidates/app.features.tdrs) — this node only
+    validates they arrived non-empty before the graph proceeds to extract.
+    """
+    if not state["cv_raw_text"].strip():
+        raise CorruptDocumentError("Pipeline state has empty cv_raw_text")
+    if not state["tdr_raw_text"].strip():
+        raise CorruptDocumentError("Pipeline state has empty tdr_raw_text")
+    return state

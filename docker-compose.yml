@@ -14,7 +14,7 @@ services:
 
   worker:
     build: ./backend
-    command: uv run python -m app.worker.rq_worker
+    command: uv run --no-dev python -m app.worker.rq_worker
     depends_on: [postgres, redis]
     env_file: ./backend/.env
     environment:

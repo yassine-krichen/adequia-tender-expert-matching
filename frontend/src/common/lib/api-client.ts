@@ -25,4 +25,8 @@ export const apiClient = {
       headers: body ? { 'Content-Type': 'application/json' } : undefined,
       body: body ? JSON.stringify(body) : undefined,
     }),
+  // No Content-Type header here — the browser sets the multipart boundary
+  // itself when the body is a FormData instance.
+  upload: <T>(path: string, formData: FormData) =>
+    request<T>(path, { method: 'POST', body: formData }),
 };

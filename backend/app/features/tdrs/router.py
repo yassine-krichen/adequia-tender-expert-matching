@@ -1,5 +1,7 @@
-from fastapi import APIRouter, UploadFile
+from fastapi import APIRouter, Depends, UploadFile
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.database.session import get_db_session
 from app.domain.tdr import TDR
 from app.features.tdrs.service import TdrsService
 
@@ -8,8 +10,8 @@ service = TdrsService()
 
 
 @router.post("", response_model=TDR)
-async def upload_tdr(file: UploadFile) -> TDR:
-    return await service.upload_tdr(file)
+async def upload_tdr(file: UploadFile, session: AsyncSession = Depends(get_db_session)) -> TDR:
+    return await service.upload_tdr(file, session)
 
 
 @router.get("/{tdr_id}", response_model=TDR)

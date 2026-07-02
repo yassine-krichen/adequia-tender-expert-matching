@@ -1,6 +1,8 @@
 from datetime import date
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from app.common.dates import coerce_partial_date
 
 
 class LanguageRequirement(BaseModel):
@@ -30,3 +32,5 @@ class TDR(BaseModel):
     positions: list[ExpertPosition]
     raw_text: str
     source_file_path: str
+
+    _coerce_deadline = field_validator("deadline", mode="before")(coerce_partial_date)

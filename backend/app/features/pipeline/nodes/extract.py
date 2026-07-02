@@ -4,11 +4,13 @@ from datetime import date
 from typing import TypeVar
 from uuid import uuid4
 
+from google.genai.errors import ClientError as GeminiClientError
+from groq import BadRequestError as GroqBadRequestError
 from langchain_core.embeddings import Embeddings
 from langchain_core.exceptions import OutputParserException
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from app.common.exceptions import ExtractionFailedError
 from app.common.llm.router import ExtractionRouter
@@ -16,7 +18,18 @@ from app.domain.cv import CandidateCV, Certification, Education, Experience, Lan
 from app.domain.tdr import TDR, ExpertPosition, LanguageRequirement
 from app.features.pipeline.state import PipelineState
 
-_STRUCTURED_OUTPUT_ERRORS = (ValidationError, OutputParserException)
+# ValidationError/OutputParserException: our own or LangChain's schema check
+# failed. GroqBadRequestError/GeminiClientError: the provider's own strict
+# function-calling rejected the generated arguments (e.g. an extra field, a
+# malformed value) before it ever reached our validation — by the time one
+# of these reaches this tuple it's guaranteed not a 429 (KeyPool/ModelRouter
+# already handles rate-limit rotation before anything propagates this far).
+_STRUCTURED_OUTPUT_ERRORS = (
+    ValidationError,
+    OutputParserException,
+    GroqBadRequestError,
+    GeminiClientError,
+)
 _T = TypeVar("_T")
 _M = TypeVar("_M", bound=BaseModel)
 
@@ -28,9 +41,18 @@ def _invoke_structured_extraction(
     *,
     failure_message: str,
 ) -> _M:
-    """Retries once (feeding the validation error back into the prompt)
-    before wrapping a still-failing extraction into a typed DomainError —
-    internal pydantic/langchain error details never reach API consumers.
+    """Escalates to the reasoning-tier model on retry (feeding the error back
+    into the prompt) before wrapping a still-failing extraction into a typed
+    DomainError — internal pydantic/langchain error details never reach API
+    consumers.
+
+    Retrying with the *same* extraction-tier model rarely helps: verified
+    empirically that Groq's fast/cheap model (llama-3.1-8b-instant) fails
+    this schema's nesting depth consistently (invalid JSON — trailing
+    commas — 3/3 repeated attempts on the same input, even at temperature
+    0), while the reasoning-tier model (llama-3.3-70b-versatile) succeeds
+    every time. Escalating only on failure keeps the common case cheap
+    without sacrificing reliability on the documents that need it.
     """
     try:
         result = router.invoke_extraction(messages, structured_output=schema)
@@ -45,7 +67,7 @@ def _invoke_structured_extraction(
             ),
         ]
         try:
-            result = router.invoke_extraction(retry_messages, structured_output=schema)
+            result = router.invoke_reasoning(retry_messages, structured_output=schema)
         except _STRUCTURED_OUTPUT_ERRORS as second_error:
             raise ExtractionFailedError(failure_message) from second_error
     assert isinstance(result, schema)
@@ -64,17 +86,78 @@ _CV_GUARDRAIL_PROMPT = (
 )
 
 
+class _ExtractedEducation(BaseModel):
+    """Same shape as domain.cv.Education, but graduation_year is a plain
+    string — observed Groq output quoting it ("2008") gets rejected by the
+    provider's strict integer-typed schema before it ever reaches us, same
+    failure mode as the date fields below.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    degree: str
+    field: str | None = None
+    institution: str
+    country: str | None = None
+    graduation_year: str | None = None
+    source_span: str
+
+
+class _ExtractedCertification(BaseModel):
+    """Same shape as domain.cv.Certification, but dates are plain strings.
+
+    A Pydantic date field's JSON schema declares format="date", and some
+    providers (observed: Groq) enforce that format server-side before the
+    completion is ever returned — a month-precision "2016-01" gets rejected
+    at the source, upstream of our own date coercion, which never gets a
+    chance to run. Keeping dates as free strings here avoids relying on any
+    provider's strict-format enforcement; coerce_partial_date (via the
+    domain model's own validators) parses whatever comes back once we build
+    the real Certification instance.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    issuing_body: str | None = None
+    issue_date: str | None = None
+    expiry_date: str | None = None
+    source_span: str
+
+
+class _ExtractedExperience(BaseModel):
+    """Same shape as domain.cv.Experience, but dates are plain strings — see
+    _ExtractedCertification for why.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: str
+    employer: str
+    sector: str | None = None
+    start_date: str
+    end_date: str | None = None
+    responsibilities: list[str] = Field(default_factory=list)
+    source_span: str
+
+
 class _CVExtraction(BaseModel):
     """What the model actually extracts — identifiers, total_years_experience,
     and normalized_skills are filled in by our own code, not the LLM (see
     docs/02-data-schemas.md: total_years_experience is computed at query time,
     never a fixed extracted number).
+
+    extra="forbid" makes the tool schema sent to the provider reject any
+    field the model invents beyond this list (e.g. a hallucinated
+    total_years_experience) instead of silently accepting it.
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     full_name: str
-    education: list[Education]
-    certifications: list[Certification]
-    experience: list[Experience]
+    education: list[_ExtractedEducation]
+    certifications: list[_ExtractedCertification]
+    experience: list[_ExtractedExperience]
     languages: list[LanguageProficiency]
     raw_skills: list[str] = Field(default_factory=list)
 
@@ -106,16 +189,22 @@ def extract_cv(
     endpoint / DB insert), not extracted from the CV text.
     """
     extraction = _invoke_cv_extraction(raw_text, router)
+    # Converting here (not in _CVExtraction itself) is what actually parses
+    # the LLM's free-form date/year strings into real date/int values, via
+    # Education/Certification/Experience's own coercion validators.
+    education = [Education(**edu.model_dump()) for edu in extraction.education]
+    certifications = [Certification(**cert.model_dump()) for cert in extraction.certifications]
+    experience = [Experience(**exp.model_dump()) for exp in extraction.experience]
     return CandidateCV(
         candidate_id=candidate_id,
         full_name=extraction.full_name,
-        education=extraction.education,
-        certifications=extraction.certifications,
-        experience=extraction.experience,
+        education=education,
+        certifications=certifications,
+        experience=experience,
         languages=extraction.languages,
         raw_skills=extraction.raw_skills,
         normalized_skills=[],
-        total_years_experience=_compute_total_years_experience(extraction.experience),
+        total_years_experience=_compute_total_years_experience(experience),
         raw_text=raw_text,
         source_file_path=source_file_path,
     )
@@ -141,6 +230,8 @@ _TDR_TOP_N_CHUNKS = 5
 
 
 class _ExtractedPosition(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     position_title: str
     mandatory_diploma: str | None = None
     minimum_years_experience: float | None = None
@@ -156,12 +247,19 @@ class _TDRChunkExtraction(BaseModel):
     """One chunk's contribution to the TDR — mission-level fields are
     optional since a given chunk may only describe part of the document
     (the map step of extract_tdr's map-merge over multi-section TDRs).
+
+    deadline stays a plain string here for the same reason
+    _ExtractedCertification's dates do — see that class's docstring.
+    TDR's own coerce_partial_date validator parses it once the final TDR
+    is constructed in extract_tdr().
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     mission_title: str | None = None
     client: str | None = None
     sector: str | None = None
-    deadline: date | None = None
+    deadline: str | None = None
     positions: list[_ExtractedPosition] = Field(default_factory=list)
 
 
@@ -275,7 +373,9 @@ def extract_tdr(
         mission_title=merged.mission_title or "Untitled mission",
         client=merged.client,
         sector=merged.sector,
-        deadline=merged.deadline,
+        # merged.deadline is a free-form string (see _TDRChunkExtraction);
+        # TDR's own coerce_partial_date validator parses it at construction.
+        deadline=merged.deadline,  # type: ignore[arg-type]
         positions=positions,
         raw_text=raw_text,
         source_file_path=source_file_path,

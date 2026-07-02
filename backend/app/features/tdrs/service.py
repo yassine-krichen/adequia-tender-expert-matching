@@ -44,6 +44,11 @@ class TdrsService:
                 extracted_json=tdr.model_dump(mode="json"),
             )
         )
+        # Flush before adding positions — without a relationship() between
+        # TDR and ExpertPosition, SQLAlchemy's unit-of-work doesn't
+        # guarantee FK-safe insert ordering, and can emit the position
+        # insert first, violating expert_positions_tdr_id_fkey.
+        await session.flush()
         for position in tdr.positions:
             session.add(
                 ExpertPositionModel(

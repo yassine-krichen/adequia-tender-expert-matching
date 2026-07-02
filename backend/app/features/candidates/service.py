@@ -35,6 +35,11 @@ class CandidatesService:
         )
 
         session.add(Candidate(candidate_id=candidate_id, full_name=candidate_cv.full_name))
+        # Flush before adding the CV row — without a relationship() between
+        # Candidate and CV, SQLAlchemy's unit-of-work doesn't guarantee
+        # FK-safe insert ordering on its own, and can emit the CV insert
+        # first, violating cvs_candidate_id_fkey.
+        await session.flush()
         session.add(
             CV(
                 candidate_id=candidate_id,

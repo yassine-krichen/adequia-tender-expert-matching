@@ -48,6 +48,10 @@ class ExtractionRouter(Protocol):
         self, messages: Sequence[BaseMessage], structured_output: type[Any] | None = None
     ) -> Any: ...
 
+    def invoke_reasoning(
+        self, messages: Sequence[BaseMessage], structured_output: type[Any] | None = None
+    ) -> Any: ...
+
 
 class ModelRouter:
     """Rotates across the Groq and Gemini free-tier key pools, falling back

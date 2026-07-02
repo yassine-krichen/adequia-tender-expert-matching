@@ -1,5 +1,4 @@
 from collections.abc import Sequence
-from datetime import date
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -7,9 +6,13 @@ from typing import Any
 from fastapi import UploadFile
 
 from app.database.models import CV, Candidate
-from app.domain.cv import Education, Experience, LanguageProficiency
+from app.domain.cv import LanguageProficiency
 from app.features.candidates.service import CandidatesService
-from app.features.pipeline.nodes.extract import _CVExtraction
+from app.features.pipeline.nodes.extract import (
+    _CVExtraction,
+    _ExtractedEducation,
+    _ExtractedExperience,
+)
 
 _SYNTHETIC_CV_PATH = (
     Path(__file__).resolve().parents[5] / "docs" / "cvs" / "synthetic" / "nadia-ben-salah.pdf"
@@ -23,7 +26,7 @@ class _FakeRouter:
         return _CVExtraction(
             full_name="Nadia Ben Salah",
             education=[
-                Education(
+                _ExtractedEducation(
                     degree="Master",
                     field="IT Project Management",
                     institution="IHEC Carthage",
@@ -32,10 +35,10 @@ class _FakeRouter:
             ],
             certifications=[],
             experience=[
-                Experience(
+                _ExtractedExperience(
                     title="Cheffe de projet SI",
                     employer="ST2i",
-                    start_date=date(2016, 1, 1),
+                    start_date="2016-01-01",
                     end_date=None,
                     source_span="Cheffe de projet SI at ST2i since 2016",
                 )
@@ -43,6 +46,8 @@ class _FakeRouter:
             languages=[LanguageProficiency(language="French", level="fluent")],
             raw_skills=["Gestion de projet"],
         )
+
+    invoke_reasoning = invoke_extraction
 
 
 class _FakeSession:
@@ -52,6 +57,9 @@ class _FakeSession:
 
     def add(self, obj: Any) -> None:
         self.added.append(obj)
+
+    async def flush(self) -> None:
+        pass
 
     async def commit(self) -> None:
         self.committed = True

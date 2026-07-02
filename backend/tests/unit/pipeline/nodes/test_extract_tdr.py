@@ -39,6 +39,14 @@ class _FakeRouter:
     def invoke_extraction(
         self, messages: Sequence[Any], structured_output: type[Any] | None = None
     ) -> _TDRChunkExtraction:
+        return self._next_response()
+
+    def invoke_reasoning(
+        self, messages: Sequence[Any], structured_output: type[Any] | None = None
+    ) -> _TDRChunkExtraction:
+        return self._next_response()
+
+    def _next_response(self) -> _TDRChunkExtraction:
         self.call_count += 1
         response = next(self._responses)
         if isinstance(response, Exception):
@@ -109,7 +117,7 @@ def test_extract_tdr_builds_tdr_with_positions_from_retrieved_chunks() -> None:
                 mission_title="Système de gestion de la scolarité",
                 client="Ministère de l'Éducation",
                 sector="Éducation",
-                deadline=date(2026, 12, 1),
+                deadline="2026-12-01",
                 positions=[_position("Chef de projet")],
             )
         ]
@@ -127,6 +135,7 @@ def test_extract_tdr_builds_tdr_with_positions_from_retrieved_chunks() -> None:
     assert result.tdr_id == "tdr-1"
     assert result.mission_title == "Système de gestion de la scolarité"
     assert result.client == "Ministère de l'Éducation"
+    assert result.deadline == date(2026, 12, 1)
     assert len(result.positions) == 1
     assert result.positions[0].position_title == "Chef de projet"
     assert result.positions[0].position_id  # system-assigned, non-empty

@@ -32,6 +32,8 @@ class _FakeRouter:
             ],
         )
 
+    invoke_reasoning = invoke_extraction
+
     def get_embedding_model(self) -> Embeddings:
         return _FakeEmbeddings()
 
@@ -51,6 +53,9 @@ class _FakeSession:
 
     def add(self, obj: Any) -> None:
         self.added.append(obj)
+
+    async def flush(self) -> None:
+        pass
 
     async def commit(self) -> None:
         self.committed = True

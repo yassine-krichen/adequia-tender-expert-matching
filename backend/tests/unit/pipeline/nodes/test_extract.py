@@ -5,6 +5,7 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
+from app.common.exceptions import ExtractionFailedError
 from app.domain.cv import Education, Experience, LanguageProficiency
 from app.features.pipeline.nodes.extract import _CVExtraction, extract_cv
 
@@ -85,10 +86,10 @@ def test_extract_cv_retries_once_on_validation_failure() -> None:
     assert router.call_count == 2
 
 
-def test_extract_cv_raises_after_retry_also_fails() -> None:
+def test_extract_cv_raises_extraction_failed_error_after_retry_also_fails() -> None:
     router = _FakeRouter([_validation_error(), _validation_error()])
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(ExtractionFailedError):
         extract_cv("raw cv text", candidate_id="cand-1", source_file_path="cv.pdf", router=router)
 
     assert router.call_count == 2

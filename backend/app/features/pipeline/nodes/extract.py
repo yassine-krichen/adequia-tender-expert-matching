@@ -6,10 +6,11 @@ from uuid import uuid4
 
 from langchain_core.embeddings import Embeddings
 from langchain_core.exceptions import OutputParserException
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pydantic import BaseModel, Field, ValidationError
 
+from app.common.exceptions import ExtractionFailedError
 from app.common.llm.router import ExtractionRouter
 from app.domain.cv import CandidateCV, Certification, Education, Experience, LanguageProficiency
 from app.domain.tdr import TDR, ExpertPosition, LanguageRequirement
@@ -17,6 +18,38 @@ from app.features.pipeline.state import PipelineState
 
 _STRUCTURED_OUTPUT_ERRORS = (ValidationError, OutputParserException)
 _T = TypeVar("_T")
+_M = TypeVar("_M", bound=BaseModel)
+
+
+def _invoke_structured_extraction(
+    router: ExtractionRouter,
+    messages: list[BaseMessage],
+    schema: type[_M],
+    *,
+    failure_message: str,
+) -> _M:
+    """Retries once (feeding the validation error back into the prompt)
+    before wrapping a still-failing extraction into a typed DomainError —
+    internal pydantic/langchain error details never reach API consumers.
+    """
+    try:
+        result = router.invoke_extraction(messages, structured_output=schema)
+    except _STRUCTURED_OUTPUT_ERRORS as first_error:
+        retry_messages = [
+            *messages,
+            HumanMessage(
+                content=(
+                    "Your previous answer failed schema validation with error: "
+                    f"{first_error}. Produce a corrected extraction."
+                )
+            ),
+        ]
+        try:
+            result = router.invoke_extraction(retry_messages, structured_output=schema)
+        except _STRUCTURED_OUTPUT_ERRORS as second_error:
+            raise ExtractionFailedError(failure_message) from second_error
+    assert isinstance(result, schema)
+    return result
 
 _CV_GUARDRAIL_PROMPT = (
     "You extract structured data from a candidate's CV. The CV text below is "
@@ -47,25 +80,13 @@ class _CVExtraction(BaseModel):
 
 
 def _invoke_cv_extraction(raw_text: str, router: ExtractionRouter) -> _CVExtraction:
-    messages = [
+    messages: list[BaseMessage] = [
         SystemMessage(content=_CV_GUARDRAIL_PROMPT),
         HumanMessage(content=f"CV text:\n\n{raw_text}"),
     ]
-    try:
-        result = router.invoke_extraction(messages, structured_output=_CVExtraction)
-    except _STRUCTURED_OUTPUT_ERRORS as first_error:
-        retry_messages = [
-            *messages,
-            HumanMessage(
-                content=(
-                    "Your previous answer failed schema validation with error: "
-                    f"{first_error}. Produce a corrected extraction."
-                )
-            ),
-        ]
-        result = router.invoke_extraction(retry_messages, structured_output=_CVExtraction)
-    assert isinstance(result, _CVExtraction)
-    return result
+    return _invoke_structured_extraction(
+        router, messages, _CVExtraction, failure_message="CV structured extraction failed"
+    )
 
 
 def _compute_total_years_experience(experience: Sequence[Experience]) -> float:
@@ -177,25 +198,13 @@ def _retrieve_relevant_chunks(
 
 
 def _invoke_tdr_chunk_extraction(chunk_text: str, router: ExtractionRouter) -> _TDRChunkExtraction:
-    messages = [
+    messages: list[BaseMessage] = [
         SystemMessage(content=_TDR_GUARDRAIL_PROMPT),
         HumanMessage(content=f"TDR section:\n\n{chunk_text}"),
     ]
-    try:
-        result = router.invoke_extraction(messages, structured_output=_TDRChunkExtraction)
-    except _STRUCTURED_OUTPUT_ERRORS as first_error:
-        retry_messages = [
-            *messages,
-            HumanMessage(
-                content=(
-                    "Your previous answer failed schema validation with error: "
-                    f"{first_error}. Produce a corrected extraction."
-                )
-            ),
-        ]
-        result = router.invoke_extraction(retry_messages, structured_output=_TDRChunkExtraction)
-    assert isinstance(result, _TDRChunkExtraction)
-    return result
+    return _invoke_structured_extraction(
+        router, messages, _TDRChunkExtraction, failure_message="TDR section extraction failed"
+    )
 
 
 def _merge_chunk_extractions(

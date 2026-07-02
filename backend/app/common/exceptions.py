@@ -24,6 +24,16 @@ class ValidationFailedError(DomainError):
     status_code = 422
 
 
+class ExtractionFailedError(DomainError):
+    """Structured extraction failed schema validation even after one retry.
+
+    Wraps the underlying pydantic/langchain error so internal validation
+    details never leak to API consumers.
+    """
+
+    status_code = 422
+
+
 async def domain_error_handler(_: Request, exc: Exception) -> JSONResponse:
     assert isinstance(exc, DomainError)
     return JSONResponse(status_code=exc.status_code, content={"message": exc.message})

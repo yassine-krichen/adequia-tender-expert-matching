@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, Protocol
 
 from google.genai.errors import ClientError as GeminiClientError
 from groq import RateLimitError as GroqRateLimitError
@@ -37,6 +37,16 @@ def _invoke_model(
     if structured_output is not None:
         return model.with_structured_output(structured_output).invoke(messages)
     return model.invoke(messages)
+
+
+class ExtractionRouter(Protocol):
+    """What extraction nodes need from a router — lets tests substitute a
+    fake without depending on ModelRouter's concrete key-pool/provider wiring.
+    """
+
+    def invoke_extraction(
+        self, messages: Sequence[BaseMessage], structured_output: type[Any] | None = None
+    ) -> Any: ...
 
 
 class ModelRouter:

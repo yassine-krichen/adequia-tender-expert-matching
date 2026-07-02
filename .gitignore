@@ -19,6 +19,8 @@ node_modules/
 .next/
 out/
 .pnpm-store/
+next-env.d.ts
+*.tsbuildinfo
 
 # Editors / OS
 .vscode/

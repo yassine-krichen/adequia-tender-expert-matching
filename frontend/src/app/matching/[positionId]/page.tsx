@@ -1,5 +1,8 @@
-export function MatchingResultsPage({ params }: { params: { positionId: string } }) {
-  return <main>Ranked candidates for position {params.positionId}.</main>;
+export default async function MatchingResultsPage({
+  params,
+}: {
+  params: Promise<{ positionId: string }>;
+}) {
+  const { positionId } = await params;
+  return <main>Ranked candidates for position {positionId}.</main>;
 }
-
-export default MatchingResultsPage;

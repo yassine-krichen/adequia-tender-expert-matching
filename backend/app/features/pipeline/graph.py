@@ -16,7 +16,7 @@ def route_after_hard_filter(state: PipelineState) -> str:
     return "detect_anomalies" if state["hard_filter_passed"] else "generate_report"
 
 
-def build_matching_graph() -> StateGraph:
+def build_matching_graph() -> StateGraph[PipelineState]:
     graph = StateGraph(PipelineState)
 
     graph.add_node("ingest", ingest)

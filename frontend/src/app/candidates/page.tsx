@@ -75,7 +75,8 @@ export default function CandidatesPage() {
               <ul className="list-inside list-disc">
                 {result.education.map((edu) => (
                   <li key={edu.source_span}>
-                    {edu.degree} in {edu.field} — {edu.institution}
+                    {edu.degree}
+                    {edu.field && ` in ${edu.field}`} — {edu.institution}
                   </li>
                 ))}
               </ul>

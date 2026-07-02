@@ -8,7 +8,8 @@ export type Candidate = {
 // since this is the raw POST /candidates/cv response body, not a UI model.
 export type Education = {
   degree: string;
-  field: string;
+  // Real CVs often don't cleanly separate degree from field of study.
+  field: string | null;
   institution: string;
   country: string | null;
   graduation_year: number | null;

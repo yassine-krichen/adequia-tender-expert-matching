@@ -7,6 +7,10 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/adequia
       - REDIS_URL=redis://redis:6379
+      # backend/.env's OLLAMA_BASE_URL is meant for `uv run` on the host,
+      # where localhost is the host itself — inside this container it
+      # would mean the container, not the host running Ollama.
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
 
   worker:
     build: ./backend
@@ -16,6 +20,7 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/adequia
       - REDIS_URL=redis://redis:6379
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
 
   postgres:
     image: pgvector/pgvector:pg16

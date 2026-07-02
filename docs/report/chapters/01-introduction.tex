@@ -1,0 +1,55 @@
+\chapter{General Introduction}
+
+This chapter introduces the internship context, the problem the host company
+asked to have solved, the objectives set for the one-month engagement, and
+the organization of the rest of this report.
+
+\section{Internship Context}
+
+This report covers a one-month internship carried out at ST2i, a Tunisian IT
+services and consulting company (a subsidiary of the STUDI Group), between
+July 6 and July 31, 2026. The internship was organized as four one-week
+Scrum sprints, each ending with a working, demoable increment of the
+delivered system rather than a single delivery at the very end.
+
+\section{Problem Statement}
+
+ST2i bids on public and international tenders that require staffing one or
+more \textit{expert positions} defined in a Terms of Reference (TDR)
+document: each position specifies a mandatory diploma, a minimum number of
+years of experience, required certifications, languages, and sector
+experience. Before submitting a bid, ST2i must determine, for every required
+position, which of its own employees are actually qualified.
+
+Today this step is manual: a business analyst reads the TDR and tries to
+recall or search which internal experts might fit. This is slow, and more
+importantly it is error-prone in a way that has direct financial
+consequences -- missing a genuinely qualified expert can mean passing on a
+winnable bid, while missing a disqualifying gap can mean committing to staff
+who do not actually meet a client's mandatory requirements.
+
+\section{Objectives}
+
+The internship's objective was to design and build \textbf{AdéquIA}, a
+decision-support system that automates this matching step: given a parsed
+TDR and the internal CV database, produce for each required position a
+ranked list of candidates with a compatibility score, a breakdown by
+criterion, flagged anomalies, and a citation-backed rationale that a human
+reviewer can approve, reject, or override.
+
+Because the internship's timeline is one month, scope was deliberately kept
+to the matching, scoring, anomaly-detection, and reporting pipeline itself,
+plus the reviewer-facing dashboard needed to actually use it -- tender
+discovery and bid submission logistics were explicitly out of scope, as was
+any model fine-tuning or self-hosted inference infrastructure.
+
+\section{Report Organization}
+
+Chapter~\ref{chap:host-company} presents the host company and the business
+environment the project sits in. Chapter~\ref{chap:project-management}
+covers the Agile/Scrum methodology adopted for the internship, including the
+product backlog and the four-sprint plan. Chapters~4 onward each cover one
+sprint in turn -- sprint goal, backlog, analysis, design, implementation,
+testing, review, and retrospective -- following the same structure so
+progress across sprints is directly comparable. A general conclusion closes
+the report.

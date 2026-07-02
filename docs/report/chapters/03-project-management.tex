@@ -1,0 +1,145 @@
+\chapter{Project Management}
+\label{chap:project-management}
+
+\section{Development Methodology}
+
+\subsection{Why Agile}
+
+The project's requirements were expected to sharpen as real company data
+(historical staffing decisions, a wider variety of TDRs) arrived over the
+course of the internship, and the one-month timeline left no room to absorb
+a wrong up-front design decision discovered late. An Agile approach --
+short iterations, a working increment reviewed every cycle, and room to
+re-prioritize based on what was actually learned -- fit this constraint far
+better than a single up-front specification followed by one final delivery.
+
+\subsection{Why Scrum}
+
+Scrum was chosen specifically (over, say, Kanban) because the internship's
+fixed one-month deadline maps naturally onto a fixed number of time-boxed
+sprints with a clear goal each, which is exactly the structure a solo
+Scrum Sprint Planning / Sprint Review cadence provides, and because it gives
+this report a natural per-sprint chapter structure.
+
+\section{Scrum Framework}
+
+\subsection{Roles}
+
+For this internship, the intern acted as both Developer and (with the
+company supervisor as final approver) Product Owner, responsible for
+backlog prioritization and sprint goal definition. The company supervisor,
+[Company Supervisor], acted as the primary stakeholder for Sprint Reviews.
+
+\subsection{Artifacts}
+
+\begin{itemize}
+  \item \textbf{Product Backlog} -- the full list of prioritized stories
+    across all four sprints (Section~\ref{sec:product-backlog}).
+  \item \textbf{Sprint Backlog} -- the subset of stories committed to for
+    the current sprint, each with acceptance criteria.
+  \item \textbf{Increment} -- the working, demoable software produced at
+    the end of each sprint (see each sprint chapter's Sprint Review
+    section).
+\end{itemize}
+
+\subsection{Events}
+
+\begin{itemize}
+  \item \textbf{Sprint Planning} -- at the start of each one-week sprint,
+    selecting and estimating the stories that make up that sprint's
+    backlog.
+  \item \textbf{Daily tracking} -- a short daily log capturing progress and
+    blockers, in place of a synchronous daily stand-up given the solo
+    setup.
+  \item \textbf{Sprint Review} -- a demo of the sprint's working increment
+    to the company supervisor at the end of each sprint.
+  \item \textbf{Sprint Retrospective} -- a short review of what worked and
+    what to change for the next sprint.
+\end{itemize}
+
+\section{Product Backlog}
+\label{sec:product-backlog}
+
+The full product backlog covers 34 stories across four sprints, organized
+into seven epics: ingestion \& extraction, matching engine, anomaly
+detection, reporting \& explainability, dashboard UX, DevOps, and (icebox)
+company profile. Story points follow a Fibonacci-like scale
+(1, 2, 3, 5, 8); anything larger is split before being scheduled.
+
+One deliberate structural decision shaped the whole plan: the
+\texttt{dashboard-ux} epic is spread as a thin vertical slice across every
+sprint instead of being batched entirely into the last sprint. This means
+every Sprint Review has a real, working screen to demo -- a bare-bones
+upload/preview page in Sprint 1, a matching results page in Sprint 2, a
+full report/review page in Sprint 3 -- rather than nothing showable until
+the very end.
+
+\section{Sprint Planning}
+
+\begin{table}[h]
+  \centering
+  \caption{Four-sprint plan overview}
+  \begin{tabular}{@{}clrl@{}}
+    \toprule
+    Sprint & Dates & Points & Demoable increment \\
+    \midrule
+    1 & Jul 6 -- Jul 10  & 43 & Upload a real CV/TDR, see extracted structured fields \\
+    2 & Jul 13 -- Jul 17 & 42 & Matching results page -- ranked candidates, real scores \\
+    3 & Jul 20 -- Jul 24 & 50 & Report view -- rationale, citations, approve/reject/override \\
+    4 & Jul 27 -- Jul 31 & 35 & Complete styled dashboard + metrics page with real numbers \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Point totals are not forced equal across sprints: Sprint 1 front-loads the
+riskiest technical integration (multi-key LLM provider routing, since the
+project has no paid API access) alongside project setup; Sprints 2 and 3
+carry the core pipeline complexity (retrieval, scoring, anomaly detection,
+report generation); Sprint 4 winds down into polish and evaluation rigor.
+
+\section{Development Environment}
+
+\subsection{Hardware}
+
+Development was carried out on a single development machine running
+Windows, with Docker Desktop used to run PostgreSQL and Redis locally.
+
+\subsection{Software \& Technologies}
+
+\begin{itemize}
+  \item \textbf{Backend}: Python, FastAPI, LangGraph/LangChain, SQLAlchemy
+    (async) with Alembic migrations, PostgreSQL with the \texttt{pgvector}
+    extension, Redis with RQ for background jobs.
+  \item \textbf{LLM providers}: no paid API access -- extraction and
+    reasoning calls round-robin across free-tier Groq and Gemini API key
+    pools, falling back to a local Ollama model once every key in both
+    pools is rate-limited. Embeddings run entirely locally via Ollama's
+    \texttt{nomic-embed-text} model.
+  \item \textbf{Frontend}: Next.js (App Router), TypeScript, Tailwind CSS,
+    shadcn/ui (Radix primitives, Vega style preset).
+  \item \textbf{Testing \& quality}: pytest, ruff, mypy (strict) on the
+    backend; ESLint, TypeScript's compiler, and Next.js's build-time
+    checks on the frontend.
+  \item \textbf{CI/CD}: GitHub Actions -- lint/type-check/unit tests on
+    every pull request, Docker image builds on merge to the main branch,
+    and a manually-triggered evaluation workflow for the RAGAS/DeepEval
+    harness.
+\end{itemize}
+
+\subsection{Git Strategy}
+
+All Sprint 1 development happened on a dedicated \texttt{sprint-1} branch
+cut from \texttt{master}, with Conventional Commits
+(\texttt{feat:}, \texttt{fix:}, \texttt{chore:}, \texttt{docs:},
+\texttt{test:}) adopted as the project's commit convention -- no such
+convention existed before this sprint. Each story, and each fix discovered
+while implementing it, landed as its own scoped commit rather than one
+large batch, so the commit history itself documents the sprint's actual
+progression.
+
+\subsection{Jira}
+
+The product backlog and all four sprint plans were imported into Jira
+(Epic/Story/Task hierarchy via the \texttt{Parent} field, Sprint field,
+story points, and priority/component labels) for day-to-day tracking
+outside of this report.

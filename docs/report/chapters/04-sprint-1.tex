@@ -1,0 +1,78 @@
+\chapter{Sprint 1}
+\label{chap:sprint-1}
+
+This chapter presents the realization of Sprint 1, the foundation every
+later sprint builds on: turning an uploaded CV or TDR into structured,
+extracted data end to end, proven with a working screen rather than just a
+backend status update.
+
+\section{Sprint Goal}
+
+\begin{quote}
+Upload a real CV/TDR and see it turned into structured, extracted data
+end-to-end -- the foundation every later sprint builds on, proven with a
+working (if rough) screen, not just a backend status update.
+\end{quote}
+
+Sprint 1 ran July 6--10, 2026, with 43 points committed -- deliberately
+front-loaded, since it also had to prove the riskiest technical
+integration of the whole project (multi-key LLM provider routing across
+free-tier providers, since there is no paid API access) rather than only
+low-complexity setup work.
+
+\section{Sprint Backlog}
+
+\begin{table}[h]
+  \centering
+  \caption{Sprint 1 backlog}
+  \begin{tabular}{@{}p{1.3cm}p{7.7cm}p{1.3cm}p{2.5cm}@{}}
+    \toprule
+    ID & Story & Points & Status \\
+    \midrule
+    ADQ-1 & Provision Alembic migrations for the full Postgres schema & 3 & Done \\
+    ADQ-2 & Multi-provider model routing: Groq + Gemini key-pool rotation with local Ollama fallback & 8 & Done \\
+    ADQ-3 & Parse CV/TDR documents (text-PDF, docx) into raw text & 5 & Done \\
+    ADQ-4 & Spike: sample real CVs/TDRs, confirm OCR need & 2 & Done \\
+    ADQ-5 & Structured extraction for CV via Pydantic schema & 8 & Done \\
+    ADQ-6 & Structured extraction for TDR + section localization & 8 & Done \\
+    ADQ-7 & Bare-bones upload + extraction-preview page & 5 & Done \\
+    ADQ-8 & Annotate gold extraction set (kickoff, ongoing) & 3 & Ongoing \\
+    ADQ-9 & Request historical staffing decisions + TDR variety from company & 1 & Blocked (awaiting company response) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Full acceptance criteria for every story are documented in
+\texttt{docs/scrum/sprint-1-plan.md}, following the Definition of Ready and
+Definition of Done in \texttt{docs/scrum/definition-of-ready-and-done.md}.
+
+\section{Analysis}
+% TODO: fill in once the sprint is fully wrapped up -- use-case-level
+% analysis of the upload -> extraction -> preview flow.
+
+\section{Design}
+% TODO: Use Case Diagram, Class Diagram (ORM models / domain models),
+% Sequence Diagram for the upload -> ingest -> extract -> persist flow.
+
+\section{Implementation}
+% TODO: important interfaces (ModelRouter, extract_cv/extract_tdr), code
+% snippets only where they clarify a non-obvious decision, API endpoints
+% table (POST /candidates/cv, POST /tdrs).
+
+\section{Testing}
+% TODO: summarize the unit test suite (key-pool rotation, ingest/extraction
+% against real TDR samples and synthetic CVs, service-level tests), and
+% note what is intentionally not yet covered (no live LLM integration test
+% without real API keys).
+
+\section{Sprint Review}
+% TODO: describe the actual demo once given -- upload a real TDR and a
+% synthetic CV through the running pages, show the extracted fields.
+
+\section{Sprint Retrospective}
+% TODO: what worked, what to change for Sprint 2 (e.g. was 43 points
+% over-committed given the LLM routing risk called out in sprint planning).
+
+\section{Conclusion}
+% TODO: one short paragraph closing out the chapter once the above
+% sections are filled in.

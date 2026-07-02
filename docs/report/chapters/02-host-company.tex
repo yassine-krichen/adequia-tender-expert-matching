@@ -1,0 +1,96 @@
+\chapter{Host Company}
+\label{chap:host-company}
+
+\section{Company Presentation}
+
+\subsection{Company Overview}
+
+ST2i (Soci\'et\'e Tunisienne d'Informatique pour l'Ing\'enierie) is a
+Tunisian information technology company founded in 1992 and a subsidiary of
+the STUDI Group, an international engineering group established in 1970
+with operations across Africa and Europe.
+
+The company specializes in Information Technology (IT), Information Systems
+(IS), Geographic Information Systems (GIS), and Telecommunications. ST2i
+provides end-to-end digital solutions, covering business analysis, software
+development, system integration, deployment, maintenance, and technical
+support.
+
+With a multidisciplinary team of engineers, consultants, and technical
+experts, ST2i delivers digital transformation projects for both public and
+private organizations in Tunisia and internationally.
+
+\subsection{Business Sector}
+
+ST2i operates in the Information and Communication Technology (ICT) sector
+as an IT services and consulting company. Its core activities include:
+
+\begin{itemize}
+  \item Information systems consulting and analysis
+  \item Custom software development
+  \item Software integration
+  \item Geographic Information Systems (GIS)
+  \item Digital transformation consulting
+  \item Telecommunications solutions
+  \item Technical support, maintenance, and user training
+\end{itemize}
+
+The company's solutions serve multiple industries, including public
+administration, telecommunications, banking, healthcare, education, energy,
+transportation, and infrastructure.
+
+\subsection{Organization}
+
+ST2i follows a collaborative organizational structure bringing together
+consulting, functional, and technical teams. Its main departments include
+Executive Management, Business Development, Project Management, Consulting
+and Business Analysis, Software Development, Infrastructure and Systems
+Integration, and Quality Assurance and Technical Support. Project teams
+typically consist of a Project Manager, Business Analysts, Software
+Engineers, QA Engineers, and Technical Experts.
+
+\section{Existing Environment}
+
+ST2i bids on public and international tenders (often funded by
+institutions such as the World Bank or GIZ) that specify one or more
+required expert positions. Matching internal experts to these positions is
+currently done manually: a business analyst reads the Terms of Reference
+(TDR) and searches the internal CV database by memory or keyword search,
+with no systematic scoring, no anomaly checking, and no audit trail
+explaining why a given expert was or was not selected.
+
+\subsection{Identified Limitations}
+
+\begin{itemize}
+  \item \textbf{Slow}: manually reading a TDR and cross-referencing dozens
+    of CVs does not scale as the number of active tenders grows.
+  \item \textbf{Inconsistent}: two analysts reviewing the same TDR may reach
+    different conclusions, with no documented rationale to reconcile them.
+  \item \textbf{Error-prone}: a missed qualified expert can mean passing on
+    a winnable bid; a missed disqualifying gap (an expired certification, an
+    unmet minimum-experience requirement) can mean committing to staff who
+    do not actually meet a client's mandatory requirements.
+  \item \textbf{No institutional memory}: past staffing decisions are not
+    captured in a form that could calibrate future ones.
+\end{itemize}
+
+\section{Problem Statement}
+
+Given a TDR describing one or more required expert positions and ST2i's
+internal CV database, how can the company reliably determine, for each
+position, which employees are qualified -- with enough explanation that a
+human reviewer can trust and, when necessary, override the result?
+
+\section{Proposed Solution}
+
+AdéquIA automates this matching step end to end: it parses CVs and TDRs
+into structured data, retrieves and scores candidates against each
+required position using a combination of rule-based hard filters, weighted
+embedding similarity, and LLM judgment for qualitative criteria, flags
+anomalies (date inconsistencies, expired certifications, implausible
+claims), and produces a citation-backed rationale for every score. A human
+reviewer stays in the loop at every decision point: every automated
+ranking can be approved, rejected, or overridden, and that decision is
+written back to inform future scoring. The full technical design is
+detailed in the project's architecture specification; the remainder of
+this report focuses on how it was built, sprint by sprint.

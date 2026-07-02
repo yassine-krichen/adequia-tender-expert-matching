@@ -1,0 +1,42 @@
+Issue ID,Summary,Description,Issue Type,Parent,Labels,Priority,Sprint,Story Points
+1,"Ingestion & Extraction","Document parsing, TDR section localization, structured extraction, Pydantic/Postgres schema. See docs/01-architecture.md and docs/02-data-schemas.md.",Epic,,,,,
+2,"Matching Engine","Skill taxonomy, embeddings, coarse retrieval, hybrid scoring, LangGraph wiring. See docs/03-agent-pipeline.md.",Epic,,,,,
+3,"Anomaly Detection","Rule-based checks, LLM plausibility pass, synthetic anomaly injection framework. See docs/03-agent-pipeline.md and docs/04-evaluation-metrics.md.",Epic,,,,,
+4,"Reporting & Explainability","Report generation, citations, RAGAS/DeepEval harness. See docs/03-agent-pipeline.md and docs/04-evaluation-metrics.md.",Epic,,,,,
+5,"Dashboard UX","Next.js pages, shadcn/ui components, onboarding, tooltips. See docs/05-frontend-dashboard.md.",Epic,,,,,
+6,"DevOps","Docker, GitHub Actions, hosting, secrets, model routing. See docs/09-devops-cicd.md.",Epic,,,,,
+7,"Company Profile","Stretch scope: firm-level capability check. See docs/00-overview.md.",Epic,,,,,
+8,"ADQ-1: Provision Alembic migrations for the full Postgres schema","Migration creates candidates, cvs, tdrs, expert_positions, skill_taxonomy, match_results, anomalies, historical_decisions per docs/02-data-schemas.md; pgvector + ivfflat index; reversible. Full AC in docs/scrum/sprint-1-plan.md.",Task,6,"type: task; component: devops",P0,1,3
+9,"ADQ-2: Multi-provider model routing (Groq + Gemini key-pool rotation, Ollama fallback)","Round-robin across GROQ_API_KEYS/GEMINI_API_KEYS, rotate on rate-limit, fall back to local Ollama when exhausted. Full AC in docs/scrum/sprint-1-plan.md.",Story,6,"type: story; component: backend; component: ai-pipeline",P0,1,8
+10,"ADQ-3: Parse CV/TDR documents (text-PDF, docx) into raw text","ingest node, tested against real CV/TDR samples, typed error on corrupt/unsupported files. Full AC in docs/scrum/sprint-1-plan.md.",Story,1,"type: story; component: ai-pipeline",P0,1,5
+11,"ADQ-4: Spike - sample real CVs/TDRs, confirm OCR need","Sample >=10 CVs / >=5 TDRs, decide if OCR fallback is needed at all. Full AC in docs/scrum/sprint-1-plan.md.",Task,1,"type: spike; component: ai-pipeline; component: data",P1,1,2
+12,"ADQ-5: Structured extraction for CV via Pydantic schema","extract node produces valid CandidateCV with source_span per field, retries once on validation failure. Full AC in docs/scrum/sprint-1-plan.md.",Story,1,"type: story; component: ai-pipeline",P0,1,8
+13,"ADQ-6: Structured extraction for TDR + section localization","Chunk + retrieve profils/qualifications sections before extraction; map-merge over multi-section TDRs. Full AC in docs/scrum/sprint-1-plan.md.",Story,1,"type: story; component: ai-pipeline",P0,1,8
+14,"ADQ-7: Bare-bones upload + extraction-preview page","Candidate + TDR upload forms wired to real endpoints, shows extracted fields. Sprint 1 demoable slice. Full AC in docs/scrum/sprint-1-plan.md.",Story,5,"type: story; component: frontend",P0,1,5
+15,"ADQ-8: Annotate gold extraction set (kickoff, ongoing)",">=15 CV/TDR pairs manually annotated against the schema, gaps logged. Full AC in docs/scrum/sprint-1-plan.md.",Task,1,"type: task; component: data",P1,1,3
+16,"ADQ-9: Request historical staffing decisions + TDR variety from company","Send docs/08-company-data-checklist.md to company contact; tracked blocked until response. Full AC in docs/scrum/sprint-1-plan.md.",Task,7,"type: task; component: data; needs-company-input; blocked",P0,1,1
+17,"ADQ-10: Build skill/certification taxonomy seed","Curated starter taxonomy with embeddings seeded into skill_taxonomy, expandable later.",Story,2,"type: story; component: data; component: ai-pipeline",P0,2,5
+18,"ADQ-11: Coarse retrieval / shortlisting pre-filter","Embedding + rough experience/sector check shortlists ~8-10 candidates per position, no LLM calls.",Story,2,"type: story; component: ai-pipeline",P0,2,5
+19,"ADQ-12: normalize_skills - embedding retrieval","Each raw skill/requirement term embedded and matched against skill_taxonomy via pgvector.",Story,2,"type: story; component: ai-pipeline",P0,2,8
+20,"ADQ-13: normalize_skills - reranker pass","Top-K reranked before accepting best match; reranking-lift metric computed.",Story,2,"type: story; component: ai-pipeline",P1,2,3
+21,"ADQ-14: normalize_skills - agentic retry","Low-confidence match triggers one query rewrite (expand abbreviation / FR-EN) and retries once.",Story,2,"type: story; component: ai-pipeline",P1,2,5
+22,"ADQ-15: score node - hard filters","Mandatory diploma / min years / mandatory certs checked; failure short-circuits to report.",Story,2,"type: story; component: ai-pipeline",P0,2,3
+23,"ADQ-16: score node - weighted embedding similarity sub-scores","Per-criterion sub-scores combined into a weighted compatibility_score.",Story,2,"type: story; component: ai-pipeline",P0,2,5
+24,"ADQ-17: Matching results page","Ranked list, compatibility score, hard-filter status, sub-score bars. Sprint 2 demoable slice.",Story,5,"type: story; component: frontend",P0,2,5
+25,"ADQ-18: First retrieval metrics vs. gold matching set","Precision@K / Recall@K computed against the gold matching set.",Task,6,"type: task; component: ai-pipeline",P1,2,3
+26,"ADQ-19: score node - LLM judgment + memory calibration","Qualitative criteria judged by stronger model tier; sanity-checked against historical_decisions.",Story,2,"type: story; component: ai-pipeline",P0,3,8
+27,"ADQ-20: detect_anomalies node - rule-based + LLM plausibility","Date overlaps/gaps/expired certs/grad-year checks plus LLM plausibility pass on typed fields only.",Story,3,"type: story; component: ai-pipeline",P0,3,8
+28,"ADQ-21: Synthetic anomaly injection framework","All 6 anomaly types injected into gold-set CVs; precision/recall/F1 per type recorded.",Story,3,"type: story; component: ai-pipeline; component: data",P0,3,8
+29,"ADQ-22: generate_report node - rationale + citations","Every factual claim in the rationale carries a citation into CV or TDR raw text.",Story,4,"type: story; component: ai-pipeline",P0,3,8
+30,"ADQ-23: Injection-resistance guardrail test set","CVs with known prompt-injection strings; final score/rationale verified unaffected.",Story,4,"type: story; component: ai-pipeline; component: data",P0,3,5
+31,"ADQ-24: HITL interrupt + historical_decisions write-back","Graph interrupts before persisting; reviewer decision written back and appended to historical_decisions.",Story,2,"type: story; component: backend; component: ai-pipeline",P0,3,5
+32,"ADQ-25: Report view page","Rationale with citation highlights, anomaly flags, approve/reject/override with required override note. Sprint 3 demoable slice.",Story,5,"type: story; component: frontend",P0,3,8
+33,"ADQ-26: Upgrade Sprints 1-3 pages to the styled dashboard","Candidate + TDR pages rebuilt with shadcn/ui, explaining empty states, tooltips on non-obvious concepts.",Story,5,"type: story; component: frontend",P0,4,5
+34,"ADQ-27: Metrics dashboard page","Extraction F1, retrieval precision/recall, scoring agreement, anomaly detection, time saved, cost per CV - screenshot-able.",Story,5,"type: story; component: frontend",P1,4,5
+35,"ADQ-28: First-run guided tour","Skippable walkthrough from TDR upload to approve/override.",Story,5,"type: story; component: frontend",P1,4,3
+36,"ADQ-29: Wire RAGAS faithfulness/groundedness eval","RAGAS run against generated rationales; faithfulness/groundedness/context-precision recorded.",Task,4,"type: task; component: ai-pipeline",P1,4,5
+37,"ADQ-30: Start DeepEval CI regression suite","Gold sets wired into eval.yml; build fails on extraction F1 or faithfulness regression.",Task,4,"type: task; component: devops; component: ai-pipeline",P1,4,5
+38,"ADQ-31: LangSmith/Langfuse tracing end-to-end","Every node call traced, tagged by tdr_id/position_id, viewable as one trace group.",Task,6,"type: task; component: devops",P2,4,2
+39,"ADQ-32: Lightweight local PII pre-processing","Name/phone/email/photo masked locally before any cloud LLM call; toggleable.",Story,4,"type: story; component: ai-pipeline",P2,4,5
+40,"ADQ-33: Final metrics pass + documented methodology","All docs/04-evaluation-metrics.md metrics computed with real numbers and documented methodology.",Task,6,"type: task; component: docs",P0,4,3
+41,"ADQ-34: Defense rehearsal prep","Trace screenshot, metrics table, live demo script assembled.",Task,6,"type: task; component: docs",P1,4,2

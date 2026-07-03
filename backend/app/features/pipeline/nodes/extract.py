@@ -189,12 +189,22 @@ def extract_cv(
     endpoint / DB insert), not extracted from the CV text.
     """
     extraction = _invoke_cv_extraction(raw_text, router)
-    # Converting here (not in _CVExtraction itself) is what actually parses
-    # the LLM's free-form date/year strings into real date/int values, via
-    # Education/Certification/Experience's own coercion validators.
-    education = [Education(**edu.model_dump()) for edu in extraction.education]
-    certifications = [Certification(**cert.model_dump()) for cert in extraction.certifications]
-    experience = [Experience(**exp.model_dump()) for exp in extraction.experience]
+    try:
+        # Converting here (not in _CVExtraction itself) is what actually
+        # parses the LLM's free-form date/year strings into real date/int
+        # values, via Education/Certification/Experience's own coercion
+        # validators. Not covered by _invoke_structured_extraction's retry —
+        # a field coerce_partial_date genuinely can't make sense of (rare,
+        # since it already falls back to None rather than leaking garbage)
+        # should fail clean, not crash as an unhandled 500.
+        education = [Education(**edu.model_dump()) for edu in extraction.education]
+        certifications = [
+            Certification(**cert.model_dump()) for cert in extraction.certifications
+        ]
+        experience = [Experience(**exp.model_dump()) for exp in extraction.experience]
+    except ValidationError as exc:
+        raise ExtractionFailedError("CV structured extraction failed") from exc
+
     return CandidateCV(
         candidate_id=candidate_id,
         full_name=extraction.full_name,
@@ -352,34 +362,37 @@ def extract_tdr(
     chunk_extractions = [_invoke_tdr_chunk_extraction(chunk, router) for chunk in relevant_chunks]
     merged = _merge_chunk_extractions(chunk_extractions)
 
-    positions = [
-        ExpertPosition(
-            position_id=str(uuid4()),
-            position_title=position.position_title,
-            mandatory_diploma=position.mandatory_diploma,
-            minimum_years_experience=position.minimum_years_experience,
-            required_certifications=position.required_certifications,
-            required_languages=position.required_languages,
-            required_sector_experience=position.required_sector_experience,
-            required_skills=position.required_skills,
-            evaluation_weight=position.evaluation_weight,
-            source_span=position.source_span,
-        )
-        for position in merged.positions
-    ]
+    try:
+        positions = [
+            ExpertPosition(
+                position_id=str(uuid4()),
+                position_title=position.position_title,
+                mandatory_diploma=position.mandatory_diploma,
+                minimum_years_experience=position.minimum_years_experience,
+                required_certifications=position.required_certifications,
+                required_languages=position.required_languages,
+                required_sector_experience=position.required_sector_experience,
+                required_skills=position.required_skills,
+                evaluation_weight=position.evaluation_weight,
+                source_span=position.source_span,
+            )
+            for position in merged.positions
+        ]
 
-    return TDR(
-        tdr_id=tdr_id,
-        mission_title=merged.mission_title or "Untitled mission",
-        client=merged.client,
-        sector=merged.sector,
-        # merged.deadline is a free-form string (see _TDRChunkExtraction);
-        # TDR's own coerce_partial_date validator parses it at construction.
-        deadline=merged.deadline,  # type: ignore[arg-type]
-        positions=positions,
-        raw_text=raw_text,
-        source_file_path=source_file_path,
-    )
+        return TDR(
+            tdr_id=tdr_id,
+            mission_title=merged.mission_title or "Untitled mission",
+            client=merged.client,
+            sector=merged.sector,
+            # merged.deadline is a free-form string (see _TDRChunkExtraction);
+            # TDR's own coerce_partial_date validator parses it here.
+            deadline=merged.deadline,  # type: ignore[arg-type]
+            positions=positions,
+            raw_text=raw_text,
+            source_file_path=source_file_path,
+        )
+    except ValidationError as exc:
+        raise ExtractionFailedError("TDR structured extraction failed") from exc
 
 
 def extract(state: PipelineState) -> PipelineState:

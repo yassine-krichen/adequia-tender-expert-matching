@@ -3,13 +3,15 @@ from collections.abc import Sequence
 from typing import Any, Protocol
 
 from google.genai.errors import ClientError as GeminiClientError
+from groq import BadRequestError as GroqBadRequestError
 from groq import RateLimitError as GroqRateLimitError
+from langchain_core.exceptions import OutputParserException
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
 from langchain_ollama import ChatOllama, OllamaEmbeddings
-from pydantic import SecretStr
+from pydantic import SecretStr, ValidationError
 
 from app.common.llm.key_pool import KeyPool, parse_key_pool
 from app.config.settings import Settings
@@ -18,17 +20,33 @@ logger = logging.getLogger(__name__)
 
 _POOL_EXHAUSTED = object()
 
+# A key/provider is skipped in favor of the next one for any of these:
+# genuine rate limits, AND the provider's own structured-output validation
+# rejecting the generated arguments (observed live: Groq's tool_use_failed
+# on a nested schema, and — separately — Gemini/local parsing failures).
+# Without treating these as retryable-via-rotation too, a single provider's
+# unreliable JSON generation permanently blocks ever trying the next
+# provider, defeating the whole point of having more than one.
+_RETRYABLE_ERRORS = (
+    GroqRateLimitError,
+    GroqBadRequestError,
+    GeminiClientError,
+    ValidationError,
+    OutputParserException,
+)
 
-def _is_rate_limited(exc: Exception) -> bool:
-    if isinstance(exc, GroqRateLimitError):
-        return True
-    return isinstance(exc, GeminiClientError) and exc.code == 429
+
+def _is_retryable(exc: Exception) -> bool:
+    return isinstance(exc, _RETRYABLE_ERRORS)
 
 
 def _build_chat_model(provider: str, model_name: str, api_key: str) -> BaseChatModel:
+    # temperature=0: this router only ever calls structured-output
+    # extraction/scoring, never open-ended generation — determinism helps
+    # reliability and costs nothing here.
     if provider == "groq":
-        return ChatGroq(model=model_name, api_key=SecretStr(api_key))
-    return ChatGoogleGenerativeAI(model=model_name, api_key=SecretStr(api_key))
+        return ChatGroq(model=model_name, api_key=SecretStr(api_key), temperature=0)
+    return ChatGoogleGenerativeAI(model=model_name, api_key=SecretStr(api_key), temperature=0)
 
 
 def _invoke_model(
@@ -55,7 +73,12 @@ class ExtractionRouter(Protocol):
 
 class ModelRouter:
     """Rotates across the Groq and Gemini free-tier key pools, falling back
-    to local Ollama once every key in both pools is rate-limited.
+    to local Ollama once every key in both pools is exhausted — either
+    rate-limited, or the provider rejected the structured output it
+    generated (see _RETRYABLE_ERRORS). Free-tier LLMs are unreliable at
+    emitting valid structured output for a nested schema often enough that
+    treating only rate limits as retryable left Gemini's pool never
+    actually exercised as a real fallback.
 
     See docs/01-architecture.md "Model routing" and docs/scrum/sprint-1-plan.md
     (ADQ-2) — there is no paid API access, so headroom comes entirely from
@@ -108,7 +131,9 @@ class ModelRouter:
 
         model_name = self._models[("ollama", tier)]
         logger.warning("llm.fallback_to_ollama model=%s", model_name)
-        ollama_model = ChatOllama(model=model_name, base_url=self._settings.ollama_base_url)
+        ollama_model = ChatOllama(
+            model=model_name, base_url=self._settings.ollama_base_url, temperature=0
+        )
         return _invoke_model(ollama_model, messages, structured_output)
 
     def _try_pool(
@@ -127,8 +152,10 @@ class ModelRouter:
             try:
                 return _invoke_model(model, messages, structured_output)
             except Exception as exc:
-                if not _is_rate_limited(exc):
+                if not _is_retryable(exc):
                     raise
-                logger.warning("llm.rate_limited provider=%s", provider)
+                logger.warning(
+                    "llm.call_failed_rotating provider=%s error=%s", provider, type(exc).__name__
+                )
                 pool.mark_rate_limited(key)
         return _POOL_EXHAUSTED

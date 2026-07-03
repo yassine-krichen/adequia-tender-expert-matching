@@ -4,9 +4,10 @@ from typing import Any
 import httpx
 import pytest
 from google.genai.errors import ClientError as GeminiClientError
+from groq import BadRequestError as GroqBadRequestError
 from groq import RateLimitError as GroqRateLimitError
 
-from app.common.llm.router import ModelRouter, _is_rate_limited
+from app.common.llm.router import ModelRouter, _is_retryable
 from app.config.settings import Settings
 
 
@@ -35,15 +36,26 @@ def _rate_limit_error() -> GroqRateLimitError:
     return GroqRateLimitError("rate limited", response=response, body=None)
 
 
+def _bad_request_error() -> GroqBadRequestError:
+    request = httpx.Request("POST", "https://api.groq.com/openai/v1/chat/completions")
+    response = httpx.Response(400, request=request)
+    return GroqBadRequestError("tool_use_failed", response=response, body=None)
+
+
 class _AlwaysRateLimitedModel:
     def invoke(self, messages: Sequence[Any]) -> Any:
         raise _rate_limit_error()
 
 
+class _AlwaysBadRequestModel:
+    def invoke(self, messages: Sequence[Any]) -> Any:
+        raise _bad_request_error()
+
+
 class _FakeOllamaModel:
     last_model_name: str | None = None
 
-    def __init__(self, model: str, base_url: str) -> None:
+    def __init__(self, model: str, base_url: str, temperature: float = 0) -> None:
         _FakeOllamaModel.last_model_name = model
 
     def invoke(self, messages: Sequence[Any]) -> str:
@@ -92,14 +104,44 @@ def test_invoke_uses_each_providers_own_model_name_not_a_shared_string(
     assert _FakeOllamaModel.last_model_name == "test-ollama-reasoning-model"
 
 
-def test_is_rate_limited_detects_groq_429() -> None:
-    assert _is_rate_limited(_rate_limit_error()) is True
+def test_router_rotates_to_the_next_provider_on_a_content_rejection_not_just_rate_limits(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Regression: Groq's tool_use_failed (a plain 400, not a 429) must
+    also trigger rotation to Gemini/Ollama — verified live that treating
+    only rate limits as retryable meant Gemini's pool never actually got
+    exercised when Groq's structured output was simply unreliable.
+    """
+    monkeypatch.setattr(
+        "app.common.llm.router._build_chat_model",
+        lambda provider, model_name, api_key: _AlwaysBadRequestModel(),
+    )
+    monkeypatch.setattr("app.common.llm.router.ChatOllama", _FakeOllamaModel)
+
+    router = ModelRouter(_make_settings())
+
+    result = router.invoke_extraction([])
+
+    assert result == "ollama-response"
 
 
-def test_is_rate_limited_detects_gemini_429() -> None:
+def test_is_retryable_detects_groq_429() -> None:
+    assert _is_retryable(_rate_limit_error()) is True
+
+
+def test_is_retryable_detects_groq_bad_request() -> None:
+    assert _is_retryable(_bad_request_error()) is True
+
+
+def test_is_retryable_detects_gemini_429() -> None:
     error = GeminiClientError(429, {"error": {"message": "quota exceeded"}})
-    assert _is_rate_limited(error) is True
+    assert _is_retryable(error) is True
 
 
-def test_is_rate_limited_ignores_unrelated_errors() -> None:
-    assert _is_rate_limited(ValueError("boom")) is False
+def test_is_retryable_detects_gemini_non_429_client_error() -> None:
+    error = GeminiClientError(400, {"error": {"message": "invalid argument"}})
+    assert _is_retryable(error) is True
+
+
+def test_is_retryable_ignores_unrelated_errors() -> None:
+    assert _is_retryable(ValueError("boom")) is False

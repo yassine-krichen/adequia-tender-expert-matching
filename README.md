@@ -180,6 +180,7 @@ cd frontend && pnpm lint && pnpm type-check
 | `EMBEDDING_DIMENSION`  | No       | `768`         | Must match the embedding model and `skill_taxonomy.embedding` column |
 | `LANGSMITH_API_KEY`    | No       | —             | Tracing — omit to disable                                            |
 | `LANGSMITH_PROJECT`    | No       | `adequia`     | Trace grouping                                                       |
+| `LANGSMITH_ENDPOINT`   | No       | —             | Only for EU-region LangSmith accounts (`https://eu.api.smith.langchain.com`) — a mismatched region is the usual cause of a 403 on trace ingestion |
 | `ENVIRONMENT`          | No       | `development` | —                                                                    |
 | `LOG_LEVEL`            | No       | `INFO`        | —                                                                    |
 
@@ -216,7 +217,7 @@ cd frontend && pnpm lint && pnpm type-check
 | Status | Item                                                                                                                      |
 | ------ | ------------------------------------------------------------------------------------------------------------------------- |
 | ✅     | Repo scaffold — FastAPI skeleton, Next.js skeleton, Postgres/Redis via Docker Compose, CI/build/eval workflow definitions |
-| 🔲     | Week 1 — document parsing, structured extraction into the Pydantic schemas, gold extraction set                           |
+| ✅     | Sprint 1 — DB schema, multi-provider LLM key-pool routing, document parsing, structured CV/TDR extraction (live-verified against real Groq/Gemini/Ollama), bare-bones upload + preview pages |
 | 🔲     | Week 2 — skill taxonomy, embedding retrieval + reranking + agentic retry, hybrid scoring, LangGraph wiring                |
 | 🔲     | Week 3 — anomaly detection (rule-based + LLM), citation-backed report generation, RAGAS/DeepEval regression suite         |
 | 🔲     | Week 4 — full dashboard (candidates, TDRs, matching, reports, metrics), tracing, metrics dashboard with real numbers      |

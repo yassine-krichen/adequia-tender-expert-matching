@@ -35,6 +35,11 @@ class Settings(BaseSettings):
 
     langsmith_api_key: str | None = None
     langsmith_project: str = "adequia"
+    # Only needed for EU-region LangSmith accounts (e.g.
+    # https://eu.api.smith.langchain.com) — a US key against the default US
+    # endpoint needs nothing here. Getting this wrong for an EU account is
+    # the most common cause of a 403 Forbidden on trace ingestion.
+    langsmith_endpoint: str | None = None
 
     environment: str = "development"
     log_level: str = Field(default="INFO")

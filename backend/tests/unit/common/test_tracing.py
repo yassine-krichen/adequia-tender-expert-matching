@@ -28,7 +28,7 @@ def _make_settings(**overrides: object) -> Settings:
 
 @pytest.fixture(autouse=True)
 def _clean_langsmith_env() -> None:
-    for key in ("LANGSMITH_TRACING", "LANGSMITH_API_KEY", "LANGSMITH_PROJECT"):
+    for key in ("LANGSMITH_TRACING", "LANGSMITH_API_KEY", "LANGSMITH_PROJECT", "LANGSMITH_ENDPOINT"):
         os.environ.pop(key, None)
 
 
@@ -48,3 +48,25 @@ def test_configure_langsmith_tracing_is_a_noop_without_a_key() -> None:
     configure_langsmith_tracing(settings)
 
     assert "LANGSMITH_TRACING" not in os.environ
+
+
+def test_configure_langsmith_tracing_sets_endpoint_when_configured() -> None:
+    """Regression: a 403 Forbidden on trace ingestion for an EU-region
+    LangSmith account is fixed by pointing at the EU endpoint instead of
+    the (US-only) default.
+    """
+    settings = _make_settings(
+        langsmith_api_key="test-key", langsmith_endpoint="https://eu.api.smith.langchain.com"
+    )
+
+    configure_langsmith_tracing(settings)
+
+    assert os.environ["LANGSMITH_ENDPOINT"] == "https://eu.api.smith.langchain.com"
+
+
+def test_configure_langsmith_tracing_leaves_endpoint_unset_by_default() -> None:
+    settings = _make_settings(langsmith_api_key="test-key", langsmith_endpoint=None)
+
+    configure_langsmith_tracing(settings)
+
+    assert "LANGSMITH_ENDPOINT" not in os.environ

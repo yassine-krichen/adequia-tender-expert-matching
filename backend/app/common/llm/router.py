@@ -9,6 +9,7 @@ from langchain_core.exceptions import OutputParserException
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_google_genai.chat_models import ChatGoogleGenerativeAIError
 from langchain_groq import ChatGroq
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 from pydantic import SecretStr, ValidationError
@@ -27,10 +28,17 @@ _POOL_EXHAUSTED = object()
 # Without treating these as retryable-via-rotation too, a single provider's
 # unreliable JSON generation permanently blocks ever trying the next
 # provider, defeating the whole point of having more than one.
+#
+# ChatGoogleGenerativeAIError: langchain_google_genai catches the raw
+# GeminiClientError (429, quota, ...) internally and re-raises this wrapper
+# instead — observed live with Gemini's very low free-tier daily quota (20
+# req/day for gemini-2.5-flash-lite). Without this, quota exhaustion never
+# triggered a rotation to Ollama, it just crashed the whole extraction.
 _RETRYABLE_ERRORS = (
     GroqRateLimitError,
     GroqBadRequestError,
     GeminiClientError,
+    ChatGoogleGenerativeAIError,
     ValidationError,
     OutputParserException,
 )

@@ -6,6 +6,7 @@ import pytest
 from google.genai.errors import ClientError as GeminiClientError
 from groq import BadRequestError as GroqBadRequestError
 from groq import RateLimitError as GroqRateLimitError
+from langchain_google_genai.chat_models import ChatGoogleGenerativeAIError
 
 from app.common.llm.router import ModelRouter, _is_retryable
 from app.config.settings import Settings
@@ -141,6 +142,16 @@ def test_is_retryable_detects_gemini_429() -> None:
 def test_is_retryable_detects_gemini_non_429_client_error() -> None:
     error = GeminiClientError(400, {"error": {"message": "invalid argument"}})
     assert _is_retryable(error) is True
+
+
+def test_is_retryable_detects_gemini_wrapped_error() -> None:
+    """Regression: langchain_google_genai catches the raw GeminiClientError
+    (e.g. a 429 quota exhaustion) and re-raises this wrapper instead —
+    observed live against Gemini's real free-tier quota. Without this,
+    Gemini quota exhaustion crashed the whole extraction instead of
+    rotating to Ollama.
+    """
+    assert _is_retryable(ChatGoogleGenerativeAIError("quota exceeded")) is True
 
 
 def test_is_retryable_ignores_unrelated_errors() -> None:

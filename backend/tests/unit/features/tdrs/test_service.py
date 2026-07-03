@@ -28,7 +28,11 @@ class _FakeRouter:
             client="Ministère de l'Éducation Nationale",
             sector="Éducation",
             positions=[
-                _ExtractedPosition(position_title="Chef de projet", source_span="span text")
+                _ExtractedPosition(
+                    position_title="Chef de projet",
+                    mandatory_diploma="Bac+5",
+                    source_span="span text",
+                )
             ],
         )
 

@@ -55,7 +55,9 @@ class _FakeRouter:
 
 
 def _position(title: str) -> _ExtractedPosition:
-    return _ExtractedPosition(position_title=title, source_span=f"span for {title}")
+    return _ExtractedPosition(
+        position_title=title, mandatory_diploma="Bac+5", source_span=f"span for {title}"
+    )
 
 
 def test_cosine_similarity_of_identical_vectors_is_one() -> None:

@@ -1,0 +1,40 @@
+{
+  "source_file": "docs/tdrs/2. TDR Mise en place du SI CI_Avenant contrat_V2.docx",
+  "note": "Hand-verified against the real numbered 'Qualifications de l'expert·e N' sections (GIZ/MEP Tunisia SI mission).",
+  "expected_positions": [
+    {
+      "title_contains_any": ["direction de l'équipe", "direction de l'equipe", "chef de projet", "directeur de mission", "chef d'équipe"],
+      "diploma_contains": null,
+      "minimum_years_experience": 15
+    },
+    {
+      "title_contains_any": ["expert en design", "expert·e en design", "expert en conception graphique"],
+      "diploma_contains": "bac+3",
+      "minimum_years_experience": 5
+    },
+    {
+      "title_contains_any": ["architecture des systèmes", "architecture des systemes"],
+      "diploma_contains": null,
+      "minimum_years_experience": 5
+    },
+    {
+      "title_contains_any": ["expert en sécurité", "expert en securite", "expert·e en sécurité"],
+      "diploma_contains": null,
+      "minimum_years_experience": 3
+    },
+    {
+      "title_contains_any": ["audit de sécurité", "audit de securite"],
+      "diploma_contains": null,
+      "minimum_years_experience": 3
+    },
+    {
+      "title_contains_any": ["développement", "developpement"],
+      "diploma_contains": null,
+      "minimum_years_experience": 3
+    }
+  ],
+  "known_limitations": [
+    "The team-lead role (2.1.x) has no literal title in the source text ('l'expert·e assurant la direction de l'équipe') -- the LLM must paraphrase it, hence the wide title_contains_any list.",
+    "Diploma phrasing here is prose ('Qualification universitaire (Ingénieur / Master)'), not a clean Bac+N token like the other two fixtures -- diploma_contains left null rather than asserting a brittle exact match."
+  ]
+}

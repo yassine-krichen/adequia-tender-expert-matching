@@ -1,0 +1,29 @@
+{
+  "source_file": "docs/tdrs/TDR (8).pdf",
+  "note": "Hand-verified against the real 'IV. EQUIPE DU PROJET' section (World Bank GovTech program TDR).",
+  "expected_positions": [
+    {
+      "title_contains_any": ["chef de projet"],
+      "diploma_contains": "bac+5",
+      "minimum_years_experience": 15
+    },
+    {
+      "title_contains_any": ["architecte technique"],
+      "diploma_contains": "bac+5",
+      "minimum_years_experience": 10
+    },
+    {
+      "title_contains_any": ["consultant fonctionnel"],
+      "diploma_contains": "bac+4",
+      "minimum_years_experience": 10
+    },
+    {
+      "title_contains_any": ["développeur", "developpeur"],
+      "diploma_contains": "bac+3",
+      "minimum_years_experience": null
+    }
+  ],
+  "known_limitations": [
+    "mission_title resolves to an annex heading ('Ecosystème digital du ministère de l'Education'), not the true project title -- the real title doesn't appear as clean extractable text anywhere in this 268-page PDF (likely a title-page graphic pypdf can't read). Not fixable by retrieval/prompt tuning alone."
+  ]
+}

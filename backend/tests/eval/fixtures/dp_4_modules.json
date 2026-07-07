@@ -1,0 +1,27 @@
+{
+  "source_file": "docs/tdrs/DP _  Developpement de Applicatif avec 4 modules-revu TAM-ST2I (5).docx",
+  "note": "Hand-verified against the real individual-specialist list (lines ~352-356 of extracted text) in this World Bank-style DP's TDR annex.",
+  "expected_positions": [
+    {
+      "title_contains_any": ["développement et base de données", "developpement et base de donnees", "spécialiste en développement"],
+      "diploma_contains": "bac+5",
+      "minimum_years_experience": 5
+    },
+    {
+      "title_contains_any": ["éducation-formation", "education-formation", "spécialiste éducation"],
+      "diploma_contains": "bac+4",
+      "minimum_years_experience": 3
+    },
+    {
+      "title_contains_any": ["santé scolaire", "sante scolaire"],
+      "diploma_contains": "bac+2",
+      "minimum_years_experience": 1
+    },
+    {
+      "title_contains_any": ["statisticien"],
+      "diploma_contains": "bac+4",
+      "minimum_years_experience": 3
+    }
+  ],
+  "known_limitations": []
+}

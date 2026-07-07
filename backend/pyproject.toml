@@ -62,6 +62,10 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = [
+    "eval: hits real LLM providers against real documents in docs/tdrs -- costs quota/time, run explicitly via `pytest -m eval`",
+]
+addopts = "-m 'not eval'"
 
 [build-system]
 requires = ["hatchling"]

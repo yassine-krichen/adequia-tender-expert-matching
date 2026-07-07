@@ -14,7 +14,8 @@ export type Tdr = {
 };
 
 // Mirrors backend/app/domain/tdr.py field-for-field (including snake_case)
-// since this is the raw POST /tdrs response body, not a UI model.
+// since this is the raw GET /tdrs/{id} response body once processing is
+// done, not a UI model. POST /tdrs itself returns TdrUploadAck below.
 export type LanguageRequirement = {
   language: string;
   minimum_level: string;
@@ -41,4 +42,21 @@ export type TdrExtraction = {
   deadline: string | null;
   positions: ExpertPositionExtraction[];
   source_file_path: string;
+};
+
+// POST /tdrs no longer returns the full extraction — it runs on a
+// background worker (can take over a minute on a long TDR), so the request
+// returns immediately with just this ack. Poll GET /tdrs/{tdr_id}/status.
+export type TdrUploadAck = {
+  tdr_id: string;
+  status: 'processing' | 'done' | 'failed';
+};
+
+export type TdrStatus = {
+  tdr_id: string;
+  status: 'processing' | 'done' | 'failed';
+  step: 'parsing' | 'retrieving' | 'extracting' | 'merging' | null;
+  chunks_done: number | null;
+  chunks_total: number | null;
+  error_message: string | null;
 };

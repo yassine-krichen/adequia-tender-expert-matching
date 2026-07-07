@@ -2,8 +2,11 @@ import logging
 from collections.abc import Sequence
 from typing import Any, Protocol
 
+import httpx
 from google.genai.errors import ClientError as GeminiClientError
+from google.genai.errors import ServerError as GeminiServerError
 from groq import BadRequestError as GroqBadRequestError
+from groq import InternalServerError as GroqInternalServerError
 from groq import RateLimitError as GroqRateLimitError
 from langchain_core.exceptions import OutputParserException
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -34,11 +37,27 @@ _POOL_EXHAUSTED = object()
 # instead — observed live with Gemini's very low free-tier daily quota (20
 # req/day for gemini-2.5-flash-lite). Without this, quota exhaustion never
 # triggered a rotation to Ollama, it just crashed the whole extraction.
+#
+# GeminiServerError/GroqInternalServerError (5xx): observed live — Gemini
+# returned a 503 "model currently experiencing high demand" mid-eval-run.
+# That's the provider being temporarily down, same class of problem as a
+# rate limit from this router's point of view: try the next provider/key
+# rather than crash the whole extraction. Groq's 5xx equivalent is included
+# for the same reason even though only Gemini's has been seen live so far.
+#
+# httpx.TransportError: observed live — a raw ConnectTimeout reaching
+# Gemini's endpoint (both Groq's and Gemini's SDKs are httpx-based). A
+# connection that can't even be established is the same "this provider is
+# unreachable right now" situation as a 503, so it gets the same treatment
+# rather than crashing the extraction on what's often a transient blip.
 _RETRYABLE_ERRORS = (
     GroqRateLimitError,
     GroqBadRequestError,
+    GroqInternalServerError,
     GeminiClientError,
+    GeminiServerError,
     ChatGoogleGenerativeAIError,
+    httpx.TransportError,
     ValidationError,
     OutputParserException,
 )

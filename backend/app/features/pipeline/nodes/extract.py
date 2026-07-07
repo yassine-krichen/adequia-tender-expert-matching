@@ -1,5 +1,5 @@
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import date
 from typing import TypeVar
 from uuid import uuid4
@@ -32,6 +32,20 @@ _STRUCTURED_OUTPUT_ERRORS = (
 )
 _T = TypeVar("_T")
 _M = TypeVar("_M", bound=BaseModel)
+
+# step in {"parsing", "retrieving", "extracting", "merging"}; chunks_done/
+# chunks_total are only meaningful during "extracting" (0/0 otherwise).
+# Used to surface progress to a caller running this asynchronously (see
+# app/worker/tasks.py) -- extract.py itself stays free of any Redis/queue
+# dependency, it just calls this hook if one was given.
+ProgressCallback = Callable[[str, int, int], None]
+
+
+def _report_progress(
+    on_progress: ProgressCallback | None, step: str, chunks_done: int = 0, chunks_total: int = 0
+) -> None:
+    if on_progress is not None:
+        on_progress(step, chunks_done, chunks_total)
 
 
 def _invoke_structured_extraction(
@@ -247,7 +261,15 @@ _TDR_GUARDRAIL_PROMPT = (
 
 _TDR_RETRIEVAL_QUERY = "profils, qualifications et personnel requis pour le poste d'expert"
 _TDR_CHUNK_SIZE = 1500
-_TDR_CHUNK_OVERLAP = 200
+# 200 was too tight against densely-numbered "Expert N" blocks (title +
+# tasks + qualifications, ~600-900 chars each): a chunk boundary landing
+# inside one of these blocks separates the position's title from its own
+# diploma/experience, and since each chunk is extracted independently (map
+# step), the two halves surface as two different, wrongly-split positions
+# instead of one. Found live via the eval harness (tests/eval/) against the
+# GIZ SI TDR sample. Doubling the overlap makes it much likelier every
+# "Expert N" block appears whole in at least one chunk's window.
+_TDR_CHUNK_OVERLAP = 400
 # 5 was too low against real (long, multi-annex) TDRs: a 268-page TDR with
 # unrelated multi-page annexes (functional specs of an unrelated existing
 # platform, a dropout-prevention program) scored those annexes above the
@@ -417,6 +439,7 @@ def extract_tdr(
     source_file_path: str,
     router: ExtractionRouter,
     embeddings: Embeddings,
+    on_progress: ProgressCallback | None = None,
 ) -> TDR:
     """Structured extraction of a TDR into TDR/ExpertPosition (ADQ-6).
 
@@ -424,10 +447,21 @@ def extract_tdr(
     "profils/qualifications/personnel requis" query embedding, extracts each
     retrieved chunk independently, then merges the per-chunk extractions
     (map-merge over multi-section TDRs).
+
+    on_progress, if given, is called at each stage so a caller running this
+    on a background worker (app/worker/tasks.py) can surface progress to a
+    polling client — this module has no queue/Redis dependency itself.
     """
+    _report_progress(on_progress, "retrieving")
     chunks = _chunk_tdr_text(raw_text)
     relevant_chunks = _retrieve_relevant_chunks(chunks, embeddings)
-    chunk_extractions = [_invoke_tdr_chunk_extraction(chunk, router) for chunk in relevant_chunks]
+
+    chunk_extractions = []
+    for index, chunk in enumerate(relevant_chunks):
+        _report_progress(on_progress, "extracting", index, len(relevant_chunks))
+        chunk_extractions.append(_invoke_tdr_chunk_extraction(chunk, router))
+
+    _report_progress(on_progress, "merging", len(relevant_chunks), len(relevant_chunks))
     merged = _merge_chunk_extractions(chunk_extractions)
 
     try:

@@ -34,6 +34,16 @@ class ExtractionFailedError(DomainError):
     status_code = 422
 
 
+class ResourceNotReadyError(DomainError):
+    """The resource exists but background processing hasn't finished yet.
+
+    e.g. GET /tdrs/{tdr_id} while the worker is still extracting — client
+    should be polling GET /tdrs/{tdr_id}/status instead.
+    """
+
+    status_code = 409
+
+
 async def domain_error_handler(_: Request, exc: Exception) -> JSONResponse:
     assert isinstance(exc, DomainError)
     return JSONResponse(status_code=exc.status_code, content={"message": exc.message})

@@ -55,13 +55,21 @@ class TDR(Base):
     tdr_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
-    mission_title: Mapped[str] = mapped_column(Text, nullable=False)
+    # Nullable: a row is inserted as status="processing" before extraction
+    # has run, so none of these are known yet at insert time.
+    mission_title: Mapped[str | None] = mapped_column(Text)
     client: Mapped[str | None] = mapped_column(Text)
     sector: Mapped[str | None] = mapped_column(Text)
     deadline: Mapped[date | None] = mapped_column(Date)
-    raw_text: Mapped[str] = mapped_column(Text, nullable=False)
+    raw_text: Mapped[str | None] = mapped_column(Text)
     source_file_path: Mapped[str | None] = mapped_column(Text)
-    extracted_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    extracted_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    # "processing" | "done" | "failed" -- see app/worker/tasks.py. Server
+    # default matches migration 0002 (existing pre-migration rows are
+    # already fully extracted); application code always sets this
+    # explicitly on insert, never relies on the default.
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'done'"))
+    error_message: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"))
 
 

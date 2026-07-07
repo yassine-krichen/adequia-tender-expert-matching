@@ -4,7 +4,9 @@ from typing import Any
 import httpx
 import pytest
 from google.genai.errors import ClientError as GeminiClientError
+from google.genai.errors import ServerError as GeminiServerError
 from groq import BadRequestError as GroqBadRequestError
+from groq import InternalServerError as GroqInternalServerError
 from groq import RateLimitError as GroqRateLimitError
 from langchain_google_genai.chat_models import ChatGoogleGenerativeAIError
 
@@ -152,6 +154,37 @@ def test_is_retryable_detects_gemini_wrapped_error() -> None:
     rotating to Ollama.
     """
     assert _is_retryable(ChatGoogleGenerativeAIError("quota exceeded")) is True
+
+
+def test_is_retryable_detects_gemini_server_error() -> None:
+    """Regression: Gemini returned a plain 503 "experiencing high demand"
+    mid-eval-run (tests/eval/) — a transient server-side outage, not a rate
+    limit or a content rejection. Without this, that 503 crashed the whole
+    extraction instead of rotating to the next provider/Ollama.
+    """
+    error = GeminiServerError(503, {"error": {"message": "high demand"}})
+    assert _is_retryable(error) is True
+
+
+def test_is_retryable_detects_groq_internal_server_error() -> None:
+    """Groq's 5xx equivalent of the Gemini case above — not observed live
+    yet, but the same class of transient-outage problem, so handled the
+    same way for symmetry rather than waiting to hit it in production.
+    """
+    request = httpx.Request("POST", "https://api.groq.com/openai/v1/chat/completions")
+    response = httpx.Response(500, request=request)
+    error = GroqInternalServerError("internal server error", response=response, body=None)
+    assert _is_retryable(error) is True
+
+
+def test_is_retryable_detects_a_raw_connection_timeout() -> None:
+    """Regression: a raw httpx.ConnectTimeout reaching Gemini's endpoint
+    (observed live, tests/eval/) crashed the whole extraction instead of
+    rotating — a connection that can't be established is the same class of
+    "provider unreachable" problem as a 503, not a code bug to fail loud on.
+    """
+    request = httpx.Request("POST", "https://generativelanguage.googleapis.com/v1beta")
+    assert _is_retryable(httpx.ConnectTimeout("connect timeout", request=request)) is True
 
 
 def test_is_retryable_ignores_unrelated_errors() -> None:

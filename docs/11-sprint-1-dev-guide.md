@@ -16,7 +16,7 @@ want to run the thing.
 | Document parsing | `backend/app/features/pipeline/nodes/ingest.py` | `extract_raw_text()` — PDF (pypdf) + docx (python-docx), typed errors on corrupt/unsupported files |
 | CV extraction | `backend/app/features/pipeline/nodes/extract.py` | `extract_cv()` — guardrailed prompt, retry-once, `total_years_experience` computed from dates (not LLM-reported) |
 | TDR extraction | same file | `extract_tdr()` — chunk + embed + retrieve top-N + per-chunk extract + map-merge |
-| Upload endpoints | `backend/app/features/{candidates,tdrs}/{service,router}.py` | `POST /candidates/cv`, `POST /tdrs` — parse, extract, persist, return |
+| Upload endpoints | `backend/app/features/{candidates,tdrs}/{service,router}.py` | `POST /candidates/cv` — parse, extract, persist, return synchronously. `POST /tdrs` — returns immediately, extraction runs on `app/worker/tasks.py` (RQ); poll `GET /tdrs/{id}/status` |
 | Upload/preview pages | `frontend/src/app/{candidates,tdrs}/page.tsx` | Real upload form + extracted-field display |
 
 **Manual/ongoing, not code:** ADQ-8 (gold-set annotation — keep annotating past the 6 synthetic CVs currently in `docs/cvs/synthetic/`), ADQ-9 (waiting on company data response).
@@ -87,25 +87,52 @@ ollama pull nomic-embed-text   # needed regardless — this is EMBEDDING_MODEL
 ## Running it
 
 Two ways — pick one, don't mix (both would try to bind the same ports).
+Either way, Ollama is separate from both (its own local app, not a
+container here) — make sure it's running and the models from "Picking a
+model name" above are pulled before you start, if you're relying on the
+fallback tier.
 
-**A. Host-run backend, host-run frontend (fastest iteration):**
+**A. One command (recommended — full Docker Compose):**
 ```bash
+./scripts/dev.ps1
+```
+Bootstraps `backend/.env`/`frontend/.env` from their `.env.example` files
+if they don't exist yet (edit in real API keys after, if you want the
+Groq/Gemini tiers to actually work), then runs
+`docker compose up --build`: `postgres` → `migrate` (runs
+`alembic upgrade head` once, exits) → `api`/`worker`/`web` start. No
+manual migration step, no separate terminals for frontend/backend/worker —
+this replaces all of that. `worker` picks up TDR extraction jobs from
+Redis — check `docker compose logs worker` if a TDR upload seems stuck in
+"processing".
+
+API docs (Swagger UI, useful for testing endpoints directly): http://localhost:8000/docs
+Dashboard: http://localhost:3000
+
+**B. Host-run backend, host-run frontend (fastest iteration — hot reload,
+no rebuild per change):**
+```bash
+# one-time per schema change, or if you've never run migrations locally:
+cd backend
+uv run alembic upgrade head
+
 # terminal 1
 cd backend
 uv run uvicorn app.main:app --reload --port 8000
 
-# terminal 2
+# terminal 2 — required for TDR uploads: extraction runs on this worker,
+# not the request thread (a real multi-section TDR can take minutes).
+# Candidate CV uploads don't need it, they're still synchronous.
+cd backend
+uv run python -m app.worker.rq_worker
+
+# terminal 3
 cd frontend
 pnpm dev
 ```
-API docs (Swagger UI, useful for testing endpoints directly): http://localhost:8000/docs
-Dashboard: http://localhost:3000
-
-**B. Full Docker Compose** (also builds/runs `api`, `worker`, `web` containers):
-```bash
-docker compose up --build
-```
-Same URLs. `worker` isn't actually used yet (Sprint 1's uploads run synchronously) — it'll start but sit idle.
+Still needs `docker compose up -d postgres redis` running underneath (see
+"One-time setup" above) — this option only moves `api`/`worker`/`web` to
+the host, for faster iteration than rebuilding containers on every change.
 
 ## Manual test — the Sprint 1 demo
 
@@ -114,7 +141,9 @@ Same URLs. `worker` isn't actually used yet (Sprint 1's uploads run synchronousl
 3. Confirm extracted fields render: name, education, experience, skills, computed years of experience, plus the raw JSON in the collapsible section
 4. Open http://localhost:3000/tdrs
 5. Upload one of the real TDRs from `docs/tdrs/` (the `.docx` ones parse faster than the 193-page PDF)
-6. Confirm mission title, client, sector, and extracted expert positions render
+6. Upload returns immediately ("processing") — the page polls status and shows the current
+   stage (parsing / retrieving / extracting section N of M / merging) until it's done; confirm
+   mission title, client, sector, and extracted expert positions render once it resolves
 7. Try an unsupported file (e.g. a `.txt`) or a corrupted one on either page — confirm you get an inline error message (`role="alert"`), not a crashed page
 
 If nothing renders and you get a 500, check the backend terminal — most likely cause is Ollama not running/model not pulled (if you're relying on the fallback), or a genuinely invalid/expired API key.

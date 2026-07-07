@@ -112,43 +112,47 @@ git clone https://github.com/[user]/adequia.git
 cd adequia
 ```
 
-### Backend
+### Run everything — one command
 
 ```bash
+./scripts/dev.ps1
+```
+
+Bootstraps `backend/.env`/`frontend/.env` from their `.env.example` files
+if missing, then runs `docker compose up --build`: Postgres → migrations
+(`alembic upgrade head`, runs once and exits) → API, worker, frontend all
+start. Edit real `GROQ_API_KEYS`/`GEMINI_API_KEYS` into `backend/.env`
+after the first run if you want the Groq/Gemini tiers to actually work —
+without them it falls straight through to the local Ollama fallback (see
+Configuration below). Ollama itself is separate — pull its models once,
+it's not a container here.
+
+- Dashboard: http://localhost:3000
+- API docs: http://localhost:8000/docs
+
+### Alternative: host-run backend/frontend (faster iteration, no rebuild per change)
+
+```bash
+# infra
+docker compose up -d postgres redis
+
+# backend
 cd backend
 cp .env.example .env
 uv sync
-```
+uv run alembic upgrade head
+uv run uvicorn app.main:app --reload          # terminal 1 — http://localhost:8000
+uv run python -m app.worker.rq_worker         # terminal 2 — required for TDR uploads
 
-### Frontend
-
-```bash
+# frontend
 cd frontend
 cp .env.example .env
 pnpm install
+pnpm dev                                       # terminal 3 — http://localhost:3000
 ```
 
-### Local infrastructure
-
-```bash
-docker compose up -d postgres redis
-```
-
-### Run (development)
-
-```bash
-# backend — http://localhost:8000
-cd backend && uv run uvicorn app.main:app --reload
-
-# frontend — http://localhost:3000
-cd frontend && pnpm dev
-```
-
-### Run everything via Docker Compose
-
-```bash
-docker compose up -d
-```
+Full detail (gotchas, manual test steps, automated tests) is in
+`docs/11-sprint-1-dev-guide.md`.
 
 ### Test
 

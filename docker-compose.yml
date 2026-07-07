@@ -1,8 +1,24 @@
 services:
+  migrate:
+    build: ./backend
+    command: uv run --no-dev alembic upgrade head
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file: ./backend/.env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/adequia
+
   api:
     build: ./backend
     ports: ["8000:8000"]
-    depends_on: [postgres, redis]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
     env_file: ./backend/.env
     environment:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/adequia
@@ -15,7 +31,13 @@ services:
   worker:
     build: ./backend
     command: uv run --no-dev python -m app.worker.rq_worker
-    depends_on: [postgres, redis]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
     env_file: ./backend/.env
     environment:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/adequia
@@ -29,6 +51,11 @@ services:
       - POSTGRES_DB=adequia
     ports: ["5433:5432"]
     volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
 
   redis:
     image: redis:7-alpine

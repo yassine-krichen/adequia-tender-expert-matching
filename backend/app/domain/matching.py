@@ -34,11 +34,19 @@ class Citation(BaseModel):
 
 
 class SubScores(BaseModel):
-    education_score: float
-    experience_score: float
-    certification_score: float
+    """education_score/experience_score/certification_score/language_score
+    are unset this sprint — only skill_score and sector_score are computed
+    (see docs/scrum/sprint-2-plan.md ADQ-16). The other four need
+    detect_anomalies/generate_report context to score meaningfully and are
+    Sprint 3 work; leaving them null is more honest than a fabricated
+    placeholder number.
+    """
+
+    education_score: float | None = None
+    experience_score: float | None = None
+    certification_score: float | None = None
     sector_score: float
-    language_score: float
+    language_score: float | None = None
     skill_score: float
 
 
@@ -58,7 +66,9 @@ class MatchResult(BaseModel):
     compatibility_score: float | None = None
     sub_scores: SubScores | None = None
     anomalies: list[Anomaly] = Field(default_factory=list)
-    rationale: str
+    # generate_report (the only thing that produces this) is Sprint 3 —
+    # a sprint-2 match result has no rationale yet.
+    rationale: str | None = None
     citations: list[Citation] = Field(default_factory=list)
     reviewer_decision: str | None = None  # "approved" | "rejected" | "overridden"
     reviewer_id: str | None = None

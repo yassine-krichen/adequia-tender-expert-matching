@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 
+import { FileUpload } from '@/common/components/file-upload';
 import { Button } from '@/common/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/common/components/ui/card';
-import { Input } from '@/common/components/ui/input';
 import { uploadCv } from '@/features/candidates/api/upload-cv';
 import type { CandidateCvExtraction } from '@/features/candidates/types/candidate.types';
 
@@ -22,11 +22,11 @@ export default function CandidatesPage() {
     setError(null);
     setResult(null);
 
-    const { data, error: uploadError } = await uploadCv(file);
-    if (uploadError) {
-      setError(uploadError);
+    const uploadResult = await uploadCv(file);
+    if (uploadResult.error !== null) {
+      setError(uploadResult.error);
     } else {
-      setResult(data);
+      setResult(uploadResult.data);
     }
     setIsUploading(false);
   }
@@ -43,12 +43,8 @@ export default function CandidatesPage() {
           <CardTitle>Upload CV</CardTitle>
         </CardHeader>
         <CardContent>
-          <form className="flex items-center gap-3" onSubmit={handleSubmit}>
-            <Input
-              type="file"
-              accept=".pdf,.docx"
-              onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-            />
+          <form className="space-y-3" onSubmit={handleSubmit}>
+            <FileUpload accept=".pdf,.docx" disabled={isUploading} onFileSelected={setFile} />
             <Button type="submit" disabled={!file || isUploading}>
               {isUploading ? 'Uploading…' : 'Upload'}
             </Button>

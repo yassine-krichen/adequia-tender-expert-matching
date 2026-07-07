@@ -1,18 +1,3 @@
-export type ExpertPosition = {
-  positionId: string;
-  positionTitle: string;
-  mandatoryDiploma: string | null;
-  minimumYearsExperience: number | null;
-};
-
-export type Tdr = {
-  tdrId: string;
-  missionTitle: string;
-  client: string | null;
-  sector: string | null;
-  positions: ExpertPosition[];
-};
-
 // Mirrors backend/app/domain/tdr.py field-for-field (including snake_case)
 // since this is the raw GET /tdrs/{id} response body once processing is
 // done, not a UI model. POST /tdrs itself returns TdrUploadAck below.

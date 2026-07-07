@@ -48,7 +48,16 @@ function InfoTooltip({ text }: { text: string }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Info className="size-3.5 text-muted-foreground" aria-label="More info" />
+        {/* A plain <Info> SVG has no focus/keyboard semantics -- wrapping
+            it in a real button makes the tooltip reachable by keyboard
+            and screen readers, not just mouse hover. */}
+        <button
+          type="button"
+          aria-label="More info"
+          className="inline-flex rounded-sm text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <Info className="size-3.5" />
+        </button>
       </TooltipTrigger>
       <TooltipContent>{text}</TooltipContent>
     </Tooltip>
@@ -205,12 +214,18 @@ export default function TdrsPage() {
       positions.map((position) => getPositionMatches(position.position_id))
     );
     const byPosition: Record<string, MatchResult[]> = {};
+    const failedTitles: string[] = [];
     results.forEach((matchResult, index) => {
       if (matchResult.error === null) {
         byPosition[positions[index].position_id] = matchResult.data;
+      } else {
+        failedTitles.push(positions[index].position_title);
       }
     });
     setMatchesByPosition(byPosition);
+    if (failedTitles.length > 0) {
+      setMatchingError(`Failed to load results for: ${failedTitles.join(', ')}`);
+    }
   }
 
   function pollMatchingUntilDone(tdrId: string, positions: TdrExtraction['positions']) {
@@ -342,7 +357,7 @@ export default function TdrsPage() {
                   {matchingMessage}
                 </p>
               )}
-              {matchingStatus === 'failed' && matchingError && (
+              {matchingError && (
                 <p role="alert" className="text-sm text-destructive">
                   {matchingError}
                 </p>

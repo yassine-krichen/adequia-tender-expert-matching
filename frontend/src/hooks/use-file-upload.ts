@@ -216,7 +216,7 @@ export const useFileUpload = (
 
           // Skip duplicate files silently
           if (isDuplicate) {
-            return
+            continue
           }
         }
 

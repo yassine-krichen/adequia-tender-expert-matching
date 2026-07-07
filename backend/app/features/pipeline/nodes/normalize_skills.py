@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import SkillTaxonomy
 from app.domain.cv import CandidateCV, NormalizedSkill
+from app.domain.tdr import ExpertPosition
 from app.features.pipeline.state import PipelineState
 
 # Cosine similarity threshold to accept a taxonomy match without a retry.
@@ -110,22 +111,44 @@ async def match_skill_to_taxonomy(
                 )
 
     # Unresolved even after retry -- leave canonical_id unset, keep the
-    # best-effort confidence for visibility.
-    return NormalizedSkill(raw_term=term, canonical_id=None, confidence=best_similarity, matched_via="direct")
+    # best-effort confidence for visibility. Label reflects whether a
+    # retry was actually attempted, so a debugger doesn't read "direct"
+    # and assume no rewrite was tried.
+    return NormalizedSkill(
+        raw_term=term,
+        canonical_id=None,
+        confidence=best_similarity,
+        matched_via="rag_retry" if rewritten is not None else "direct",
+    )
 
 
 async def normalize_cv_skills(
     cv: CandidateCV, *, session: AsyncSession, embeddings: Embeddings
 ) -> list[NormalizedSkill]:
     """Normalizes a CV's raw_skills against the taxonomy for one matching
-    run (not persisted back onto the CV row). A TDR position's own
-    required_skills are normalized transiently inside score.py, reusing
-    match_skill_to_taxonomy directly -- ExpertPosition has no
-    normalized_skills field in the schema.
+    run (not persisted back onto the CV row).
     """
     return [
         await match_skill_to_taxonomy(term, session=session, embeddings=embeddings)
         for term in cv.raw_skills
+    ]
+
+
+async def normalize_position_skills(
+    position: ExpertPosition, *, session: AsyncSession, embeddings: Embeddings
+) -> list[NormalizedSkill]:
+    """Normalizes a TDR position's required_skills against the taxonomy.
+
+    Computed once per position by the matching worker (not once per
+    candidate) -- the result is candidate-independent, so score.py's
+    skill_score reuses this same list across every candidate in a
+    position's shortlist instead of re-querying the taxonomy per
+    candidate. ExpertPosition has no normalized_skills field in the
+    schema, so this is transient, not persisted.
+    """
+    return [
+        await match_skill_to_taxonomy(term, session=session, embeddings=embeddings)
+        for term in position.required_skills
     ]
 
 

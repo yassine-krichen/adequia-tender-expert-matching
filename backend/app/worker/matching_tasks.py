@@ -17,7 +17,7 @@ from app.database.session import async_session_factory
 from app.domain.cv import CandidateCV
 from app.domain.tdr import ExpertPosition
 from app.features.matching.coarse_retrieval import shortlist_candidates
-from app.features.pipeline.nodes.normalize_skills import normalize_cv_skills
+from app.features.pipeline.nodes.normalize_skills import normalize_cv_skills, normalize_position_skills
 from app.features.pipeline.nodes.score import check_hard_filters, score_soft_criteria
 
 logger = logging.getLogger(__name__)
@@ -82,6 +82,20 @@ async def run_matching_job(
             position = ExpertPosition.model_validate(position_row.requirements_json)
             shortlist = await shortlist_candidates(position, session=session, embeddings=embeddings)
 
+            # Position-scoped, not candidate-scoped -- computed once here
+            # and reused for every candidate below, instead of
+            # re-querying the taxonomy / re-embedding the same position
+            # text once per candidate (see score.py's _skill_score/
+            # _sector_score docstrings).
+            normalized_position_skills = await normalize_position_skills(
+                position, session=session, embeddings=embeddings
+            )
+            required_sector_vector = (
+                embeddings.embed_query(position.required_sector_experience)
+                if position.required_sector_experience
+                else None
+            )
+
             await session.execute(
                 delete(MatchResultModel).where(
                     MatchResultModel.position_id == position_row.position_id
@@ -95,8 +109,12 @@ async def run_matching_job(
                 sub_scores_json = None
                 compatibility_score = None
                 if hard_filter_passed:
-                    sub_scores, compatibility_score = await score_soft_criteria(
-                        cv, position, normalized, session=session, embeddings=embeddings
+                    sub_scores, compatibility_score = score_soft_criteria(
+                        cv,
+                        normalized,
+                        normalized_position_skills,
+                        required_sector_vector,
+                        embeddings=embeddings,
                     )
                     sub_scores_json = sub_scores.model_dump(mode="json")
 
@@ -113,10 +131,10 @@ async def run_matching_job(
                 )
             await session.commit()
             on_progress("processing", index + 1, len(positions))
-    except Exception:
+    except Exception as exc:
         await session.rollback()
         on_progress("failed", 0, len(positions))
-        logger.warning("matching.job_failed tdr_id=%s", tdr_id)
+        logger.warning("matching.job_failed tdr_id=%s error=%s", tdr_id, type(exc).__name__)
         return
 
     on_progress("done", len(positions), len(positions))

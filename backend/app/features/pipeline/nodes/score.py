@@ -4,12 +4,10 @@ from collections.abc import Sequence
 from datetime import date
 
 from langchain_core.embeddings import Embeddings
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.cv import CandidateCV, NormalizedSkill
 from app.domain.matching import SubScores
 from app.domain.tdr import ExpertPosition
-from app.features.pipeline.nodes.normalize_skills import match_skill_to_taxonomy
 from app.features.pipeline.state import PipelineState
 
 # Hard filters only -- LLM judgment and historical_decisions memory
@@ -103,59 +101,64 @@ def _cosine_similarity(a: Sequence[float], b: Sequence[float]) -> float:
     return dot / (norm_a * norm_b)
 
 
-async def _skill_score(
-    position: ExpertPosition,
+def _skill_score(
+    normalized_position_skills: list[NormalizedSkill],
     normalized_cv_skills: list[NormalizedSkill],
-    *,
-    session: AsyncSession,
-    embeddings: Embeddings,
 ) -> float:
-    if not position.required_skills:
+    """Coverage ratio of the position's required skills found among the
+    CV's normalized skills. normalized_position_skills is computed once
+    per position by normalize_skills.normalize_position_skills and passed
+    in here -- it's candidate-independent, so it must not be recomputed
+    (re-querying the taxonomy) inside a per-candidate loop.
+    """
+    if not normalized_position_skills:
         return 1.0
 
     cv_canonical_ids = {s.canonical_id for s in normalized_cv_skills if s.canonical_id is not None}
-    matched = 0
-    for required_term in position.required_skills:
-        normalized_requirement = await match_skill_to_taxonomy(
-            required_term, session=session, embeddings=embeddings
-        )
-        if (
-            normalized_requirement.canonical_id is not None
-            and normalized_requirement.canonical_id in cv_canonical_ids
-        ):
-            matched += 1
-    return matched / len(position.required_skills)
+    matched = sum(
+        1
+        for required in normalized_position_skills
+        if required.canonical_id is not None and required.canonical_id in cv_canonical_ids
+    )
+    return matched / len(normalized_position_skills)
 
 
-def _sector_score(cv: CandidateCV, position: ExpertPosition, *, embeddings: Embeddings) -> float:
-    if not position.required_sector_experience:
+def _sector_score(
+    cv: CandidateCV, required_sector_vector: list[float] | None, *, embeddings: Embeddings
+) -> float:
+    """required_sector_vector is the position's required_sector_experience
+    text, embedded once by the caller (candidate-independent) -- only the
+    CV's own sector text still needs embedding here, per candidate.
+    """
+    if required_sector_vector is None:
         return 1.0
 
     sectors = {experience.sector for experience in cv.experience if experience.sector}
     if not sectors:
         return 0.0
 
-    required_vector = embeddings.embed_query(position.required_sector_experience)
     sector_vectors = embeddings.embed_documents(list(sectors))
-    return max(_cosine_similarity(required_vector, vector) for vector in sector_vectors)
+    return max(_cosine_similarity(required_sector_vector, vector) for vector in sector_vectors)
 
 
-async def score_soft_criteria(
+def score_soft_criteria(
     cv: CandidateCV,
-    position: ExpertPosition,
     normalized_cv_skills: list[NormalizedSkill],
+    normalized_position_skills: list[NormalizedSkill],
+    required_sector_vector: list[float] | None,
     *,
-    session: AsyncSession,
     embeddings: Embeddings,
 ) -> tuple[SubScores, float]:
     """ADQ-16. Only called when check_hard_filters has already passed --
     compatibility_score stays None on a hard-filter failure, never a
     computed number (see domain/matching.py MatchResult docstring).
+
+    normalized_position_skills/required_sector_vector are computed once
+    per position by the caller (app/worker/matching_tasks.py), not once
+    per candidate -- see _skill_score/_sector_score docstrings.
     """
-    skill_score = await _skill_score(
-        position, normalized_cv_skills, session=session, embeddings=embeddings
-    )
-    sector_score = _sector_score(cv, position, embeddings=embeddings)
+    skill_score = _skill_score(normalized_position_skills, normalized_cv_skills)
+    sector_score = _sector_score(cv, required_sector_vector, embeddings=embeddings)
     compatibility_score = _SKILL_WEIGHT * skill_score + _SECTOR_WEIGHT * sector_score
     return SubScores(sector_score=sector_score, skill_score=skill_score), compatibility_score
 

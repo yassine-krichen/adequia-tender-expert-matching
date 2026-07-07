@@ -17,7 +17,7 @@ from app.config.settings import get_settings
 from app.database.models import CV
 from app.database.session import async_session_factory
 from app.domain.cv import CandidateCV
-from app.features.candidates.service import _build_cv_embedding_text
+from app.features.candidates.service import build_cv_embedding_text
 
 
 async def backfill() -> None:
@@ -29,7 +29,7 @@ async def backfill() -> None:
         )
         for row in rows:
             cv = CandidateCV.model_validate(row.extracted_json)
-            row.embedding = embeddings.embed_query(_build_cv_embedding_text(cv))
+            row.embedding = embeddings.embed_query(build_cv_embedding_text(cv))
             print(f"backfilled: {cv.full_name} ({row.cv_id})")
 
         await session.commit()

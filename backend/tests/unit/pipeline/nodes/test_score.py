@@ -1,8 +1,13 @@
 from datetime import date, timedelta
 
-from app.domain.cv import CandidateCV, Certification, Education, Experience
+from app.domain.cv import CandidateCV, Certification, Education, Experience, NormalizedSkill
 from app.domain.tdr import ExpertPosition
-from app.features.pipeline.nodes.score import _cosine_similarity, check_hard_filters
+from app.features.pipeline.nodes.score import (
+    _cosine_similarity,
+    _sector_score,
+    _skill_score,
+    check_hard_filters,
+)
 
 
 def _cv(
@@ -137,3 +142,62 @@ def test_cosine_similarity_orthogonal_vectors_is_zero() -> None:
 
 def test_cosine_similarity_zero_vector_is_zero_not_a_crash() -> None:
     assert _cosine_similarity([0.0, 0.0], [1.0, 0.0]) == 0.0
+
+
+def _normalized(canonical_id: str | None) -> NormalizedSkill:
+    return NormalizedSkill(raw_term="term", canonical_id=canonical_id, confidence=1.0, matched_via="direct")
+
+
+def test_skill_score_is_one_when_position_has_no_required_skills() -> None:
+    assert _skill_score([], [_normalized("s1")]) == 1.0
+
+
+def test_skill_score_is_coverage_ratio_of_matched_canonical_ids() -> None:
+    normalized_position_skills = [_normalized("s1"), _normalized("s2")]
+    normalized_cv_skills = [_normalized("s1")]
+
+    assert _skill_score(normalized_position_skills, normalized_cv_skills) == 0.5
+
+
+def test_skill_score_ignores_unmatched_position_requirements() -> None:
+    # A required skill with no taxonomy match (canonical_id=None) can never
+    # be satisfied by any candidate -- shouldn't crash, just doesn't count.
+    normalized_position_skills = [_normalized(None), _normalized("s1")]
+    normalized_cv_skills = [_normalized("s1")]
+
+    assert _skill_score(normalized_position_skills, normalized_cv_skills) == 0.5
+
+
+class _FakeEmbeddings:
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        return [[1.0, 0.0] if "banc" in t.lower() else [0.0, 1.0] for t in texts]
+
+
+def test_sector_score_is_one_when_position_has_no_sector_requirement() -> None:
+    assert _sector_score(_cv(), required_sector_vector=None, embeddings=_FakeEmbeddings()) == 1.0
+
+
+def test_sector_score_is_zero_when_candidate_has_no_sector_data() -> None:
+    cv = CandidateCV(
+        candidate_id="c1",
+        full_name="Test",
+        education=[],
+        certifications=[],
+        experience=[],
+        languages=[],
+        raw_skills=[],
+        total_years_experience=1.0,
+        raw_text="raw",
+        source_file_path="cv.pdf",
+    )
+
+    assert _sector_score(cv, required_sector_vector=[1.0, 0.0], embeddings=_FakeEmbeddings()) == 0.0
+
+
+def test_sector_score_uses_max_similarity_across_candidate_sectors() -> None:
+    # _cv()'s only experience entry has sector="Bancaire" -- the fake
+    # embeddings map anything containing "banc" to [1.0, 0.0], an exact
+    # match against the required vector.
+    score = _sector_score(_cv(), required_sector_vector=[1.0, 0.0], embeddings=_FakeEmbeddings())
+
+    assert score == 1.0

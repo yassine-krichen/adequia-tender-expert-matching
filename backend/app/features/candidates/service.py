@@ -13,7 +13,7 @@ from app.features.pipeline.nodes.extract import extract_cv
 from app.features.pipeline.nodes.ingest import extract_raw_text
 
 
-def _build_cv_embedding_text(cv: CandidateCV) -> str:
+def build_cv_embedding_text(cv: CandidateCV) -> str:
     """Coarse-retrieval signal (ADQ-11): skills carry the most weight, plus
     job titles/sectors for a bit of semantic coverage beyond a bare
     skill-term list.
@@ -48,7 +48,7 @@ class CandidatesService:
         )
 
         embedding = self._router.get_embedding_model().embed_query(
-            _build_cv_embedding_text(candidate_cv)
+            build_cv_embedding_text(candidate_cv)
         )
 
         session.add(Candidate(candidate_id=candidate_id, full_name=candidate_cv.full_name))

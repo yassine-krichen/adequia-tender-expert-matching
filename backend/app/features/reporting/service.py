@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from app.domain.matching import MatchResult
 
 
@@ -9,10 +11,10 @@ class ReportingService:
     see docs/03-agent-pipeline.md.
     """
 
-    async def get_match(self, match_id: str) -> MatchResult:
+    async def get_match(self, match_id: UUID) -> MatchResult:
         raise NotImplementedError
 
     async def submit_review(
-        self, match_id: str, decision: str, reviewer_id: str, note: str | None
+        self, match_id: UUID, decision: str, reviewer_id: str, note: str | None
     ) -> MatchResult:
         raise NotImplementedError

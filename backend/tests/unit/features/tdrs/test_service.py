@@ -75,7 +75,7 @@ async def test_get_status_reports_processing_with_redis_progress() -> None:
     )
     service = TdrsService(queue=_FakeQueue(), redis_client=redis)  # type: ignore[arg-type]
 
-    status = await service.get_status(str(tdr_id), session)  # type: ignore[arg-type]
+    status = await service.get_status(tdr_id, session)  # type: ignore[arg-type]
 
     assert status.status == "processing"
     assert status.step == "extracting"
@@ -89,7 +89,7 @@ async def test_get_status_reports_done_without_touching_redis() -> None:
     session.added.append(TDRModel(tdr_id=tdr_id, status="done"))
     service = TdrsService(queue=_FakeQueue(), redis_client=_FakeRedis())  # type: ignore[arg-type]
 
-    status = await service.get_status(str(tdr_id), session)  # type: ignore[arg-type]
+    status = await service.get_status(tdr_id, session)  # type: ignore[arg-type]
 
     assert status.status == "done"
 
@@ -98,7 +98,7 @@ async def test_get_status_raises_not_found_for_unknown_tdr_id() -> None:
     service = TdrsService(queue=_FakeQueue(), redis_client=_FakeRedis())  # type: ignore[arg-type]
 
     with pytest.raises(NotFoundError):
-        await service.get_status(str(uuid4()), _FakeSession())  # type: ignore[arg-type]
+        await service.get_status(uuid4(), _FakeSession())  # type: ignore[arg-type]
 
 
 async def test_get_tdr_raises_not_ready_while_still_processing() -> None:
@@ -108,7 +108,7 @@ async def test_get_tdr_raises_not_ready_while_still_processing() -> None:
     service = TdrsService(queue=_FakeQueue(), redis_client=_FakeRedis())  # type: ignore[arg-type]
 
     with pytest.raises(ResourceNotReadyError):
-        await service.get_tdr(str(tdr_id), session)  # type: ignore[arg-type]
+        await service.get_tdr(tdr_id, session)  # type: ignore[arg-type]
 
 
 async def test_get_tdr_raises_not_ready_with_error_message_when_failed() -> None:
@@ -118,7 +118,7 @@ async def test_get_tdr_raises_not_ready_with_error_message_when_failed() -> None
     service = TdrsService(queue=_FakeQueue(), redis_client=_FakeRedis())  # type: ignore[arg-type]
 
     with pytest.raises(ResourceNotReadyError, match="TDR extraction failed"):
-        await service.get_tdr(str(tdr_id), session)  # type: ignore[arg-type]
+        await service.get_tdr(tdr_id, session)  # type: ignore[arg-type]
 
 
 async def test_get_tdr_returns_the_extracted_tdr_once_done() -> None:
@@ -139,7 +139,7 @@ async def test_get_tdr_returns_the_extracted_tdr_once_done() -> None:
     )
     service = TdrsService(queue=_FakeQueue(), redis_client=_FakeRedis())  # type: ignore[arg-type]
 
-    tdr = await service.get_tdr(str(tdr_id), session)  # type: ignore[arg-type]
+    tdr = await service.get_tdr(tdr_id, session)  # type: ignore[arg-type]
 
     assert tdr.mission_title == "Mission"
     assert tdr.tdr_id == str(tdr_id)
@@ -152,7 +152,7 @@ async def test_run_matching_enqueues_when_extraction_is_done() -> None:
     queue = _FakeQueue()
     service = TdrsService(queue=queue, redis_client=_FakeRedis())  # type: ignore[arg-type]
 
-    await service.run_matching(str(tdr_id), session)  # type: ignore[arg-type]
+    await service.run_matching(tdr_id, session)  # type: ignore[arg-type]
 
     assert len(queue.enqueued) == 1
     func, args, job_timeout = queue.enqueued[0]
@@ -165,7 +165,7 @@ async def test_run_matching_raises_not_found_for_unknown_tdr_id() -> None:
     service = TdrsService(queue=_FakeQueue(), redis_client=_FakeRedis())  # type: ignore[arg-type]
 
     with pytest.raises(NotFoundError):
-        await service.run_matching(str(uuid4()), _FakeSession())  # type: ignore[arg-type]
+        await service.run_matching(uuid4(), _FakeSession())  # type: ignore[arg-type]
 
 
 async def test_run_matching_raises_not_ready_while_extraction_still_processing() -> None:
@@ -175,19 +175,31 @@ async def test_run_matching_raises_not_ready_while_extraction_still_processing()
     service = TdrsService(queue=_FakeQueue(), redis_client=_FakeRedis())  # type: ignore[arg-type]
 
     with pytest.raises(ResourceNotReadyError):
-        await service.run_matching(str(tdr_id), session)  # type: ignore[arg-type]
+        await service.run_matching(tdr_id, session)  # type: ignore[arg-type]
 
 
-async def test_get_matching_status_reports_not_started_with_no_redis_key() -> None:
+async def test_get_matching_status_raises_not_found_for_unknown_tdr_id() -> None:
     service = TdrsService(queue=_FakeQueue(), redis_client=_FakeRedis())  # type: ignore[arg-type]
 
-    status = await service.get_matching_status(str(uuid4()))
+    with pytest.raises(NotFoundError):
+        await service.get_matching_status(uuid4(), _FakeSession())  # type: ignore[arg-type]
+
+
+async def test_get_matching_status_reports_not_started_when_matching_never_run() -> None:
+    tdr_id = uuid4()
+    session = _FakeSession()
+    session.added.append(TDRModel(tdr_id=tdr_id, status="done"))
+    service = TdrsService(queue=_FakeQueue(), redis_client=_FakeRedis())  # type: ignore[arg-type]
+
+    status = await service.get_matching_status(tdr_id, session)  # type: ignore[arg-type]
 
     assert status.status == "not_started"
 
 
 async def test_get_matching_status_reports_processing_progress() -> None:
     tdr_id = uuid4()
+    session = _FakeSession()
+    session.added.append(TDRModel(tdr_id=tdr_id, status="done"))
     redis = _FakeRedis(
         {
             f"tdr:{tdr_id}:matching_progress": {
@@ -199,7 +211,7 @@ async def test_get_matching_status_reports_processing_progress() -> None:
     )
     service = TdrsService(queue=_FakeQueue(), redis_client=redis)  # type: ignore[arg-type]
 
-    status = await service.get_matching_status(str(tdr_id))
+    status = await service.get_matching_status(tdr_id, session)  # type: ignore[arg-type]
 
     assert status.status == "processing"
     assert status.positions_done == 1

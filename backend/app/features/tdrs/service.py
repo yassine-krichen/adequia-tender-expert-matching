@@ -75,7 +75,11 @@ class TdrsService:
 
         try:
             self._queue.enqueue(
-                run_tdr_extraction, str(tdr_id), file_bytes, filename, job_timeout=_JOB_TIMEOUT_SECONDS
+                run_tdr_extraction,
+                str(tdr_id),
+                file_bytes,
+                filename,
+                job_timeout=_JOB_TIMEOUT_SECONDS,
             )
         except Exception:
             # Row already exists at status="processing" -- if scheduling
@@ -90,30 +94,30 @@ class TdrsService:
 
         return TdrUploadAck(tdr_id=str(tdr_id), status="processing")
 
-    async def get_status(self, tdr_id: str, session: AsyncSession) -> TdrStatus:
-        row = await session.get(TDRModel, UUID(tdr_id))
+    async def get_status(self, tdr_id: UUID, session: AsyncSession) -> TdrStatus:
+        row = await session.get(TDRModel, tdr_id)
         if row is None:
             raise NotFoundError(f"No TDR with id {tdr_id}")
 
         if row.status != "processing":
-            return TdrStatus(tdr_id=tdr_id, status=row.status, error_message=row.error_message)
+            return TdrStatus(tdr_id=str(tdr_id), status=row.status, error_message=row.error_message)
 
         # self._redis is a sync client (shared with self._queue, which RQ
         # requires to be sync) -- hgetall would otherwise block the event
         # loop inside this async def.
         progress = await asyncio.to_thread(self._redis.hgetall, f"tdr:{tdr_id}:progress")
         if not progress:
-            return TdrStatus(tdr_id=tdr_id, status="processing")
+            return TdrStatus(tdr_id=str(tdr_id), status="processing")
         return TdrStatus(
-            tdr_id=tdr_id,
+            tdr_id=str(tdr_id),
             status="processing",
             step=_decode(progress.get(b"step", b"")),
             chunks_done=int(_decode(progress.get(b"chunks_done", b"0"))),
             chunks_total=int(_decode(progress.get(b"chunks_total", b"0"))),
         )
 
-    async def get_tdr(self, tdr_id: str, session: AsyncSession) -> TDR:
-        row = await session.get(TDRModel, UUID(tdr_id))
+    async def get_tdr(self, tdr_id: UUID, session: AsyncSession) -> TDR:
+        row = await session.get(TDRModel, tdr_id)
         if row is None:
             raise NotFoundError(f"No TDR with id {tdr_id}")
         if row.status == "processing":
@@ -124,7 +128,7 @@ class TdrsService:
         assert row.extracted_json is not None  # guaranteed once status == "done"
         return TDR.model_validate(row.extracted_json)
 
-    async def run_matching(self, tdr_id: str, session: AsyncSession) -> None:
+    async def run_matching(self, tdr_id: UUID, session: AsyncSession) -> None:
         """Kicks off the matching pipeline for every position on this TDR.
 
         Coarse retrieval shortlists ~8-10 candidates per position before the
@@ -132,24 +136,28 @@ class TdrsService:
         Runs on the RQ worker (app/worker/matching_tasks.py), same reasoning
         as TDR extraction — poll GET /tdrs/{tdr_id}/match-status.
         """
-        row = await session.get(TDRModel, UUID(tdr_id))
+        row = await session.get(TDRModel, tdr_id)
         if row is None:
             raise NotFoundError(f"No TDR with id {tdr_id}")
         if row.status != "done":
             raise ResourceNotReadyError(f"TDR {tdr_id} extraction hasn't finished yet")
 
         self._queue.enqueue(
-            matching_tasks.run_matching, tdr_id, job_timeout=_MATCHING_JOB_TIMEOUT_SECONDS
+            matching_tasks.run_matching, str(tdr_id), job_timeout=_MATCHING_JOB_TIMEOUT_SECONDS
         )
 
-    async def get_matching_status(self, tdr_id: str) -> MatchingStatus:
+    async def get_matching_status(self, tdr_id: UUID, session: AsyncSession) -> MatchingStatus:
+        row = await session.get(TDRModel, tdr_id)
+        if row is None:
+            raise NotFoundError(f"No TDR with id {tdr_id}")
+
         progress = await asyncio.to_thread(
-            self._redis.hgetall, matching_tasks.matching_progress_key(tdr_id)
+            self._redis.hgetall, matching_tasks.matching_progress_key(str(tdr_id))
         )
         if not progress:
-            return MatchingStatus(tdr_id=tdr_id, status="not_started")
+            return MatchingStatus(tdr_id=str(tdr_id), status="not_started")
         return MatchingStatus(
-            tdr_id=tdr_id,
+            tdr_id=str(tdr_id),
             status=_decode(progress.get(b"status", b"processing")),
             positions_done=int(_decode(progress.get(b"positions_done", b"0"))),
             positions_total=int(_decode(progress.get(b"positions_total", b"0"))),

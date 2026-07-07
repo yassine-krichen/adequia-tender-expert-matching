@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,23 +21,25 @@ async def upload_tdr(
 
 @router.get("/{tdr_id}/status", response_model=TdrStatus)
 async def get_tdr_status(
-    tdr_id: str, session: AsyncSession = Depends(get_db_session)
+    tdr_id: UUID, session: AsyncSession = Depends(get_db_session)
 ) -> TdrStatus:
     return await service.get_status(tdr_id, session)
 
 
 @router.get("/{tdr_id}", response_model=TDR)
-async def get_tdr(tdr_id: str, session: AsyncSession = Depends(get_db_session)) -> TDR:
+async def get_tdr(tdr_id: UUID, session: AsyncSession = Depends(get_db_session)) -> TDR:
     return await service.get_tdr(tdr_id, session)
 
 
 @router.post("/{tdr_id}/match", status_code=202)
 async def run_matching(
-    tdr_id: str, session: AsyncSession = Depends(get_db_session)
+    tdr_id: UUID, session: AsyncSession = Depends(get_db_session)
 ) -> None:
     await service.run_matching(tdr_id, session)
 
 
 @router.get("/{tdr_id}/match-status", response_model=MatchingStatus)
-async def get_matching_status(tdr_id: str) -> MatchingStatus:
-    return await service.get_matching_status(tdr_id)
+async def get_matching_status(
+    tdr_id: UUID, session: AsyncSession = Depends(get_db_session)
+) -> MatchingStatus:
+    return await service.get_matching_status(tdr_id, session)

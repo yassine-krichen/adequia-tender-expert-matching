@@ -19,13 +19,13 @@ class MatchingService:
     """
 
     async def list_matches_for_position(
-        self, position_id: str, session: AsyncSession
+        self, position_id: UUID, session: AsyncSession
     ) -> list[MatchResultWithCandidate]:
         stmt = (
             select(MatchResultModel, CandidateModel.full_name)
             .join(CVModel, CVModel.cv_id == MatchResultModel.cv_id)
             .join(CandidateModel, CandidateModel.candidate_id == CVModel.candidate_id)
-            .where(MatchResultModel.position_id == UUID(position_id))
+            .where(MatchResultModel.position_id == position_id)
             .order_by(MatchResultModel.compatibility_score.desc().nulls_last())
         )
         rows = (await session.execute(stmt)).all()

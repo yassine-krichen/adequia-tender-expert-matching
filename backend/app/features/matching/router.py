@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,6 +13,6 @@ service = MatchingService()
 
 @router.get("/{position_id}/matches", response_model=list[MatchResultWithCandidate])
 async def list_matches_for_position(
-    position_id: str, session: AsyncSession = Depends(get_db_session)
+    position_id: UUID, session: AsyncSession = Depends(get_db_session)
 ) -> list[MatchResultWithCandidate]:
     return await service.list_matches_for_position(position_id, session)

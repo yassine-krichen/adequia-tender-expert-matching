@@ -1,0 +1,68 @@
+[
+  {
+    "position": {
+      "position_id": "gold-devops",
+      "position_title": "Architecte DevOps / Cloud",
+      "required_skills": ["Docker & Kubernetes", "CI/CD", "Terraform"],
+      "required_sector_experience": "Secteur public",
+      "minimum_years_experience": 5,
+      "source_span": "hand-crafted for ADQ-18 gold matching set"
+    },
+    "relevant_candidate_names": ["Amine Ferjani"]
+  },
+  {
+    "position": {
+      "position_id": "gold-backend-architect",
+      "position_title": "Architecte logiciel backend",
+      "required_skills": ["Architecture logicielle", "Java / Spring", "PostgreSQL"],
+      "required_sector_experience": "Fintech",
+      "minimum_years_experience": 8,
+      "source_span": "hand-crafted for ADQ-18 gold matching set"
+    },
+    "relevant_candidate_names": ["Karim Trabelsi"]
+  },
+  {
+    "position": {
+      "position_id": "gold-functional-analyst",
+      "position_title": "Analyste fonctionnel",
+      "required_skills": ["Analyse fonctionnelle", "Recueil de besoins", "Rédaction de spécifications"],
+      "required_sector_experience": null,
+      "minimum_years_experience": 5,
+      "source_span": "hand-crafted for ADQ-18 gold matching set"
+    },
+    "relevant_candidate_names": ["Mehdi Aouadi"]
+  },
+  {
+    "position": {
+      "position_id": "gold-data-bi",
+      "position_title": "Consultant Data / BI",
+      "required_skills": ["SQL / PL-SQL", "Power BI", "ETL"],
+      "required_sector_experience": null,
+      "minimum_years_experience": 5,
+      "source_span": "hand-crafted for ADQ-18 gold matching set"
+    },
+    "relevant_candidate_names": ["Salma Gharbi"]
+  },
+  {
+    "position": {
+      "position_id": "gold-qa",
+      "position_title": "Ingénieur QA / Tests",
+      "required_skills": ["Tests automatisés", "Selenium", "Playwright"],
+      "required_sector_experience": null,
+      "minimum_years_experience": 3,
+      "source_span": "hand-crafted for ADQ-18 gold matching set"
+    },
+    "relevant_candidate_names": ["Yosra Chaabane"]
+  },
+  {
+    "position": {
+      "position_id": "gold-chef-de-projet",
+      "position_title": "Chef de projet",
+      "required_skills": ["Gestion de projet"],
+      "required_sector_experience": "Bancaire",
+      "minimum_years_experience": 10,
+      "source_span": "hand-crafted for ADQ-18 gold matching set"
+    },
+    "relevant_candidate_names": ["Nadia Ben Salah"]
+  }
+]

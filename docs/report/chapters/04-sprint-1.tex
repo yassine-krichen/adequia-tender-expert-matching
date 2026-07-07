@@ -212,6 +212,54 @@ retry instead escalates to \texttt{invoke\_reasoning()}, a stronger model,
 keeping the common case cheap while giving a hard case a real second
 chance.
 
+\subsection{Asynchronous TDR Processing}
+
+A real multi-section TDR (up to 268 pages) takes well over a minute to
+process: every retained chunk is extracted by a separate LLM call, and a
+call can itself retry-escalate to the slower reasoning-tier model. Holding
+an HTTP request open for that long is not viable, and a silent
+\texttt{"Uploading..."} spinner for a minute-plus is indistinguishable from
+a hang from the user's side. \texttt{POST /tdrs} was reworked to return
+immediately (status \texttt{processing}) after creating a placeholder row
+and enqueueing the extraction job on an RQ worker
+(\texttt{app/worker/tasks.py}), backed by Redis. The worker reports its
+current stage (parsing, retrieving, extracting section $N$ of $M$, merging)
+to a short-lived Redis hash as it progresses; a new
+\texttt{GET /tdrs/\{id\}/status} endpoint reads it, and the dashboard polls
+that endpoint every 1.5 seconds, replacing the static spinner with live
+stage text until the row's status flips to \texttt{done} or \texttt{failed}.
+
+\subsection{Extraction Quality Evaluation Harness}
+
+Manually pasting an extraction result next to the source document and
+eyeballing it does not scale, and does not protect a document that was
+already fixed from silently regressing when a later change tunes retrieval
+or the extraction prompt for a different document. \texttt{backend/tests/eval/}
+formalizes this into a repeatable regression suite: each real sample TDR
+gets a hand-verified fixture (the expected expert positions, diplomas, and
+minimum years of experience, read once from the real document), and a
+parametrized test runs the actual extraction pipeline against real
+Groq/Gemini/Ollama calls and checks every fixture, printing an
+expected-vs-actual table on any mismatch. It is deliberately excluded from
+the default \texttt{pytest} run (real API quota, real wall-clock time) and
+run explicitly via \texttt{uv run pytest -m eval}. Going forward, improving
+extraction quality means: find a wrong extraction, add or correct its
+fixture, tune the pipeline, re-run the full suite -- every previously-fixed
+document is re-checked automatically, not just the one currently being
+looked at.
+
+\subsection{Frontend: Upload UX and Visual Identity}
+
+The upload flow was hardened past the happy path: a shared
+\texttt{FileUpload} component (built on shadcn's \texttt{@reui} file-upload
+primitive) restricts both the CV and TDR upload forms to a single file,
+and now surfaces an explicit message if a user drags multiple files onto
+the drop zone instead of silently keeping only the first. Separately, the
+dashboard's visual identity was finalized: a light/dark toggle (persisted
+via \texttt{next-themes}, with a keyboard shortcut) replaced a fixed
+dark-only palette, built on Tailwind v4's native \texttt{oklch()} color
+support. \texttt{docs/07-branding.md} documents the resulting palette.
+
 \section{Testing}
 
 The unit test suite (73 tests by the end of the sprint) covers: key-pool
@@ -241,8 +289,20 @@ with an external system holds.
 
 Intentionally not covered this sprint: true end-to-end integration tests
 that hit a live Groq/Gemini/Ollama endpoint as part of the automated suite
-(no committed API keys, by design), and any accuracy metric beyond manual
-spot-checking -- that's ADQ-8's gold-set annotation work, still ongoing.
+(no committed API keys, by design) -- that role is now filled by the
+extraction-quality eval harness described above, run on demand rather than
+on every commit.
+
+Beyond automated tests, a full multi-angle code review pass was run
+against every change this sprint (line-by-line correctness, removed
+behavior, cross-file consistency, reuse, simplification, efficiency, and
+convention adherence), plus \texttt{ruff}/\texttt{mypy} on the backend and
+\texttt{eslint}/\texttt{tsc} on the frontend as a standing quality gate.
+It surfaced five real correctness issues not yet fixed (tracked in
+\texttt{docs/12-sprint-2-handoff.md} for pickup next sprint) -- flagging
+them here rather than only in an internal note, since finding a problem
+before it reaches production is the point of doing this review at all, not
+something to omit for looking cleaner on paper.
 
 \section{Sprint Review}
 
@@ -253,6 +313,59 @@ metadata and expert positions with diploma/experience requirements)
 rendered correctly on the preview screen. All 6 synthetic CVs and all 3
 real TDRs were verified end-to-end against live Groq/Gemini/Ollama calls,
 across multiple repeated runs, by the end of the sprint -- not just once.
+
+\subsection{Live Demonstration}
+\label{sec:live-demo}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.85\textwidth]{tdr-preshowcase-extracting-state.png}
+  \caption{TDR upload in progress -- live stage text from the status-polling
+  endpoint, not a static spinner.}
+  \label{fig:tdr-extracting}
+\end{figure}
+
+Figure~\ref{fig:tdr-extracting} shows the asynchronous pipeline from
+Section~\ref{chap:sprint-1} (Implementation) in action: the page polls
+\texttt{GET /tdrs/\{id\}/status} and updates the visible stage as the RQ
+worker progresses through the document, instead of blocking the request
+thread for the full extraction time.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.85\textwidth]{tdr-showcase.png}
+  \caption{Completed TDR extraction -- mission metadata and expert
+  positions rendered from a real 268-page tender document.}
+  \label{fig:tdr-showcase}
+\end{figure}
+
+Figure~\ref{fig:tdr-showcase} is the same upload once the worker finishes:
+mission title, client, sector, and every extracted expert position with
+its mandatory diploma and minimum years of experience.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.85\textwidth]{candidate-showcase.png}
+  \caption{Completed CV extraction -- education, experience, and
+  certifications rendered from an uploaded candidate CV.}
+  \label{fig:candidate-showcase}
+\end{figure}
+
+Figure~\ref{fig:candidate-showcase} shows the mirror flow for a candidate
+CV, extracted synchronously (fast enough not to need the async treatment
+TDRs require).
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.85\textwidth]{swagger.png}
+  \caption{Auto-generated API documentation (Swagger UI) for the FastAPI
+  backend.}
+  \label{fig:swagger}
+\end{figure}
+
+Figure~\ref{fig:swagger} is the live API surface backing both screens
+above -- generated directly from the FastAPI route definitions and Pydantic
+schemas, not hand-maintained.
 
 \section{Sprint Retrospective}
 
@@ -286,7 +399,13 @@ Sprint 1 delivered a working, live-verified upload-to-extraction pipeline
 for both CVs and TDRs, with a multi-provider LLM routing layer robust
 enough to survive free-tier rate limits, quota exhaustion, and unreliable
 structured-output generation -- the foundation the matching and scoring
-work in later sprints depends on. The two open items (ADQ-8's gold-set
-annotation and ADQ-9's company data request) carry forward, the latter now
-tracked as a set of explicit, revisable working assumptions rather than a
-silent blocker.
+work in later sprints depends on. Beyond the original backlog, the sprint
+was extended to make that pipeline trustworthy under real use: an
+asynchronous processing path with live progress visibility for slow TDRs,
+a repeatable extraction-quality eval harness to replace manual
+eyeballing, and a hardened upload UX and finalized visual identity for the
+dashboard, all confirmed against the running application
+(Section~\ref{sec:live-demo}).
+The two open items (ADQ-8's gold-set annotation and ADQ-9's company data
+request) carry forward, the latter now tracked as a set of explicit,
+revisable working assumptions rather than a silent blocker.

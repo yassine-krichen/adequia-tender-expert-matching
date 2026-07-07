@@ -1,0 +1,282 @@
+[
+  {
+    "canonical_name": "Gestion de projet",
+    "aliases": ["Project management", "Pilotage de projet", "Conduite de projet", "PMO"]
+  },
+  {
+    "canonical_name": "Chef de projet",
+    "aliases": ["Project manager", "Team leader", "Team lead", "Responsable de projet"]
+  },
+  {
+    "canonical_name": "Méthodologie Agile",
+    "aliases": ["Agile methodology", "Agilité", "Agile"]
+  },
+  {
+    "canonical_name": "Scrum",
+    "aliases": ["Méthode Scrum", "Scrum framework"]
+  },
+  {
+    "canonical_name": "Kanban",
+    "aliases": ["Méthode Kanban"]
+  },
+  {
+    "canonical_name": "PMP",
+    "aliases": ["Project Management Professional", "Certification PMP"]
+  },
+  {
+    "canonical_name": "PRINCE2",
+    "aliases": ["Prince 2", "PRINCE2 Foundation", "PRINCE2 Practitioner"]
+  },
+  {
+    "canonical_name": "ITIL",
+    "aliases": ["ITIL Foundation", "IT Infrastructure Library"]
+  },
+  {
+    "canonical_name": "Scrum Master",
+    "aliases": ["Certified Scrum Master", "CSM", "Professional Scrum Master", "PSM"]
+  },
+  {
+    "canonical_name": "ISO 27001",
+    "aliases": ["ISO/IEC 27001", "Certification ISO 27001"]
+  },
+  {
+    "canonical_name": "ISO 9001",
+    "aliases": ["Certification ISO 9001", "Management de la qualité ISO 9001"]
+  },
+  {
+    "canonical_name": "CISSP",
+    "aliases": ["Certified Information Systems Security Professional"]
+  },
+  {
+    "canonical_name": "CISA",
+    "aliases": ["Certified Information Systems Auditor"]
+  },
+  {
+    "canonical_name": "TOGAF",
+    "aliases": ["TOGAF Certified", "The Open Group Architecture Framework"]
+  },
+  {
+    "canonical_name": "AWS Certified",
+    "aliases": ["Amazon Web Services Certification", "AWS Certified Solutions Architect"]
+  },
+  {
+    "canonical_name": "Microsoft Azure Certified",
+    "aliases": ["Azure Certification", "Microsoft Certified: Azure"]
+  },
+  {
+    "canonical_name": "Java",
+    "aliases": ["Java EE", "J2EE", "Spring", "Spring Boot"]
+  },
+  {
+    "canonical_name": "Python",
+    "aliases": ["Développement Python", "Python development"]
+  },
+  {
+    "canonical_name": "JavaScript",
+    "aliases": ["JS", "ECMAScript"]
+  },
+  {
+    "canonical_name": "TypeScript",
+    "aliases": ["TS"]
+  },
+  {
+    "canonical_name": "PHP",
+    "aliases": ["Symfony", "Laravel"]
+  },
+  {
+    "canonical_name": ".NET",
+    "aliases": ["C#", "ASP.NET", "dotnet"]
+  },
+  {
+    "canonical_name": "SQL",
+    "aliases": ["Structured Query Language", "PL/SQL", "T-SQL"]
+  },
+  {
+    "canonical_name": "Oracle Database",
+    "aliases": ["Oracle DB", "Oracle SGBD"]
+  },
+  {
+    "canonical_name": "PostgreSQL",
+    "aliases": ["Postgres"]
+  },
+  {
+    "canonical_name": "MySQL",
+    "aliases": []
+  },
+  {
+    "canonical_name": "MongoDB",
+    "aliases": ["Base de données NoSQL", "NoSQL"]
+  },
+  {
+    "canonical_name": "Linux",
+    "aliases": ["Administration Linux", "Systèmes Linux"]
+  },
+  {
+    "canonical_name": "Windows Server",
+    "aliases": ["Administration Windows Server"]
+  },
+  {
+    "canonical_name": "Docker",
+    "aliases": ["Conteneurisation", "Containerization"]
+  },
+  {
+    "canonical_name": "Kubernetes",
+    "aliases": ["K8s", "Orchestration de conteneurs"]
+  },
+  {
+    "canonical_name": "DevOps",
+    "aliases": ["Culture DevOps"]
+  },
+  {
+    "canonical_name": "CI/CD",
+    "aliases": ["Intégration continue", "Déploiement continu", "Continuous Integration", "Continuous Deployment"]
+  },
+  {
+    "canonical_name": "Git",
+    "aliases": ["Gestion de versions", "Version control", "GitHub", "GitLab"]
+  },
+  {
+    "canonical_name": "Angular",
+    "aliases": ["AngularJS"]
+  },
+  {
+    "canonical_name": "React",
+    "aliases": ["ReactJS", "React.js"]
+  },
+  {
+    "canonical_name": "Vue.js",
+    "aliases": ["VueJS"]
+  },
+  {
+    "canonical_name": "Node.js",
+    "aliases": ["NodeJS"]
+  },
+  {
+    "canonical_name": "API REST",
+    "aliases": ["REST API", "Web services REST", "RESTful API"]
+  },
+  {
+    "canonical_name": "Microservices",
+    "aliases": ["Architecture microservices"]
+  },
+  {
+    "canonical_name": "Cloud computing",
+    "aliases": ["AWS", "Azure", "GCP", "Google Cloud Platform", "Informatique en nuage"]
+  },
+  {
+    "canonical_name": "Réseaux informatiques",
+    "aliases": ["Networking", "Administration réseaux", "TCP/IP"]
+  },
+  {
+    "canonical_name": "Cybersécurité",
+    "aliases": ["Cybersecurity", "Sécurité informatique", "Information security"]
+  },
+  {
+    "canonical_name": "Analyse de données",
+    "aliases": ["Data analysis", "Data analytics"]
+  },
+  {
+    "canonical_name": "Business Intelligence",
+    "aliases": ["BI", "Décisionnel", "Informatique décisionnelle"]
+  },
+  {
+    "canonical_name": "ETL",
+    "aliases": ["Extract Transform Load", "Intégration de données"]
+  },
+  {
+    "canonical_name": "Machine Learning",
+    "aliases": ["Apprentissage automatique", "ML"]
+  },
+  {
+    "canonical_name": "Intelligence Artificielle",
+    "aliases": ["Artificial Intelligence", "IA", "AI"]
+  },
+  {
+    "canonical_name": "Analyse fonctionnelle",
+    "aliases": ["Functional analysis", "Analyste fonctionnel", "Business analyst"]
+  },
+  {
+    "canonical_name": "Rédaction de spécifications",
+    "aliases": ["Requirements writing", "Cahier des charges", "Spécifications techniques"]
+  },
+  {
+    "canonical_name": "Formation",
+    "aliases": ["Training", "Formateur", "Trainer"]
+  },
+  {
+    "canonical_name": "Support utilisateur",
+    "aliases": ["User support", "Support technique", "Technical support", "Helpdesk"]
+  },
+  {
+    "canonical_name": "Assurance qualité",
+    "aliases": ["Quality assurance", "QA"]
+  },
+  {
+    "canonical_name": "Tests logiciels",
+    "aliases": ["Software testing", "Test automation", "Tests automatisés", "QA testing"]
+  },
+  {
+    "canonical_name": "Audit informatique",
+    "aliases": ["IT audit", "Audit des systèmes d'information"]
+  },
+  {
+    "canonical_name": "Architecture logicielle",
+    "aliases": ["Software architecture", "Architecte logiciel", "Software architect"]
+  },
+  {
+    "canonical_name": "Urbanisation des systèmes d'information",
+    "aliases": ["Enterprise architecture", "Architecture d'entreprise"]
+  },
+  {
+    "canonical_name": "Transformation digitale",
+    "aliases": ["Digital transformation", "Transformation numérique"]
+  },
+  {
+    "canonical_name": "Secteur bancaire",
+    "aliases": ["Banking sector", "Banque", "Finance"]
+  },
+  {
+    "canonical_name": "Secteur télécom",
+    "aliases": ["Telecom sector", "Télécommunications", "Telecommunications"]
+  },
+  {
+    "canonical_name": "Secteur public",
+    "aliases": ["Public sector", "Administration publique", "Secteur gouvernemental"]
+  },
+  {
+    "canonical_name": "Secteur santé",
+    "aliases": ["Healthcare sector", "Santé", "Healthcare"]
+  },
+  {
+    "canonical_name": "Assurance",
+    "aliases": ["Insurance", "Secteur assurance"]
+  },
+  {
+    "canonical_name": "Génie logiciel",
+    "aliases": ["Software engineering", "Ingénierie logicielle"]
+  },
+  {
+    "canonical_name": "Systèmes d'information",
+    "aliases": ["Information systems", "SI"]
+  },
+  {
+    "canonical_name": "Gestion des risques",
+    "aliases": ["Risk management", "Management des risques"]
+  },
+  {
+    "canonical_name": "Gestion du changement",
+    "aliases": ["Change management", "Conduite du changement"]
+  },
+  {
+    "canonical_name": "Contrôle de gestion",
+    "aliases": ["Management control", "Gestion financière"]
+  },
+  {
+    "canonical_name": "ERP",
+    "aliases": ["Enterprise Resource Planning", "SAP", "Progiciel de gestion intégré"]
+  },
+  {
+    "canonical_name": "CRM",
+    "aliases": ["Customer Relationship Management", "Gestion de la relation client"]
+  }
+]

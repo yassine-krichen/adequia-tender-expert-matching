@@ -51,6 +51,10 @@ cd backend
 uv sync
 uv run alembic upgrade head
 
+# 4b. Seed the skill/certification taxonomy (needed for normalize_skills,
+# sprint 2+) — safe to re-run, upserts on canonical_name
+uv run python scripts/seed_skill_taxonomy.py
+
 # 5. Node deps
 cd ../frontend
 pnpm install

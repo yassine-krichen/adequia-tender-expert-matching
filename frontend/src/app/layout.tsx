@@ -1,16 +1,20 @@
 import type { Metadata } from 'next';
-import { Inter, Space_Grotesk } from 'next/font/google';
+import { Geist_Mono, Inter, Space_Grotesk } from 'next/font/google';
 
+import { ThemeProvider } from '@/common/components/theme-provider';
+import { cn } from '@/common/lib/utils';
 import '@/styles/globals.css';
 
-const spaceGrotesk = Space_Grotesk({
+const spaceGroteskHeading = Space_Grotesk({
   subsets: ['latin'],
-  variable: '--font-space-grotesk',
+  variable: '--font-heading',
 });
 
-const inter = Inter({
+const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
+
+const fontMono = Geist_Mono({
   subsets: ['latin'],
-  variable: '--font-inter',
+  variable: '--font-mono',
 });
 
 export const metadata: Metadata = {
@@ -20,8 +24,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr" className="dark">
-      <body className={`${spaceGrotesk.variable} ${inter.variable} font-sans`}>{children}</body>
+    <html
+      lang="fr"
+      suppressHydrationWarning
+      className={cn('antialiased', fontMono.variable, 'font-sans', inter.variable, spaceGroteskHeading.variable)}
+    >
+      <body>
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   );
 }

@@ -46,6 +46,11 @@ class CV(Base):
     raw_text: Mapped[str] = mapped_column(Text, nullable=False)
     source_file_path: Mapped[str | None] = mapped_column(Text)
     extracted_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    # Coarse-retrieval embedding over the CV's skills/experience text —
+    # computed once at ingestion (CandidatesService.upload_cv), never
+    # per-TDR. Nullable: rows inserted before migration 0003 need the
+    # backfill script (backend/scripts/backfill_cv_embeddings.py).
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIMENSION))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"))
 
 

@@ -19,7 +19,15 @@ _SYNTHETIC_CV_PATH = (
 )
 
 
+class _FakeEmbeddings:
+    def embed_query(self, text: str) -> list[float]:
+        return [1.0]
+
+
 class _FakeRouter:
+    def get_embedding_model(self) -> _FakeEmbeddings:
+        return _FakeEmbeddings()
+
     def invoke_extraction(
         self, messages: Sequence[Any], structured_output: type[Any] | None = None
     ) -> _CVExtraction:
@@ -84,3 +92,4 @@ async def test_upload_cv_extracts_and_persists_candidate_and_cv() -> None:
     assert candidate_rows[0].full_name == "Nadia Ben Salah"
     assert cv_rows[0].candidate_id == candidate_rows[0].candidate_id
     assert cv_rows[0].extracted_json["full_name"] == "Nadia Ben Salah"
+    assert cv_rows[0].embedding == [1.0]

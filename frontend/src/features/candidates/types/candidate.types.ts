@@ -1,7 +1,10 @@
+// Mirrors backend/app/features/candidates/schemas.py CandidateSummary
+// field-for-field (snake_case) -- same no-translation-layer convention as
+// CandidateCvExtraction below.
 export type Candidate = {
-  candidateId: string;
-  fullName: string;
-  lastUpdated: string;
+  candidate_id: string;
+  full_name: string;
+  last_updated: string;
 };
 
 // Mirrors backend/app/domain/cv.py field-for-field (including snake_case)

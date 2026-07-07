@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db_session
 from app.domain.cv import CandidateCV
+from app.features.candidates.schemas import CandidateSummary
 from app.features.candidates.service import CandidatesService
 
 router = APIRouter(prefix="/candidates", tags=["candidates"])
@@ -16,6 +17,6 @@ async def upload_cv(
     return await service.upload_cv(file, session)
 
 
-@router.get("", response_model=list[CandidateCV])
-async def list_candidates() -> list[CandidateCV]:
-    return await service.list_candidates()
+@router.get("", response_model=list[CandidateSummary])
+async def list_candidates(session: AsyncSession = Depends(get_db_session)) -> list[CandidateSummary]:
+    return await service.list_candidates(session)

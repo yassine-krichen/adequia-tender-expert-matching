@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db_session
 from app.domain.tdr import TDR
-from app.features.tdrs.schemas import TdrStatus, TdrUploadAck
+from app.features.tdrs.schemas import MatchingStatus, TdrStatus, TdrUploadAck
 from app.features.tdrs.service import TdrsService
 
 router = APIRouter(prefix="/tdrs", tags=["tdrs"])
@@ -30,5 +30,12 @@ async def get_tdr(tdr_id: str, session: AsyncSession = Depends(get_db_session)) 
 
 
 @router.post("/{tdr_id}/match", status_code=202)
-async def run_matching(tdr_id: str) -> None:
-    await service.run_matching(tdr_id)
+async def run_matching(
+    tdr_id: str, session: AsyncSession = Depends(get_db_session)
+) -> None:
+    await service.run_matching(tdr_id, session)
+
+
+@router.get("/{tdr_id}/match-status", response_model=MatchingStatus)
+async def get_matching_status(tdr_id: str) -> MatchingStatus:
+    return await service.get_matching_status(tdr_id)

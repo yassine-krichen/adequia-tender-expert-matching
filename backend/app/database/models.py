@@ -112,6 +112,9 @@ class MatchResult(Base):
         UUID(as_uuid=True), ForeignKey("expert_positions.position_id")
     )
     hard_filter_passed: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    # Human-readable failure reasons from score.check_hard_filters -- shown
+    # on the matching results page when hard_filter_passed is false.
+    hard_filter_failures_json: Mapped[list[str] | None] = mapped_column(JSONB)
     compatibility_score: Mapped[float | None] = mapped_column(Numeric)
     sub_scores_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     rationale: Mapped[str | None] = mapped_column(Text)

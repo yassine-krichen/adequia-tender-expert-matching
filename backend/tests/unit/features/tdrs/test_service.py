@@ -143,3 +143,64 @@ async def test_get_tdr_returns_the_extracted_tdr_once_done() -> None:
 
     assert tdr.mission_title == "Mission"
     assert tdr.tdr_id == str(tdr_id)
+
+
+async def test_run_matching_enqueues_when_extraction_is_done() -> None:
+    tdr_id = uuid4()
+    session = _FakeSession()
+    session.added.append(TDRModel(tdr_id=tdr_id, status="done"))
+    queue = _FakeQueue()
+    service = TdrsService(queue=queue, redis_client=_FakeRedis())  # type: ignore[arg-type]
+
+    await service.run_matching(str(tdr_id), session)  # type: ignore[arg-type]
+
+    assert len(queue.enqueued) == 1
+    func, args, job_timeout = queue.enqueued[0]
+    assert func.__name__ == "run_matching"
+    assert args == (str(tdr_id),)
+    assert job_timeout >= 300
+
+
+async def test_run_matching_raises_not_found_for_unknown_tdr_id() -> None:
+    service = TdrsService(queue=_FakeQueue(), redis_client=_FakeRedis())  # type: ignore[arg-type]
+
+    with pytest.raises(NotFoundError):
+        await service.run_matching(str(uuid4()), _FakeSession())  # type: ignore[arg-type]
+
+
+async def test_run_matching_raises_not_ready_while_extraction_still_processing() -> None:
+    tdr_id = uuid4()
+    session = _FakeSession()
+    session.added.append(TDRModel(tdr_id=tdr_id, status="processing"))
+    service = TdrsService(queue=_FakeQueue(), redis_client=_FakeRedis())  # type: ignore[arg-type]
+
+    with pytest.raises(ResourceNotReadyError):
+        await service.run_matching(str(tdr_id), session)  # type: ignore[arg-type]
+
+
+async def test_get_matching_status_reports_not_started_with_no_redis_key() -> None:
+    service = TdrsService(queue=_FakeQueue(), redis_client=_FakeRedis())  # type: ignore[arg-type]
+
+    status = await service.get_matching_status(str(uuid4()))
+
+    assert status.status == "not_started"
+
+
+async def test_get_matching_status_reports_processing_progress() -> None:
+    tdr_id = uuid4()
+    redis = _FakeRedis(
+        {
+            f"tdr:{tdr_id}:matching_progress": {
+                b"status": b"processing",
+                b"positions_done": b"1",
+                b"positions_total": b"3",
+            }
+        }
+    )
+    service = TdrsService(queue=_FakeQueue(), redis_client=redis)  # type: ignore[arg-type]
+
+    status = await service.get_matching_status(str(tdr_id))
+
+    assert status.status == "processing"
+    assert status.positions_done == 1
+    assert status.positions_total == 3

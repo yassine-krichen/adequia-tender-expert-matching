@@ -12,7 +12,8 @@ from app.common.exceptions import NotFoundError, ResourceNotReadyError
 from app.config.settings import get_settings
 from app.database.models import TDR as TDRModel
 from app.domain.tdr import TDR
-from app.features.tdrs.schemas import TdrStatus, TdrUploadAck
+from app.features.tdrs.schemas import MatchingStatus, TdrStatus, TdrUploadAck
+from app.worker import matching_tasks
 from app.worker.tasks import run_tdr_extraction
 
 logger = logging.getLogger(__name__)
@@ -41,6 +42,11 @@ class JobQueue(Protocol):
 # that situation -- the job timeout should not be the thing that decides
 # whether an otherwise-successful extraction finishes.
 _JOB_TIMEOUT_SECONDS = 600
+# Matching runs one shortlist (~10 candidates) through embedding-only
+# retrieval/scoring per position -- cheaper than a full TDR extraction, but
+# uses the same generous ceiling for the same reason: it shouldn't be the
+# thing that decides whether an otherwise-successful run finishes.
+_MATCHING_JOB_TIMEOUT_SECONDS = 600
 
 
 class TdrsService:
@@ -118,10 +124,33 @@ class TdrsService:
         assert row.extracted_json is not None  # guaranteed once status == "done"
         return TDR.model_validate(row.extracted_json)
 
-    async def run_matching(self, tdr_id: str) -> None:
+    async def run_matching(self, tdr_id: str, session: AsyncSession) -> None:
         """Kicks off the matching pipeline for every position on this TDR.
 
         Coarse retrieval shortlists ~8-10 candidates per position before the
         full graph runs — see docs/01-architecture.md two-phase matching.
+        Runs on the RQ worker (app/worker/matching_tasks.py), same reasoning
+        as TDR extraction — poll GET /tdrs/{tdr_id}/match-status.
         """
-        raise NotImplementedError
+        row = await session.get(TDRModel, UUID(tdr_id))
+        if row is None:
+            raise NotFoundError(f"No TDR with id {tdr_id}")
+        if row.status != "done":
+            raise ResourceNotReadyError(f"TDR {tdr_id} extraction hasn't finished yet")
+
+        self._queue.enqueue(
+            matching_tasks.run_matching, tdr_id, job_timeout=_MATCHING_JOB_TIMEOUT_SECONDS
+        )
+
+    async def get_matching_status(self, tdr_id: str) -> MatchingStatus:
+        progress = await asyncio.to_thread(
+            self._redis.hgetall, matching_tasks.matching_progress_key(tdr_id)
+        )
+        if not progress:
+            return MatchingStatus(tdr_id=tdr_id, status="not_started")
+        return MatchingStatus(
+            tdr_id=tdr_id,
+            status=_decode(progress.get(b"status", b"processing")),
+            positions_done=int(_decode(progress.get(b"positions_done", b"0"))),
+            positions_total=int(_decode(progress.get(b"positions_total", b"0"))),
+        )

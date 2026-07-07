@@ -26,3 +26,19 @@ class TdrStatus(BaseModel):
     chunks_done: int | None = None
     chunks_total: int | None = None
     error_message: str | None = None
+
+
+class MatchingStatus(BaseModel):
+    """GET /tdrs/{tdr_id}/match-status response.
+
+    Mirrors TdrStatus's shape for the matching run instead of extraction —
+    comes from the worker's Redis progress hash (see
+    app/worker/matching_tasks.py), which expires once the run finishes.
+    "not_started" means POST /tdrs/{tdr_id}/match hasn't been called yet
+    (no Redis key exists).
+    """
+
+    tdr_id: str
+    status: str  # "not_started" | "processing" | "done" | "failed"
+    positions_done: int | None = None
+    positions_total: int | None = None

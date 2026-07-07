@@ -1,10 +1,18 @@
 'use client';
 
+import { Info } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { FileUpload } from '@/common/components/file-upload';
 import { Button } from '@/common/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/common/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/common/components/ui/table';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/common/components/ui/tooltip';
+import { Badge } from '@/components/reui/badge';
+import { getMatchingStatus } from '@/features/matching/api/get-matching-status';
+import { getPositionMatches } from '@/features/matching/api/get-position-matches';
+import { runMatching } from '@/features/matching/api/run-matching';
+import type { MatchResult, MatchingStatus } from '@/features/matching/types/match.types';
 import { getTdr } from '@/features/tdrs/api/get-tdr';
 import { getTdrStatus } from '@/features/tdrs/api/get-tdr-status';
 import { uploadTdr } from '@/features/tdrs/api/upload-tdr';
@@ -29,6 +37,96 @@ function describeStep(status: TdrStatus): string {
   }
 }
 
+function describeMatchingProgress(status: MatchingStatus): string {
+  if (status.positions_total) {
+    return `Matching position ${(status.positions_done ?? 0) + 1} of ${status.positions_total}…`;
+  }
+  return 'Starting matching…';
+}
+
+function InfoTooltip({ text }: { text: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Info className="size-3.5 text-muted-foreground" aria-label="More info" />
+      </TooltipTrigger>
+      <TooltipContent>{text}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+function SubScoreBar({ label, value }: { label: string; value: number }) {
+  const percent = Math.round(value * 100);
+  return (
+    <div className="flex items-center gap-2 text-xs">
+      <span className="w-12 text-muted-foreground">{label}</span>
+      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted" role="presentation">
+        <div className="h-full bg-primary" style={{ width: `${percent}%` }} />
+      </div>
+      <span className="w-8 text-right text-muted-foreground">{percent}%</span>
+    </div>
+  );
+}
+
+function PositionMatches({ matches }: { matches: MatchResult[] }) {
+  if (matches.length === 0) {
+    return <p className="text-sm text-muted-foreground">No shortlisted candidates for this position.</p>;
+  }
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Candidate</TableHead>
+          <TableHead>
+            <span className="inline-flex items-center gap-1">
+              Compatibility
+              <InfoTooltip text="Overall match score combining skill coverage and sector fit against this position's requirements." />
+            </span>
+          </TableHead>
+          <TableHead>
+            <span className="inline-flex items-center gap-1">
+              Hard filter
+              <InfoTooltip text="Whether the candidate meets this position's mandatory requirements (diploma, minimum experience, required certifications). A failed hard filter means the candidate wasn't scored further." />
+            </span>
+          </TableHead>
+          <TableHead>Sub-scores</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {matches.map((match) => (
+          <TableRow key={match.match_id}>
+            <TableCell>{match.candidate_full_name}</TableCell>
+            <TableCell>
+              {match.compatibility_score != null ? `${Math.round(match.compatibility_score * 100)}%` : '—'}
+            </TableCell>
+            <TableCell>
+              {match.hard_filter_passed ? (
+                <Badge variant="success-light">Passed</Badge>
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="destructive-light">Failed</Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>{match.hard_filter_failures.join('; ')}</TooltipContent>
+                </Tooltip>
+              )}
+            </TableCell>
+            <TableCell>
+              {match.sub_scores && (
+                <div className="min-w-32 space-y-1">
+                  <SubScoreBar label="Skill" value={match.sub_scores.skill_score} />
+                  <SubScoreBar label="Sector" value={match.sub_scores.sector_score} />
+                </div>
+              )}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
 export default function TdrsPage() {
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<TdrExtraction | null>(null);
@@ -37,9 +135,16 @@ export default function TdrsPage() {
   const [isUploading, setIsUploading] = useState(false);
   const pollHandle = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [matchingStatus, setMatchingStatus] = useState<MatchingStatus['status']>('not_started');
+  const [matchingMessage, setMatchingMessage] = useState<string | null>(null);
+  const [matchingError, setMatchingError] = useState<string | null>(null);
+  const [matchesByPosition, setMatchesByPosition] = useState<Record<string, MatchResult[]>>({});
+  const matchPollHandle = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     return () => {
       if (pollHandle.current) clearTimeout(pollHandle.current);
+      if (matchPollHandle.current) clearTimeout(matchPollHandle.current);
     };
   }, []);
 
@@ -88,6 +193,73 @@ export default function TdrsPage() {
     pollHandle.current = setTimeout(poll, POLL_INTERVAL_MS);
   }
 
+  function stopMatchPolling() {
+    if (matchPollHandle.current) {
+      clearTimeout(matchPollHandle.current);
+      matchPollHandle.current = null;
+    }
+  }
+
+  async function fetchAllPositionMatches(positions: TdrExtraction['positions']) {
+    const results = await Promise.all(
+      positions.map((position) => getPositionMatches(position.position_id))
+    );
+    const byPosition: Record<string, MatchResult[]> = {};
+    results.forEach((matchResult, index) => {
+      if (matchResult.error === null) {
+        byPosition[positions[index].position_id] = matchResult.data;
+      }
+    });
+    setMatchesByPosition(byPosition);
+  }
+
+  function pollMatchingUntilDone(tdrId: string, positions: TdrExtraction['positions']) {
+    async function poll() {
+      const statusResult = await getMatchingStatus(tdrId);
+      if (statusResult.error !== null) {
+        stopMatchPolling();
+        setMatchingStatus('failed');
+        setMatchingError(statusResult.error);
+        return;
+      }
+      const status = statusResult.data;
+      if (status.status === 'processing') {
+        setMatchingMessage(describeMatchingProgress(status));
+        matchPollHandle.current = setTimeout(poll, POLL_INTERVAL_MS);
+        return;
+      }
+
+      stopMatchPolling();
+      setMatchingStatus(status.status);
+      if (status.status === 'failed') {
+        setMatchingError('Matching failed');
+        return;
+      }
+
+      await fetchAllPositionMatches(positions);
+    }
+
+    matchPollHandle.current = setTimeout(poll, POLL_INTERVAL_MS);
+  }
+
+  async function handleRunMatching() {
+    if (!result) return;
+
+    setMatchingStatus('processing');
+    setMatchingError(null);
+    setMatchesByPosition({});
+    setMatchingMessage('Starting matching…');
+
+    const runResult = await runMatching(result.tdr_id);
+    if (runResult.error !== null) {
+      setMatchingStatus('failed');
+      setMatchingError(runResult.error);
+      return;
+    }
+
+    pollMatchingUntilDone(result.tdr_id, result.positions);
+  }
+
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (!file) return;
@@ -96,6 +268,10 @@ export default function TdrsPage() {
     setError(null);
     setResult(null);
     setStatusMessage('Uploading…');
+    stopMatchPolling();
+    setMatchingStatus('not_started');
+    setMatchingError(null);
+    setMatchesByPosition({});
 
     const uploadResult = await uploadTdr(file);
     if (uploadResult.error !== null) {
@@ -149,18 +325,42 @@ export default function TdrsPage() {
             <p>Client: {result.client ?? '—'}</p>
             <p>Sector: {result.sector ?? '—'}</p>
 
-            <div>
-              <h3 className="font-heading text-sm text-muted-foreground">Expert positions</h3>
-              <ul className="list-inside list-disc">
-                {result.positions.map((position) => (
-                  <li key={position.position_id}>
-                    {position.position_title}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-heading text-sm text-muted-foreground">Expert positions</h3>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleRunMatching}
+                  disabled={matchingStatus === 'processing'}
+                >
+                  {matchingStatus === 'processing' ? 'Matching…' : 'Run matching'}
+                </Button>
+              </div>
+              {matchingStatus === 'processing' && matchingMessage && (
+                <p className="text-sm text-muted-foreground" role="status">
+                  {matchingMessage}
+                </p>
+              )}
+              {matchingStatus === 'failed' && matchingError && (
+                <p role="alert" className="text-sm text-destructive">
+                  {matchingError}
+                </p>
+              )}
+
+              {result.positions.map((position) => (
+                <div key={position.position_id} className="space-y-2 border-t border-border pt-3">
+                  <p>
+                    <span className="font-medium">{position.position_title}</span>
                     {position.minimum_years_experience != null &&
                       ` — ${position.minimum_years_experience}+ years`}
                     {position.mandatory_diploma && ` — ${position.mandatory_diploma}`}
-                  </li>
-                ))}
-              </ul>
+                  </p>
+                  {matchingStatus === 'done' && matchesByPosition[position.position_id] && (
+                    <PositionMatches matches={matchesByPosition[position.position_id]} />
+                  )}
+                </div>
+              ))}
             </div>
 
             <details>

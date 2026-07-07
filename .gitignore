@@ -34,6 +34,9 @@ Thumbs.db
 # Docker
 pgdata/
 
+# Local tooling scratch output
+.playwright-mcp/
+
 # LaTeX build artifacts
 docs/report/*.aux
 docs/report/*.log

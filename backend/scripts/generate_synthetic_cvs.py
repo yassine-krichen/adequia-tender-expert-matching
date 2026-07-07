@@ -1,10 +1,15 @@
 """Generates synthetic CV fixtures for pipeline testing (ADQ-3/5/8).
 
-ST2i does not allow using real employee CVs, so this produces a small,
-varied batch of fabricated candidates instead — profiles roughly aligned
-with the expert positions requested in the real TDR samples in
-docs/tdrs/ (IT project/team lead, software architecture, database/BI,
-functional analysis, QA, DevOps). Mixed PDF/docx to exercise both parsers.
+ST2i does not allow using real employee CVs, so this produces a fabricated
+candidate pool instead — profiles aligned with the expert positions
+requested in the real TDR samples in docs/tdrs/. The first 6 cover classic
+IT-staffing profiles (project/team lead, software architecture,
+database/BI, functional analysis, QA, DevOps). The next 5 (added once a
+batch of AI/RAG/security/mobile/.NET TDRs were sourced) close the gaps
+those expose: an AI/RAG engineer, a mobile + conversational-AI developer,
+a cybersecurity/secure-development specialist, a .NET/C# enterprise
+developer, and a software architect (microservices/design patterns/CI
+toolchain). Mixed PDF/docx to exercise both parsers.
 
 Run from backend/: `uv run python scripts/generate_synthetic_cvs.py`
 """
@@ -368,6 +373,299 @@ CANDIDATES: list[Candidate] = [
             "CI/CD",
             "Linux",
             "Supervision (Prometheus/Grafana)",
+        ],
+        file_format="docx",
+    ),
+    # Added for ADQ-10+ taxonomy coverage: the original 6 candidates only
+    # cover classic IT-staffing profiles (PM, backend, BI, functional
+    # analysis, QA, DevOps infra). Real TDRs sourced since then (RAG/LLM
+    # knowledge hubs, AI chatbots, secure web development, .NET/C#
+    # enterprise systems, mobile+conversational-AI apps) expose real
+    # candidate-pool gaps -- these 5 fill them, each grounded in an actual
+    # skill/cert vocabulary pulled from those TDRs, not invented.
+    Candidate(
+        full_name="Ines Belhadj",
+        email="ines.belhadj@example.com",
+        phone="+216 25 741 369",
+        summary=(
+            "Ingénieure IA avec 6 ans d'expérience en traitement du langage "
+            "naturel et architectures RAG, spécialisée dans la conception de "
+            "hubs de connaissances et d'assistants conversationnels pour le "
+            "secteur public."
+        ),
+        education=[
+            Education("Diplôme d'ingénieur", "Data Science & Intelligence Artificielle", "ENSI, Manouba", 2018),
+        ],
+        certifications=[
+            Certification(
+                "Google Cloud Professional Machine Learning Engineer", "Google Cloud", "2023-05"
+            ),
+        ],
+        experience=[
+            Experience(
+                "Ingénieure IA",
+                "ST2i",
+                "Secteur public / IA appliquée",
+                "2022-03",
+                None,
+                [
+                    "Conception d'une architecture RAG (Retrieval-Augmented Generation) pour "
+                    "un hub de connaissances documentaire ministériel avec citations "
+                    "vérifiables",
+                    "Mise en place d'un pipeline d'ingestion et d'indexation vectorielle sur "
+                    "une base de documents réglementaires",
+                    "Développement d'un chatbot conversationnel basé sur des grands modèles "
+                    "de langage (LLM), avec mitigation des hallucinations",
+                ],
+            ),
+            Experience(
+                "Data Scientist",
+                "InstaDeep Tunis",
+                "Tech / IA",
+                "2018-09",
+                "2022-02",
+                [
+                    "Traitement du langage naturel et analyse de sentiment sur des données "
+                    "de réseaux sociaux",
+                    "Développement de modèles de machine learning pour l'analyse prédictive",
+                ],
+            ),
+        ],
+        languages=["Arabe (natif)", "Français (courant)", "Anglais (courant)"],
+        skills=[
+            "Python",
+            "Machine Learning",
+            "Intelligence Artificielle Générative",
+            "Grands modèles de langage",
+            "Retrieval-Augmented Generation",
+            "LangChain",
+            "Traitement du langage naturel",
+            "Prompt Engineering",
+            "Base de données vectorielle",
+        ],
+        file_format="docx",
+    ),
+    Candidate(
+        full_name="Youssef Kammoun",
+        email="youssef.kammoun@example.com",
+        phone="+216 27 852 963",
+        summary=(
+            "Développeur mobile avec 5 ans d'expérience dans la conception "
+            "d'applications multi-plateformes et l'intégration d'assistants "
+            "virtuels intelligents pour des projets à impact social."
+        ),
+        education=[
+            Education("Diplôme d'ingénieur", "Génie Logiciel", "ISIMM, Monastir", 2019),
+        ],
+        certifications=[
+            Certification("Associate Android Developer", "Google", "2021-08"),
+        ],
+        experience=[
+            Experience(
+                "Développeur Mobile Senior",
+                "ST2i",
+                "Secteur public / Inclusion sociale",
+                "2021-06",
+                None,
+                [
+                    "Développement d'une application mobile multi-plateforme (Flutter) pour "
+                    "l'accompagnement de jeunes vers l'emploi et la formation",
+                    "Intégration d'un assistant virtuel conversationnel (chatbot NLP) pour "
+                    "guider le parcours utilisateur",
+                    "Mise en place de l'authentification et d'une base de données temps réel "
+                    "(Firebase)",
+                ],
+            ),
+            Experience(
+                "Développeur Full-Stack",
+                "Expensya",
+                "Tech / Fintech",
+                "2019-02",
+                "2021-05",
+                [
+                    "Développement backend Node.js et applications front-end React",
+                    "Intégration d'API tierces et de services de paiement",
+                ],
+            ),
+        ],
+        languages=["Arabe (natif)", "Français (courant)", "Anglais (B2)"],
+        skills=[
+            "Flutter",
+            "React",
+            "Node.js",
+            "Firebase",
+            "MongoDB",
+            "Chatbot conversationnel",
+            "UX Design",
+        ],
+        file_format="pdf",
+    ),
+    Candidate(
+        full_name="Rania Snoussi",
+        email="rania.snoussi@example.com",
+        phone="+216 28 963 741",
+        summary=(
+            "Experte cybersécurité avec 9 ans d'expérience en développement "
+            "sécurisé et audit applicatif, spécialisée dans la remédiation "
+            "des vulnérabilités web et la mise en place de mécanismes "
+            "d'authentification unique pour des plateformes gouvernementales."
+        ),
+        education=[
+            Education("Diplôme d'ingénieur", "Sécurité Informatique", "SUP'COM, Tunis", 2015),
+        ],
+        certifications=[
+            Certification("CISSP", "(ISC)²", "2019-09"),
+        ],
+        experience=[
+            Experience(
+                "Experte Cybersécurité",
+                "ST2i",
+                "Secteur public / GovTech",
+                "2020-01",
+                None,
+                [
+                    "Audit de sécurité applicative (OWASP Top 10) sur des plateformes web "
+                    "gouvernementales",
+                    "Mise en œuvre de mécanismes d'authentification unique (SSO SAML / "
+                    "OAuth 2.0)",
+                    "Remédiation de vulnérabilités XSS, CSRF et injection SQL sur des "
+                    "applications legacy",
+                ],
+            ),
+            Experience(
+                "Consultante Sécurité",
+                "Deloitte Tunisie",
+                "Conseil / Cybersécurité",
+                "2015-09",
+                "2019-12",
+                [
+                    "Tests d'intrusion et revues de code sécurisé pour des clients du "
+                    "secteur financier",
+                    "Sensibilisation des équipes de développement aux bonnes pratiques "
+                    "OWASP",
+                ],
+            ),
+        ],
+        languages=["Arabe (natif)", "Français (courant)", "Anglais (courant)"],
+        skills=[
+            "Cybersécurité",
+            "OWASP",
+            "Injection SQL",
+            "XSS",
+            "CSRF",
+            "SSO",
+            "SAML",
+            "OAuth 2.0",
+            "Cryptographie applicative",
+        ],
+        file_format="docx",
+    ),
+    Candidate(
+        full_name="Walid Mejri",
+        email="walid.mejri@example.com",
+        phone="+216 29 174 852",
+        summary=(
+            "Développeur .NET/C# senior avec 8 ans d'expérience dans la "
+            "conception d'applications d'entreprise multi-niveaux pour la "
+            "gestion financière publique."
+        ),
+        education=[
+            Education("Diplôme d'ingénieur", "Informatique", "ENIT, Tunis", 2016),
+        ],
+        certifications=[
+            Certification("Microsoft Azure Certified", "Microsoft", "2021-03"),
+        ],
+        experience=[
+            Experience(
+                "Développeur .NET Senior",
+                "ST2i",
+                "Secteur public / Systèmes d'information",
+                "2019-09",
+                None,
+                [
+                    "Développement d'applications ASP.NET MVC multi-niveaux pour la gestion "
+                    "financière publique",
+                    "Conception de modèles de données avec Entity Framework sur SQL Server",
+                    "Migration d'applications legacy vers des environnements Azure",
+                ],
+            ),
+            Experience(
+                "Développeur C#",
+                "Vermeg",
+                "Fintech",
+                "2016-09",
+                "2019-08",
+                [
+                    "Développement de modules cœur métier en C#/.NET",
+                    "Intégration de tableaux de bord Business Intelligence",
+                ],
+            ),
+        ],
+        languages=["Arabe (natif)", "Français (courant)", "Anglais (B2)"],
+        skills=[
+            ".NET",
+            "ASP.NET MVC",
+            "Entity Framework",
+            "SQL Server",
+            "Cloud computing",
+            "Business Intelligence",
+        ],
+        file_format="pdf",
+    ),
+    Candidate(
+        full_name="Nizar Chebbi",
+        email="nizar.chebbi@example.com",
+        phone="+216 20 486 357",
+        summary=(
+            "Architecte logiciel avec 11 ans d'expérience en conception "
+            "d'architectures microservices et en mise en place de chaînes "
+            "d'intégration continue pour des systèmes d'information "
+            "sectoriels."
+        ),
+        education=[
+            Education("Diplôme d'ingénieur", "Génie Logiciel", "INSAT, Tunis", 2013),
+            Education("Master", "Architecture des Systèmes Logiciels", "Faculté des Sciences de Tunis", 2015),
+        ],
+        certifications=[
+            Certification("TOGAF", "The Open Group", "2020-11"),
+        ],
+        experience=[
+            Experience(
+                "Architecte Logiciel",
+                "ST2i",
+                "Secteur public / IT",
+                "2018-04",
+                None,
+                [
+                    "Définition d'architectures microservices pour des systèmes "
+                    "d'information multi-modules",
+                    "Application de design patterns (GoF) pour la refactorisation "
+                    "d'applications legacy",
+                    "Mise en place de pipelines GitLab CI/CD avec analyse statique de code "
+                    "(SonarQube) et formation des équipes au Test-Driven Development",
+                ],
+            ),
+            Experience(
+                "Ingénieur Logiciel Senior",
+                "Sofrecom Tunisie",
+                "Télécommunications",
+                "2013-09",
+                "2018-03",
+                [
+                    "Modélisation UML et développement d'applications Java/Spring",
+                ],
+            ),
+        ],
+        languages=["Arabe (natif)", "Français (courant)", "Anglais (courant)"],
+        skills=[
+            "Architecture logicielle",
+            "Microservices",
+            "Design Patterns",
+            "MVC",
+            "UML",
+            "GitLab CI/CD",
+            "SonarQube",
+            "Test-Driven Development",
         ],
         file_format="docx",
     ),

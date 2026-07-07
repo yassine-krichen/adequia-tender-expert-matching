@@ -157,7 +157,7 @@
   },
   {
     "canonical_name": "Microservices",
-    "aliases": ["Architecture microservices"]
+    "aliases": ["Architecture microservices", "Microservices Architecture and Design"]
   },
   {
     "canonical_name": "Cloud computing",
@@ -278,5 +278,141 @@
   {
     "canonical_name": "CRM",
     "aliases": ["Customer Relationship Management", "Gestion de la relation client"]
+  },
+  {
+    "canonical_name": "Intelligence Artificielle Générative",
+    "aliases": ["Generative AI", "GenAI", "IA générative"]
+  },
+  {
+    "canonical_name": "Grands modèles de langage",
+    "aliases": ["Large Language Models", "LLM", "LLMs", "Large Language Model"]
+  },
+  {
+    "canonical_name": "Retrieval-Augmented Generation",
+    "aliases": ["RAG", "RAG architecture", "Semantic search", "Recherche sémantique", "Hallucination mitigation", "Knowledge hub"]
+  },
+  {
+    "canonical_name": "Traitement du langage naturel",
+    "aliases": ["NLP", "Natural Language Processing"]
+  },
+  {
+    "canonical_name": "Chatbot conversationnel",
+    "aliases": ["Chatbot", "Assistant virtuel", "Conversational AI", "Virtual assistant", "IA conversationnelle"]
+  },
+  {
+    "canonical_name": "Prompt Engineering",
+    "aliases": ["Ingénierie de prompts", "Prompt design"]
+  },
+  {
+    "canonical_name": "Base de données vectorielle",
+    "aliases": ["Vector Database", "Vector DB", "Vector store"]
+  },
+  {
+    "canonical_name": "LangChain",
+    "aliases": ["Orchestration LLM", "LLM orchestration framework"]
+  },
+  {
+    "canonical_name": "Text Mining",
+    "aliases": ["Fouille de texte", "Sentiment Analysis", "Analyse de sentiment"]
+  },
+  {
+    "canonical_name": "Analyse prédictive",
+    "aliases": ["Predictive Analysis", "Predictive Analytics", "Event detection"]
+  },
+  {
+    "canonical_name": "Big Data",
+    "aliases": ["Volumes de données massives", "Données massives"]
+  },
+  {
+    "canonical_name": "OWASP",
+    "aliases": ["OWASP Top 10", "OWASP Top 10 for LLM Applications", "Secure Web Development"]
+  },
+  {
+    "canonical_name": "XSS",
+    "aliases": ["Cross-Site Scripting", "Injection XSS"]
+  },
+  {
+    "canonical_name": "CSRF",
+    "aliases": ["Cross-Site Request Forgery"]
+  },
+  {
+    "canonical_name": "Injection SQL",
+    "aliases": ["SQL Injection", "SQLi"]
+  },
+  {
+    "canonical_name": "SSO",
+    "aliases": ["Single Sign-On", "Authentification unique"]
+  },
+  {
+    "canonical_name": "SAML",
+    "aliases": ["SAML SSO", "Security Assertion Markup Language"]
+  },
+  {
+    "canonical_name": "OAuth 2.0",
+    "aliases": ["OAuth2", "OAuth"]
+  },
+  {
+    "canonical_name": "HTTPS/TLS",
+    "aliases": ["TLS", "SSL", "Chiffrement des communications"]
+  },
+  {
+    "canonical_name": "Cryptographie applicative",
+    "aliases": ["Application-level cryptography", "Password hashing", "Salting"]
+  },
+  {
+    "canonical_name": "Design Patterns",
+    "aliases": ["GoF Design Patterns", "Patrons de conception", "Modèles de conception"]
+  },
+  {
+    "canonical_name": "MVC",
+    "aliases": ["Model-View-Controller", "Modèle-Vue-Contrôleur"]
+  },
+  {
+    "canonical_name": "UML",
+    "aliases": ["Unified Modeling Language", "Modélisation UML"]
+  },
+  {
+    "canonical_name": "Test-Driven Development",
+    "aliases": ["TDD", "Développement piloté par les tests"]
+  },
+  {
+    "canonical_name": "ASP.NET MVC",
+    "aliases": ["ASP.NET MVC Programming", "MVC.NET"]
+  },
+  {
+    "canonical_name": "Entity Framework",
+    "aliases": ["EF", "ORM .NET"]
+  },
+  {
+    "canonical_name": "SQL Server",
+    "aliases": ["Microsoft SQL Server", "MSSQL"]
+  },
+  {
+    "canonical_name": "Flutter",
+    "aliases": ["Développement Flutter"]
+  },
+  {
+    "canonical_name": "Django",
+    "aliases": ["Python Django"]
+  },
+  {
+    "canonical_name": "Firebase",
+    "aliases": ["Google Firebase"]
+  },
+  {
+    "canonical_name": "SonarQube",
+    "aliases": ["Analyse statique de code", "Static Code Analysis"]
+  },
+  {
+    "canonical_name": "GitLab CI/CD",
+    "aliases": ["GitLab CI", "GitLab Pipelines"]
+  },
+  {
+    "canonical_name": "UX Design",
+    "aliases": ["User Experience Design", "Design Thinking", "UI/UX"]
+  },
+  {
+    "canonical_name": "IoT",
+    "aliases": ["Internet of Things", "Objets connectés"]
   }
 ]

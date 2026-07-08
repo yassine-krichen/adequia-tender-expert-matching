@@ -14,9 +14,16 @@ service = TdrsService()
 
 @router.post("", response_model=TdrUploadAck, status_code=202)
 async def upload_tdr(
-    file: UploadFile, session: AsyncSession = Depends(get_db_session)
+    file: UploadFile,
+    force: bool = False,
+    session: AsyncSession = Depends(get_db_session),
 ) -> TdrUploadAck:
-    return await service.upload_tdr(file, session)
+    """force=true re-runs extraction on an already-uploaded file (same
+    content_hash) instead of returning the cached result -- use after a
+    pipeline/prompt fix to re-process a TDR whose stored extraction is
+    known-bad.
+    """
+    return await service.upload_tdr(file, session, force=force)
 
 
 @router.get("/{tdr_id}/status", response_model=TdrStatus)

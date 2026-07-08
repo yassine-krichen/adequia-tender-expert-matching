@@ -1,3 +1,4 @@
+import hashlib
 from io import BytesIO
 from typing import Any
 from uuid import uuid4
@@ -26,6 +27,14 @@ class _FakeRedis:
         return self._progress.get(key, {})
 
 
+class _FakeResult:
+    def __init__(self, row: Any | None) -> None:
+        self._row = row
+
+    def scalar_one_or_none(self) -> Any | None:
+        return self._row
+
+
 class _FakeSession:
     def __init__(self) -> None:
         self.added: list[Any] = []
@@ -42,6 +51,14 @@ class _FakeSession:
             if isinstance(obj, model_cls) and getattr(obj, "tdr_id", None) == pk:
                 return obj
         return None
+
+    async def execute(self, _stmt: Any) -> _FakeResult:
+        """Fakes upload_tdr's `select(TDRModel).where(content_hash == ...)`
+        -- returns the first TDRModel row already present (pre-seeded via
+        session.added), same as a real dedup hit.
+        """
+        existing_tdr = next((row for row in self.added if isinstance(row, TDRModel)), None)
+        return _FakeResult(existing_tdr)
 
 
 async def test_upload_tdr_creates_a_processing_row_and_enqueues_the_extraction_job() -> None:
@@ -64,6 +81,61 @@ async def test_upload_tdr_creates_a_processing_row_and_enqueues_the_extraction_j
     assert func.__name__ == "run_tdr_extraction"
     assert args == (ack.tdr_id, b"raw tdr bytes", "tdr.pdf")
     assert job_timeout >= 300  # generous enough that a degraded LLM day doesn't get killed mid-run
+
+
+async def test_upload_tdr_returns_existing_tdr_on_duplicate_file_without_re_enqueueing() -> None:
+    file_bytes = b"raw tdr bytes"
+    content_hash = hashlib.sha256(file_bytes).hexdigest()
+    existing_id = uuid4()
+    session = _FakeSession()
+    session.added.append(TDRModel(tdr_id=existing_id, content_hash=content_hash, status="done"))
+    queue = _FakeQueue()
+    service = TdrsService(queue=queue, redis_client=_FakeRedis())  # type: ignore[arg-type]
+    upload = UploadFile(file=BytesIO(file_bytes), filename="tdr-again.pdf")
+
+    ack = await service.upload_tdr(upload, session)  # type: ignore[arg-type]
+
+    assert ack.tdr_id == str(existing_id)
+    assert ack.status == "done"
+    assert len(queue.enqueued) == 0  # no re-extraction enqueued
+    assert len([row for row in session.added if isinstance(row, TDRModel)]) == 1  # no new row
+
+
+async def test_upload_tdr_with_force_re_enqueues_against_the_same_row() -> None:
+    """force=True is the escape hatch for a known-bad stored extraction
+    (e.g. a prompt/pipeline bug fixed after the file was first uploaded)
+    -- it must reset the existing row to processing and re-enqueue, not
+    create a second row (content_hash is unique-indexed).
+    """
+    file_bytes = b"raw tdr bytes"
+    content_hash = hashlib.sha256(file_bytes).hexdigest()
+    existing_id = uuid4()
+    session = _FakeSession()
+    session.added.append(
+        TDRModel(
+            tdr_id=existing_id,
+            content_hash=content_hash,
+            status="done",
+            extracted_json={"stale": True},
+        )
+    )
+    queue = _FakeQueue()
+    service = TdrsService(queue=queue, redis_client=_FakeRedis())  # type: ignore[arg-type]
+    upload = UploadFile(file=BytesIO(file_bytes), filename="tdr-again.pdf")
+
+    ack = await service.upload_tdr(upload, session, force=True)  # type: ignore[arg-type]
+
+    assert ack.tdr_id == str(existing_id)
+    assert ack.status == "processing"
+    tdr_rows = [row for row in session.added if isinstance(row, TDRModel)]
+    assert len(tdr_rows) == 1  # no new row
+    assert tdr_rows[0].status == "processing"
+    assert tdr_rows[0].extracted_json is None
+
+    assert len(queue.enqueued) == 1
+    func, args, _ = queue.enqueued[0]
+    assert func.__name__ == "run_tdr_extraction"
+    assert args == (str(existing_id), file_bytes, "tdr-again.pdf")
 
 
 async def test_get_status_reports_processing_with_redis_progress() -> None:

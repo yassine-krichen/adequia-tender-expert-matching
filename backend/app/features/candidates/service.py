@@ -1,3 +1,4 @@
+import hashlib
 from uuid import uuid4
 
 from fastapi import UploadFile
@@ -34,12 +35,29 @@ class CandidatesService:
     def __init__(self, router: ModelRouter | None = None) -> None:
         self._router = router or ModelRouter(get_settings())
 
-    async def upload_cv(self, file: UploadFile, session: AsyncSession) -> CandidateCV:
+    async def upload_cv(
+        self, file: UploadFile, session: AsyncSession, *, force: bool = False
+    ) -> CandidateCV:
         file_bytes = await file.read()
         filename = file.filename or "upload"
+        content_hash = hashlib.sha256(file_bytes).hexdigest()
+
+        # Idempotent: re-uploading a file that's already been extracted
+        # returns the existing candidate's data instead of re-running
+        # extraction and creating a duplicate Candidate/CV row. force=True
+        # bypasses this and re-extracts in place -- needed when the stored
+        # extraction is known-bad (e.g. a prompt/pipeline bug has since
+        # been fixed) and the same file must be re-run against current
+        # code. Reuses the existing candidate_id/CV row rather than
+        # inserting a new one, since content_hash is unique-indexed.
+        existing = (
+            await session.execute(select(CV).where(CV.content_hash == content_hash))
+        ).scalar_one_or_none()
+        if existing is not None and not force:
+            return CandidateCV.model_validate(existing.extracted_json)
 
         raw_text = extract_raw_text(file_bytes, filename)
-        candidate_id = uuid4()
+        candidate_id = existing.candidate_id if existing is not None else uuid4()
         candidate_cv = extract_cv(
             raw_text,
             candidate_id=str(candidate_id),
@@ -51,22 +69,32 @@ class CandidatesService:
             build_cv_embedding_text(candidate_cv)
         )
 
-        session.add(Candidate(candidate_id=candidate_id, full_name=candidate_cv.full_name))
-        # Flush before adding the CV row — without a relationship() between
-        # Candidate and CV, SQLAlchemy's unit-of-work doesn't guarantee
-        # FK-safe insert ordering on its own, and can emit the CV insert
-        # first, violating cvs_candidate_id_fkey.
-        await session.flush()
-        session.add(
-            CV(
-                candidate_id=candidate_id,
-                total_years_experience=candidate_cv.total_years_experience,
-                raw_text=raw_text,
-                source_file_path=filename,
-                extracted_json=candidate_cv.model_dump(mode="json"),
-                embedding=embedding,
+        if existing is not None:
+            candidate_row = await session.get(Candidate, candidate_id)
+            assert candidate_row is not None  # FK guarantees it exists alongside the CV row
+            candidate_row.full_name = candidate_cv.full_name
+            existing.total_years_experience = candidate_cv.total_years_experience
+            existing.raw_text = raw_text
+            existing.extracted_json = candidate_cv.model_dump(mode="json")
+            existing.embedding = embedding
+        else:
+            session.add(Candidate(candidate_id=candidate_id, full_name=candidate_cv.full_name))
+            # Flush before adding the CV row — without a relationship()
+            # between Candidate and CV, SQLAlchemy's unit-of-work doesn't
+            # guarantee FK-safe insert ordering on its own, and can emit
+            # the CV insert first, violating cvs_candidate_id_fkey.
+            await session.flush()
+            session.add(
+                CV(
+                    candidate_id=candidate_id,
+                    total_years_experience=candidate_cv.total_years_experience,
+                    raw_text=raw_text,
+                    source_file_path=filename,
+                    content_hash=content_hash,
+                    extracted_json=candidate_cv.model_dump(mode="json"),
+                    embedding=embedding,
+                )
             )
-        )
         await session.commit()
 
         return candidate_cv

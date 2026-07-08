@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import logging
 from typing import Any, Protocol
 from uuid import UUID, uuid4
@@ -6,6 +7,7 @@ from uuid import UUID, uuid4
 from fastapi import UploadFile
 from redis import Redis
 from rq import Queue
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.exceptions import NotFoundError, ResourceNotReadyError
@@ -64,14 +66,44 @@ class TdrsService:
         self._queue = queue or Queue("default", connection=Redis.from_url(settings.redis_url))
         self._redis = redis_client or Redis.from_url(settings.redis_url)
 
-    async def upload_tdr(self, file: UploadFile, session: AsyncSession) -> TdrUploadAck:
+    async def upload_tdr(
+        self, file: UploadFile, session: AsyncSession, *, force: bool = False
+    ) -> TdrUploadAck:
         file_bytes = await file.read()
         filename = file.filename or "upload"
-        tdr_id = uuid4()
+        content_hash = hashlib.sha256(file_bytes).hexdigest()
 
-        tdr_row = TDRModel(tdr_id=tdr_id, source_file_path=filename, status="processing")
-        session.add(tdr_row)
-        await session.commit()
+        # Idempotent: re-uploading a file already known (processing, done,
+        # or failed) returns its existing tdr_id/status instead of
+        # creating a duplicate row and re-running the full extraction
+        # pipeline again. force=True bypasses this -- needed when the
+        # existing extraction is known-bad (e.g. a prompt/pipeline bug has
+        # since been fixed) and the same file must be re-run against
+        # current code. Reuses the same tdr_id/content_hash row rather
+        # than inserting a new one, since content_hash is unique-indexed.
+        existing = (
+            await session.execute(select(TDRModel).where(TDRModel.content_hash == content_hash))
+        ).scalar_one_or_none()
+        if existing is not None and not force:
+            return TdrUploadAck(tdr_id=str(existing.tdr_id), status=existing.status)
+
+        if existing is not None:
+            tdr_id = existing.tdr_id
+            tdr_row = existing
+            tdr_row.status = "processing"
+            tdr_row.error_message = None
+            tdr_row.extracted_json = None
+            await session.commit()
+        else:
+            tdr_id = uuid4()
+            tdr_row = TDRModel(
+                tdr_id=tdr_id,
+                source_file_path=filename,
+                content_hash=content_hash,
+                status="processing",
+            )
+            session.add(tdr_row)
+            await session.commit()
 
         try:
             self._queue.enqueue(

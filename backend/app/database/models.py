@@ -45,6 +45,10 @@ class CV(Base):
     total_years_experience: Mapped[float | None] = mapped_column(Numeric)
     raw_text: Mapped[str] = mapped_column(Text, nullable=False)
     source_file_path: Mapped[str | None] = mapped_column(Text)
+    # sha256 of the uploaded file bytes -- upload_cv's dedup key (see
+    # candidates/service.py). Nullable: rows inserted before migration
+    # 0006 have no stored file bytes to hash retroactively.
+    content_hash: Mapped[str | None] = mapped_column(Text, unique=True)
     extracted_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     # Coarse-retrieval embedding over the CV's skills/experience text —
     # computed once at ingestion (CandidatesService.upload_cv), never
@@ -68,6 +72,10 @@ class TDR(Base):
     deadline: Mapped[date | None] = mapped_column(Date)
     raw_text: Mapped[str | None] = mapped_column(Text)
     source_file_path: Mapped[str | None] = mapped_column(Text)
+    # sha256 of the uploaded file bytes -- upload_tdr's dedup key (see
+    # tdrs/service.py). Nullable: rows inserted before migration 0006 have
+    # no stored file bytes to hash retroactively.
+    content_hash: Mapped[str | None] = mapped_column(Text, unique=True)
     extracted_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     # "processing" | "done" | "failed" -- see app/worker/tasks.py. Server
     # default matches migration 0002 (existing pre-migration rows are

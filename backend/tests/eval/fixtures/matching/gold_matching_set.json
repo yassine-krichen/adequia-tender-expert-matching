@@ -64,5 +64,105 @@
       "source_span": "hand-crafted for ADQ-18 gold matching set"
     },
     "relevant_candidate_names": ["Nadia Ben Salah"]
+  },
+  {
+    "position": {
+      "position_id": "gold-ai-rag-engineer",
+      "position_title": "Ingénieur IA / RAG",
+      "required_skills": [
+        "Grands modèles de langage",
+        "Retrieval-Augmented Generation",
+        "Traitement du langage naturel"
+      ],
+      "required_sector_experience": "Administration publique, projets d'intelligence artificielle",
+      "minimum_years_experience": 5,
+      "source_span": "hand-crafted for ADQ-18 gold matching set (2nd pass)"
+    },
+    "relevant_candidate_names": ["Ines Belhadj"]
+  },
+  {
+    "position": {
+      "position_id": "gold-mobile-conversational-ai",
+      "position_title": "Développeur mobile & IA conversationnelle",
+      "required_skills": ["Flutter", "Chatbot conversationnel", "Firebase"],
+      "required_sector_experience": "Inclusion sociale, applications à impact",
+      "minimum_years_experience": 4,
+      "source_span": "hand-crafted for ADQ-18 gold matching set (2nd pass)"
+    },
+    "relevant_candidate_names": ["Youssef Kammoun"]
+  },
+  {
+    "position": {
+      "position_id": "gold-cybersecurity-secure-dev",
+      "position_title": "Expert cybersécurité / développement sécurisé",
+      "required_skills": ["OWASP", "SSO", "Cryptographie applicative"],
+      "required_sector_experience": "Plateformes web gouvernementales",
+      "minimum_years_experience": 7,
+      "source_span": "hand-crafted for ADQ-18 gold matching set (2nd pass)"
+    },
+    "relevant_candidate_names": ["Rania Snoussi"]
+  },
+  {
+    "position": {
+      "position_id": "gold-software-architect-devops-toolchain",
+      "position_title": "Architecte logiciel / outillage CI",
+      "required_skills": ["Microservices", "Design Patterns", "GitLab CI/CD"],
+      "required_sector_experience": "Systèmes d'information sectoriels",
+      "minimum_years_experience": 8,
+      "source_span": "hand-crafted for ADQ-18 gold matching set (2nd pass)"
+    },
+    "relevant_candidate_names": ["Nizar Chebbi"]
+  },
+  {
+    "position": {
+      "position_id": "gold-software-developer-ilo-real",
+      "position_title": "Software Developer",
+      "required_skills": [
+        "designing large-scale enterprise-level applications",
+        "coding",
+        "debugging",
+        "UI design",
+        "large-scale, enterprise-level, multi-tired, distributed applications",
+        "Object-Orientated Development",
+        "C#",
+        "ASP.NET",
+        "MVC.NET",
+        "Entity framework",
+        "Data Models",
+        "SQL Server",
+        "JavaScript",
+        "Server & Client language scripting",
+        "Kendo UI",
+        "mobile and cutting edge languages & technologies",
+        "Azure Enterprise Cloud environments",
+        "Enterprise SQL and relational database management systems",
+        "Microsoft Reporting Services and Business Intelligence Software & Methodologies",
+        "3rd tier support to other systems for advanced issues that require development or configuration to correct defects",
+        "software development",
+        "DNS",
+        "network configuration",
+        "authentication",
+        "email",
+        "IT services",
+        "Business Intelligence reporting tools",
+        "user management systems",
+        "custom software modules",
+        "features and functionality",
+        "custom business solutions",
+        "reports",
+        "workflows",
+        "dashboards",
+        "tracking systems"
+      ],
+      "required_sector_experience": null,
+      "minimum_years_experience": 5.0,
+      "mandatory_diploma": "Bachelorâ€™s Degree in Computer Science (or related field)",
+      "required_certifications": [
+        "Microsoft Certified Professional, Application or Solution Developer"
+      ],
+      "source_span": "Requires skills & competencies: â€¢ Proven experience designing, coding, and debugging large-scale, enterprise-level, multi-tired, distributed applications. Solid background in UI design is a plus.\n---\nâ€¢ Proven experience designing, coding, and debugging large-scale, enterprise-level, multi-\ntiered, distributed applications. Solid background in UI design is a plus.\nâ€¢ Strong Object-Orientated Development Skills and excellent core C#, ASP.NET, MVC.NET, \nEntity framework, Data Models, SQL Server, JavaScript, Server & Client language scripting \nskills, Entity Framework, JavaScript, Kendo UI and other mobile and cutting edge languages & \ntechnologies.\nâ€¢ Microsoft Certified Professional, Application or Solution Developer preferred \nâ€¢ Experience in administrating and configuring Azure Enterprise Cloud environments \nâ€¢ Experience with Enterprise SQL and relational database management systems, Microsoft \nReporting Services and Business Intelligence Software & Methodologies \nâ€¢ Perform 3rd tier support to other systems for advanced issues that require development or \nconfiguration to correct defects"
+    },
+    "_note": "The only non-hand-crafted entry in this file: genuinely extracted (not invented) from a real TDR -- International Labour Organization / Better Work programme, docs/tdrs/wcms_614889.pdf, position_id 4739f7e1-136d-44db-8810-b501627ca2af, extracted live this session through the fixed pipeline (atomic required_skills + cross-chunk merge). Certification requirement kept verbatim even though no synthetic candidate holds this exact cert -- P@K/R@K only measures coarse-retrieval shortlist inclusion, not hard-filter pass/fail, so this doesn't affect the eval.",
+    "relevant_candidate_names": ["Walid Mejri"]
   }
 ]

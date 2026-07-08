@@ -4,6 +4,20 @@ This file is what turns the project from "we built a pipeline" into "we measured
 it and it works." Build the eval harness in week 1, alongside the extraction
 node — do not leave this for the end.
 
+> **Status as of Sprint 2:** this remains the target design (50-100 CV gold
+> extraction set, DeepEval CI wiring, RAGAS-style faithfulness scoring,
+> synthetic anomaly injection — none of that exists yet at this scale).
+> What's actually built and running: a 3-fixture extraction-quality eval
+> (`backend/tests/eval/test_tdr_extraction_quality.py`) and an 11-entry
+> gold **matching** set (`backend/tests/eval/fixtures/matching/gold_matching_set.json`,
+> `test_matching_retrieval_quality.py`) — the latter is deliberately *not*
+> a stand-in waiting on real historical staffing decisions (see
+> `docs/08-company-data-checklist.md`); it's grown alongside the candidate/
+> TDR pool as the actual working ground truth for retrieval quality. Real
+> historical decisions, if they ever arrive, would still add something
+> this set can't: genuine accept/reject *outcomes*, not just plausible-fit
+> labels.
+
 ## Datasets you need
 
 1. **Gold extraction set**: 50–100 real (anonymized) CVs and TDRs, manually

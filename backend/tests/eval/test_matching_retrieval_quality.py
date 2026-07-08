@@ -1,4 +1,4 @@
-"""Live coarse-retrieval quality check against a hand-labeled gold matching set.
+"""Live coarse-retrieval quality check against our own ground-truth matching set.
 
 Not part of the default `uv run pytest` run (see `addopts` in pyproject.toml)
 -- shortlist_candidates needs real embeddings (the default suite mocks
@@ -6,12 +6,17 @@ those) and a real CV pool, so this is run explicitly:
 
     uv run pytest -m eval
 
-fixtures/gold_matching_set.json hand-labels which of the 6 synthetic CVs
-(docs/cvs/synthetic/) is the true match for each of 6 hand-crafted
-positions -- there's no real historical staffing data yet (see
-docs/08-company-data-checklist.md), so this establishes a first baseline
-to check future retrieval/prompt changes against, same "grows over time"
-framing as the extraction eval harness. Skips if the synthetic CVs
+fixtures/gold_matching_set.json labels the true match for one hand-crafted
+or genuinely-real-TDR-extracted position per candidate in the pool
+(docs/cvs/synthetic/). This *is* the working ground truth for retrieval
+quality -- no external staffing-decision export is coming, so this is
+grown deliberately alongside the candidate/TDR pool instead of waiting on
+one (see docs/08-company-data-checklist.md for the one thing genuine
+historical company data would still add: real acceptance/rejection
+outcomes, not just "who's a plausible fit"). One entry
+(gold-software-developer-ilo-real) is pulled verbatim from a real TDR
+extraction rather than hand-written, to keep the set honest about what
+production extractions actually look like. Skips if the synthetic CVs
 haven't been uploaded to the CV pool this suite runs against yet (see the
 skip message for how to seed them).
 """
@@ -91,7 +96,11 @@ async def test_coarse_retrieval_precision_and_recall_at_k() -> None:
         + "\n".join(report_lines)
     )
 
-    # No prior baseline to regress against yet -- this run establishes one.
-    # The floor just catches a total breakage (e.g. the embedding model
-    # returning near-random rankings), not a real target.
-    assert mean_recall >= 0.5, report
+    # Real baseline as of this 11-entry set (mix of hand-crafted positions
+    # covering all 11 candidates + one genuinely real TDR-extracted
+    # position): Recall@3 = 1.0, Precision@3 = 0.33 (expected -- only one
+    # truly relevant candidate per position, out of a k=3 shortlist).
+    # 0.9 leaves room for one legitimate miss as the pool keeps growing
+    # without masking an actual regression the way the old 0.5 floor
+    # (set before any real run existed) would have.
+    assert mean_recall >= 0.9, report

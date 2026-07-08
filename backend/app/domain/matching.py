@@ -52,9 +52,12 @@ class SubScores(BaseModel):
 
 class MatchResult(BaseModel):
     """hard_filter_passed=false implies compatibility_score is None — a
-    rejected-on-hard-filter candidate never entered scoring. See
-    docs/02-data-schemas.md and the route_after_hard_filter conditional edge
-    in docs/03-agent-pipeline.md.
+    rejected-on-hard-filter candidate is never ranked. sub_scores, however,
+    is always populated regardless of hard_filter_passed: a candidate who
+    fails on e.g. years but has strong skill/sector fit should still show
+    that fit, not just a bare failure string. See docs/02-data-schemas.md
+    and the route_after_hard_filter conditional edge in
+    docs/03-agent-pipeline.md.
     """
 
     match_id: str

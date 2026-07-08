@@ -106,17 +106,21 @@ async def run_matching_job(
                 normalized = await normalize_cv_skills(cv, session=session, embeddings=embeddings)
                 hard_filter_passed, failures = check_hard_filters(cv, position)
 
-                sub_scores_json = None
-                compatibility_score = None
-                if hard_filter_passed:
-                    sub_scores, compatibility_score = score_soft_criteria(
-                        cv,
-                        normalized,
-                        normalized_position_skills,
-                        required_sector_vector,
-                        embeddings=embeddings,
-                    )
-                    sub_scores_json = sub_scores.model_dump(mode="json")
+                # Computed regardless of hard_filter_passed -- a candidate
+                # who fails on e.g. years but has strong skill/sector fit
+                # should still show that fit, not just a bare failure
+                # string. compatibility_score (the ranking number) stays
+                # gated below: a hard-filter failure is never ranked, only
+                # visible.
+                sub_scores, soft_compatibility_score = score_soft_criteria(
+                    cv,
+                    normalized,
+                    normalized_position_skills,
+                    required_sector_vector,
+                    embeddings=embeddings,
+                )
+                sub_scores_json = sub_scores.model_dump(mode="json")
+                compatibility_score = soft_compatibility_score if hard_filter_passed else None
 
                 session.add(
                     MatchResultModel(

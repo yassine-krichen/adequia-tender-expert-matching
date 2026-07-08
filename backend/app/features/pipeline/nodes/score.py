@@ -149,9 +149,14 @@ def score_soft_criteria(
     *,
     embeddings: Embeddings,
 ) -> tuple[SubScores, float]:
-    """ADQ-16. Only called when check_hard_filters has already passed --
-    compatibility_score stays None on a hard-filter failure, never a
-    computed number (see domain/matching.py MatchResult docstring).
+    """ADQ-16. Called for every shortlisted candidate regardless of
+    check_hard_filters' outcome, so a hard-filter failure still shows its
+    skill/sector fit -- the caller (worker/matching_tasks.py) is
+    responsible for discarding the returned compatibility_score (never
+    persisting it) when hard filters failed, since that number is a
+    ranking signal and a rejected candidate is never ranked (see
+    domain/matching.py MatchResult docstring). The SubScores this function
+    returns are persisted either way.
 
     normalized_position_skills/required_sector_vector are computed once
     per position by the caller (app/worker/matching_tasks.py), not once

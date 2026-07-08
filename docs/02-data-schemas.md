@@ -255,8 +255,11 @@ create index on skill_taxonomy using ivfflat (embedding vector_cosine_ops);
   makes the final report explainable and what RAGAS-style faithfulness checks
   validate against. Every extraction, score, and anomaly must carry one.
 - `hard_filter_passed = false` should mean `compatibility_score` is `null`, not
-  zero — a rejected-on-hard-filter candidate never entered the scoring stage
-  (this is the short-circuit optimization described in `01-architecture.md`).
+  zero — a rejected-on-hard-filter candidate is never *ranked*. `sub_scores`,
+  however, is populated regardless of `hard_filter_passed` (as of Sprint 2):
+  a candidate who fails on e.g. years but has strong skill/sector fit still
+  shows that fit in the UI, rather than just a bare failure reason. See
+  `app/domain/matching.py`'s `MatchResult` docstring.
 - Keep `extracted_json` (full structured object) alongside normalized relational
   columns — you'll want the full object for report generation and for re-running
   eval without re-extracting.

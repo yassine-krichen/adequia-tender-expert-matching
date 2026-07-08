@@ -27,3 +27,5 @@ A scanned page with no embedded text layer typically yields well under 100 chars
 ## Follow-up
 
 Revisit this if the company's response to the ADQ-9 data request (`docs/08-company-data-checklist.md`) includes scanned CVs or TDRs — at that point, file a proper OCR story (e.g. `pytesseract` or a hosted OCR API) rather than retrofitting one under time pressure.
+
+**Sprint 2 addendum:** 10 more real TDRs and 5 more synthetic CVs were added this sprint (pool now 13 real TDRs, 11 synthetic CVs — see `docs/08-company-data-checklist.md`). Not re-measured with the same char/page rigor as the table above, but all 10 new TDRs were read directly (via full-text extraction, same code path) while mining vocabulary for the skill taxonomy expansion, and every one came back as clean, readable, non-garbled prose — consistent with this spike's finding, not a contradiction of it. Worth a real re-measurement if OCR ever becomes a live question, rather than treating this note as equivalent evidence.

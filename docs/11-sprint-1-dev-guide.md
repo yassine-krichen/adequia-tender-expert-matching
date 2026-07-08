@@ -5,6 +5,14 @@ to manually test the upload → extraction flow. Written for picking this
 project back up cold — read this before `03-agent-pipeline.md` if you just
 want to run the thing.
 
+> **Sprint 2 note:** the "done vs. stubbed" table below is a Sprint-1-era
+> snapshot and is kept that way deliberately (see `12-sprint-2-handoff.md`
+> for the equivalent Sprint 2 snapshot). The one line worth correcting
+> here rather than leaving stale: `list_candidates`, `get_tdr`, and
+> `run_matching` are no longer `NotImplementedError` — ADQ-10 through
+> ADQ-18 shipped the full matching pipeline this sprint. See
+> `docs/report/chapters/05-sprint-2.tex` for the full writeup.
+
 ## What's done vs. still stubbed
 
 **Done (ADQ-1 through ADQ-7):**
@@ -19,9 +27,9 @@ want to run the thing.
 | Upload endpoints | `backend/app/features/{candidates,tdrs}/{service,router}.py` | `POST /candidates/cv` — parse, extract, persist, return synchronously. `POST /tdrs` — returns immediately, extraction runs on `app/worker/tasks.py` (RQ); poll `GET /tdrs/{id}/status` |
 | Upload/preview pages | `frontend/src/app/{candidates,tdrs}/page.tsx` | Real upload form + extracted-field display |
 
-**Manual/ongoing, not code:** ADQ-8 (gold-set annotation — keep annotating past the 6 synthetic CVs currently in `docs/cvs/synthetic/`), ADQ-9 (waiting on company data response).
+**Manual/ongoing, not code:** ADQ-8 (gold-set annotation — keep annotating past the 11 synthetic CVs currently in `docs/cvs/synthetic/`), ADQ-9 (no company data response arrived; the team builds and grows its own ground truth instead — see `docs/08-company-data-checklist.md`).
 
-**Still `NotImplementedError` (Sprint 2+):** `normalize_skills`, `score`, `detect_anomalies`, `generate_report` pipeline nodes; `list_candidates`, `get_tdr`, `run_matching` service methods; the matching/report/metrics dashboard pages. `backend/app/features/pipeline/graph.py`'s LangGraph wiring exists but nothing runs it yet — Sprint 1's upload flow calls `extract_cv`/`extract_tdr` directly, not through the graph.
+**Still `NotImplementedError` as of Sprint 1 (Sprint 2 shipped `normalize_skills`, `score`, `list_candidates`, `get_tdr`, `run_matching`, and the matching results view — see the Sprint 2 note above):** `detect_anomalies`, `generate_report` pipeline nodes (Sprint 3); the report/metrics dashboard pages (Sprint 3/4). `backend/app/features/pipeline/graph.py`'s LangGraph wiring exists but nothing runs it yet — both sprints' code calls the pipeline node functions directly, not through the graph.
 
 ## One-time setup
 

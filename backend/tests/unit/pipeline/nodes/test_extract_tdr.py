@@ -102,6 +102,42 @@ def test_merge_chunk_extractions_dedupes_positions_by_title_case_insensitive() -
     assert [p.position_title for p in merged.positions] == ["Team Leader", "QA Expert"]
 
 
+def test_merge_chunk_extractions_combines_fields_of_same_titled_position() -> None:
+    """A short TDR often describes one position across several chunks (e.g.
+    the position is named in one chunk, its skills bullet list lives in
+    another) -- merging must combine both chunks' fields, not silently keep
+    only whichever chunk was extracted first.
+    """
+    chunk_1 = _TDRChunkExtraction(
+        positions=[
+            _ExtractedPosition(
+                position_title="Software Developer",
+                source_span="span 1",
+                required_skills=["C#"],
+            )
+        ]
+    )
+    chunk_2 = _TDRChunkExtraction(
+        positions=[
+            _ExtractedPosition(
+                position_title="software developer",
+                mandatory_diploma="Bachelor's degree",
+                minimum_years_experience=5.0,
+                source_span="span 2",
+                required_skills=["ASP.NET", "SQL Server"],
+            )
+        ]
+    )
+
+    merged = _merge_chunk_extractions([chunk_1, chunk_2])
+
+    assert len(merged.positions) == 1
+    position = merged.positions[0]
+    assert position.required_skills == ["C#", "ASP.NET", "SQL Server"]
+    assert position.mandatory_diploma == "Bachelor's degree"
+    assert position.minimum_years_experience == 5.0
+
+
 def test_merge_chunk_extractions_takes_first_non_empty_mission_field() -> None:
     chunk_1 = _TDRChunkExtraction(client=None, sector="Public")
     chunk_2 = _TDRChunkExtraction(client="Ministry", sector="Education")

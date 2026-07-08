@@ -256,7 +256,19 @@ _TDR_GUARDRAIL_PROMPT = (
     "reinterpreting unrelated content as one.\n\n"
     "For every position, set source_span to the literal substring of this "
     "section's text that supports it. Do not invent a source_span — copy it "
-    "verbatim."
+    "verbatim.\n\n"
+    "required_skills: each entry must be a short atomic skill, technology, "
+    "or domain term (2-6 words) — never a full sentence or clause copied "
+    "verbatim from the requirement text. Pull just the skill/technology "
+    "name out of the surrounding sentence. For example, if the text says "
+    "'Demonstrated ability to design, develop, and implement AI-driven "
+    "chatbots, with an emphasis on effective integration and user "
+    "experience', extract [\"AI-driven chatbots\", \"UI/UX design\"] — not "
+    "the sentence itself. If the text says 'At least 10 years of "
+    "experience in web software development, preferably with a focus on "
+    "AI applications and natural language processing (NLP)', extract "
+    "[\"web software development\", \"AI applications\", \"natural language "
+    "processing (NLP)\"]."
 )
 
 _TDR_RETRIEVAL_QUERY = "profils, qualifications et personnel requis pour le poste d'expert"
@@ -404,21 +416,79 @@ def _has_no_extracted_requirement(position: _ExtractedPosition) -> bool:
     )
 
 
+def _merge_positions(first: _ExtractedPosition, second: _ExtractedPosition) -> _ExtractedPosition:
+    """Combines two chunks' extractions of what's actually the same position
+    (same title) into one. A short TDR that describes a single position
+    across several chunks (context in one, the skills bullet list in
+    another, education/years in a third) would otherwise lose every field
+    but the first chunk's -- live-tested on a real TDR where chunk 0 only
+    mentioned the position's existence and chunk 1 carried all 19 of its
+    required_skills; keep-first discarded all 19.
+    """
+
+    def _first_non_null(*values: _T | None) -> _T | None:
+        return next((v for v in values if v), None)
+
+    def _union(*lists: Sequence[str]) -> list[str]:
+        seen: set[str] = set()
+        merged: list[str] = []
+        for item in (item for lst in lists for item in lst):
+            key = item.strip().lower()
+            if key and key not in seen:
+                seen.add(key)
+                merged.append(item)
+        return merged
+
+    def _union_languages(
+        *lists: Sequence[LanguageRequirement],
+    ) -> list[LanguageRequirement]:
+        seen: set[str] = set()
+        merged: list[LanguageRequirement] = []
+        for item in (item for lst in lists for item in lst):
+            key = item.language.strip().lower()
+            if key and key not in seen:
+                seen.add(key)
+                merged.append(item)
+        return merged
+
+    return _ExtractedPosition(
+        position_title=first.position_title,
+        mandatory_diploma=_first_non_null(first.mandatory_diploma, second.mandatory_diploma),
+        minimum_years_experience=_first_non_null(
+            first.minimum_years_experience, second.minimum_years_experience
+        ),
+        required_certifications=_union(first.required_certifications, second.required_certifications),
+        required_languages=_union_languages(first.required_languages, second.required_languages),
+        required_sector_experience=_first_non_null(
+            first.required_sector_experience, second.required_sector_experience
+        ),
+        required_skills=_union(first.required_skills, second.required_skills),
+        evaluation_weight=_first_non_null(first.evaluation_weight, second.evaluation_weight),
+        source_span=_union([first.source_span], [second.source_span])[0]
+        if first.source_span.strip().lower() == second.source_span.strip().lower()
+        else f"{first.source_span}\n---\n{second.source_span}",
+    )
+
+
 def _merge_chunk_extractions(
     chunk_extractions: Sequence[_TDRChunkExtraction],
 ) -> _TDRChunkExtraction:
     """Reduce step: mission-level fields take the first non-empty value found
-    across chunks; positions are concatenated, de-duplicated by title, and
+    across chunks; positions with the same title are combined via
+    _merge_positions (not just deduplicated -- see its docstring), and
     filtered to those with at least one extracted requirement.
     """
-    positions: list[_ExtractedPosition] = []
-    seen_titles: set[str] = set()
+    positions_by_title: dict[str, _ExtractedPosition] = {}
     for chunk in chunk_extractions:
         for position in chunk.positions:
             key = position.position_title.strip().lower()
-            if key and key not in seen_titles and not _has_no_extracted_requirement(position):
-                seen_titles.add(key)
-                positions.append(position)
+            if not key or _has_no_extracted_requirement(position):
+                continue
+            existing = positions_by_title.get(key)
+            positions_by_title[key] = (
+                _merge_positions(existing, position) if existing is not None else position
+            )
+    positions = list(positions_by_title.values())
 
     def _first(values: Sequence[_T | None]) -> _T | None:
         return next((v for v in values if v), None)

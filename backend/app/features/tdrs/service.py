@@ -43,7 +43,17 @@ class JobQueue(Protocol):
 # to Ollama. The pipeline itself can legitimately take several minutes in
 # that situation -- the job timeout should not be the thing that decides
 # whether an otherwise-successful extraction finishes.
-_JOB_TIMEOUT_SECONDS = 600
+#
+# 600s later turned out to still be too tight: observed live again with
+# Groq's entire key pool quota-exhausted (fast BadRequestError on every
+# key) and Gemini's free tier visibly degraded (slow 503s, not fast
+# rejections) -- a 6-chunk TDR only reached chunk 5/6 before the 600s
+# ceiling killed it, never even reaching the Ollama fallback for the
+# stuck chunk. Raised to 1200s so a degraded-but-not-dead provider chain
+# gets enough runway to actually fall through to Ollama and finish,
+# instead of losing a genuinely-still-working extraction to an arbitrary
+# clock.
+_JOB_TIMEOUT_SECONDS = 1200
 # Matching runs one shortlist (~10 candidates) through embedding-only
 # retrieval/scoring per position -- cheaper than a full TDR extraction, but
 # uses the same generous ceiling for the same reason: it shouldn't be the

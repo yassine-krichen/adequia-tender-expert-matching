@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Geist_Mono, Inter, Space_Grotesk } from 'next/font/google';
 
 import { ThemeProvider } from '@/common/components/theme-provider';
+import { TopNav } from '@/common/components/top-nav';
 import { cn } from '@/common/lib/utils';
 import '@/styles/globals.css';
 
@@ -30,7 +31,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={cn('antialiased', fontMono.variable, 'font-sans', inter.variable, spaceGroteskHeading.variable)}
     >
       <body>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <TopNav />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

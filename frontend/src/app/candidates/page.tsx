@@ -13,22 +13,32 @@ export default function CandidatesPage() {
   const [result, setResult] = useState<CandidateCvExtraction | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [forceReprocess, setForceReprocess] = useState(false);
 
-  async function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    if (!file) return;
-
+  async function submitUpload(fileToUpload: File, force: boolean) {
     setIsUploading(true);
     setError(null);
     setResult(null);
 
-    const uploadResult = await uploadCv(file);
+    const uploadResult = await uploadCv(fileToUpload, { force });
     if (uploadResult.error !== null) {
       setError(uploadResult.error);
     } else {
       setResult(uploadResult.data);
     }
     setIsUploading(false);
+  }
+
+  function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!file) return;
+    void submitUpload(file, forceReprocess);
+  }
+
+  function handleRetryWithForce() {
+    if (!file) return;
+    setForceReprocess(true);
+    void submitUpload(file, true);
   }
 
   return (
@@ -45,6 +55,16 @@ export default function CandidatesPage() {
         <CardContent>
           <form className="space-y-3" onSubmit={handleSubmit}>
             <FileUpload accept=".pdf,.docx" disabled={isUploading} onFileSelected={setFile} />
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={forceReprocess}
+                onChange={(event) => setForceReprocess(event.target.checked)}
+                disabled={isUploading}
+                className="size-4 rounded border-input"
+              />
+              Force reprocess (re-run extraction even if this exact file was already processed)
+            </label>
             <Button type="submit" disabled={!file || isUploading}>
               {isUploading ? 'Uploading…' : 'Upload'}
             </Button>
@@ -53,9 +73,16 @@ export default function CandidatesPage() {
       </Card>
 
       {error && (
-        <p role="alert" className="text-destructive">
-          {error}
-        </p>
+        <div className="space-y-2">
+          <p role="alert" className="text-destructive">
+            {error}
+          </p>
+          {file && (
+            <Button type="button" size="sm" variant="outline" onClick={handleRetryWithForce}>
+              Retry with force reprocess
+            </Button>
+          )}
+        </div>
       )}
 
       {result && (

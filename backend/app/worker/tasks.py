@@ -4,6 +4,7 @@ from uuid import UUID
 
 from langchain_core.embeddings import Embeddings
 from redis import Redis
+from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.exceptions import DomainError
@@ -11,6 +12,7 @@ from app.common.llm.router import ExtractionRouter, ModelRouter
 from app.config.settings import get_settings
 from app.database.models import TDR as TDRModel
 from app.database.models import ExpertPosition as ExpertPositionModel
+from app.database.models import MatchResult as MatchResultModel
 from app.database.session import async_session_factory
 from app.features.pipeline.nodes.extract import ProgressCallback, extract_tdr
 from app.features.pipeline.nodes.ingest import extract_raw_text
@@ -78,6 +80,15 @@ async def run_tdr_extraction_job(
         tdr_row.deadline = tdr.deadline
         tdr_row.raw_text = raw_text
         tdr_row.extracted_json = tdr.model_dump(mode="json")
+
+        # Reprocessing (e.g. force-reprocess) must replace the position set,
+        # not append to it -- otherwise stale positions from prior extraction
+        # runs pile up forever. Match results reference expert_positions via
+        # FK with no ON DELETE CASCADE, so they must be cleared first.
+        await session.execute(delete(MatchResultModel).where(MatchResultModel.tdr_id == UUID(tdr_id)))
+        await session.execute(
+            delete(ExpertPositionModel).where(ExpertPositionModel.tdr_id == UUID(tdr_id))
+        )
         for position in tdr.positions:
             session.add(
                 ExpertPositionModel(

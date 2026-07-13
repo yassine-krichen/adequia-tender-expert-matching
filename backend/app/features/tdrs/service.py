@@ -184,6 +184,12 @@ class TdrsService:
         if row.status != "done":
             raise ResourceNotReadyError(f"TDR {tdr_id} extraction hasn't finished yet")
 
+        # Write a non-terminal progress state synchronously, before enqueueing,
+        # so a poll landing between "202 returned" and "worker dequeues the job"
+        # never reads a stale done/failed status left over from a previous run.
+        report = matching_tasks.make_redis_matching_progress_reporter(self._redis, str(tdr_id))
+        await asyncio.to_thread(report, "processing", 0, 0)
+
         self._queue.enqueue(
             matching_tasks.run_matching, str(tdr_id), job_timeout=_MATCHING_JOB_TIMEOUT_SECONDS
         )

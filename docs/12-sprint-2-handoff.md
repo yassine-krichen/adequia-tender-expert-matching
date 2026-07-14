@@ -1,11 +1,10 @@
 # 12 — Sprint-2 handoff note
 
-**This is a one-time handoff, not a permanent doc.** Written at the tail
-end of the sprint-1 chat session so a fresh sprint-2 chat can read one file
-and be current, instead of re-deriving context. Fine to delete once its
-contents are absorbed into the real docs (`07-branding.md`,
-`11-sprint-1-dev-guide.md`, etc.) or once it goes stale — check the actual
-code before trusting anything below, same as any doc.
+**This is a one-time handoff, not a permanent doc, and is now stale.** Written at the tail
+end of the sprint-1 chat session so a fresh sprint-2 chat could read one file
+and be current. The final state of Sprint 2 is now documented in
+`docs/report/chapters/05-sprint-2.tex` and `docs/01-architecture.md`; refer
+to those instead for the actual delivered state.
 
 ## What's shipped
 

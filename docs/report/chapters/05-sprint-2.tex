@@ -249,6 +249,50 @@ position against a $k=3$ shortlist). Grown later in the sprint to 11
 entries (Section~\ref{chap:sprint-2}, Data ownership); the same result
 held at the larger, more varied scale.
 
+\subsection{Final verification round: TDR reprocessing and matching state management}
+
+Once the matching view was demoable and exercisable end-to-end, a second round of
+thorough manual testing against a real TDR (UNFPA Egypt's \emph{TOR-Software
+Developer.pdf}, four expert positions: Software Developer, Developer, Consultant,
+Web Developer) surfaced two additional defects in components that had passed
+mocked tests:
+
+\begin{enumerate}
+  \item \textbf{TDR reprocessing accumulated stale positions indefinitely.}
+    A user running \texttt{force=true} re-upload on an already-processed TDR to apply
+    a pipeline fix would trigger a fresh extraction and re-insert of all expert
+    positions, but \texttt{run\_tdr\_extraction\_job} never deleted the stale
+    \texttt{ExpertPosition} rows from the prior run. A test TDR ballooned from its
+    real 4 positions to 15, then 19, on successive force-reprocesses because every
+    fresh extraction appended instead of replaced. Fixed by deleting both
+    \texttt{MatchResult} rows (which reference the positions via FK) and
+    \texttt{ExpertPosition} rows for that \texttt{tdr\_id} immediately before the
+    insert loop, in FK-safe order. Verified live by force-reuploading an already-
+    processed TDR and confirming the position count reverted to the correct number.
+
+  \item \textbf{Matching job enqueue did not reset stale Redis progress state.}
+    \texttt{TdrsService.run\_matching} enqueued the RQ matching job without first
+    resetting the Redis progress key (\texttt{tdr:\{id\}:matching\_progress}). A
+    frontend poll landing in the gap between the API's 202 response and the RQ
+    worker actually dequeuing could read stale status (e.g.\ ``done'') left over
+    from a \emph{previous} matching run on the same \texttt{tdr\_id}, causing the UI
+    to stop polling and fetch (non-existent) match results before the new run had
+    actually scored anything. The user saw ``No shortlisted candidates for this
+    position'' for every position, even though matching completed moments later with
+    real results. Fixed by synchronously writing \texttt{status=``processing''},
+    \texttt{positions\_done=0}, \texttt{positions\_total=0} to Redis before
+    enqueueing, so any poll in the gap reads a non-terminal state and keeps waiting.
+    Verified live by running matching twice in succession on the same TDR and
+    confirming the second run's results replaced the first with fresh data, no stale
+    state leakage.
+\end{enumerate}
+
+Both bugs were found via live manual testing against a real TDR PDF uploaded through
+the actual running app — not mocked HTTP clients, not synthetic test data, but the
+exact end-to-end path an HR user would take. This is consistent with Sprint 1's
+retrospective lesson: a green mocked test suite is necessary but not sufficient;
+real input against a real stack catches defects that pure unit testing misses.
+
 \subsection{Hardening pass: a second, meticulous review}
 
 Once ADQ-10 through ADQ-18 were demoable, every file changed since
@@ -400,29 +444,26 @@ zero LLM calls in the matching path itself.
 \subsection{Live Demonstration}
 \label{sec:live-demo-sprint2}
 
-% TODO: screenshots for this section still need to be captured and
-% dropped into docs/report/assets/screenshots/ before compiling --
-% ask the person running this sprint's review for them, same process
-% as chapter 4. Suggested shots, uncomment the matching \includegraphics
-% blocks below once captured:
-%   1. The /tdrs page with a completed TDR and "Run matching" button
-%      visible, ideally right before or right after clicking it.
-%   2. A position's ranked matching results table: candidate names,
-%      compatibility %, Passed/Failed badges, sub-score bars -- pick a
-%      position where at least one candidate failed the hard filter, to
-%      show the failure-reason tooltip is real.
-%   3. The keyboard-focus state of a Failed badge or info tooltip
-%      (Tab-focused), to evidence the accessibility fix from the
-%      hardening pass.
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.85\textwidth]{matching-hard-passed-web-dev.png}
+  \caption{Web Developer position ranked results -- all candidates passed
+  hard filters; compatibility scores range from 50\% to 40\% computed
+  from skill/sector sub-scores, with no LLM calls anywhere in the matching
+  pipeline.}
+  \label{fig:matching-web-dev-passed}
+\end{figure}
 
-% \begin{figure}[h]
-%   \centering
-%   \includegraphics[width=0.85\textwidth]{matching-results-view.png}
-%   \caption{Ranked matching results for a real TDR position -- compatibility
-%   score, hard-filter status, and skill/sector sub-score bars, all computed
-%   without a single LLM call.}
-%   \label{fig:matching-results}
-% \end{figure}
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.85\textwidth]{matching-dev-hard-failed-with-label-explanation.png}
+  \caption{Developer position with hard-filter failures: a tooltip reveals
+  the exact failure reason (``Missing or expired certification: google software
+  design''), allowing an HR reviewer to see not just that a candidate was
+  rejected, but precisely why. The UI remains responsive with no LLM judgment
+  step in the critical path.}
+  \label{fig:matching-dev-hard-failed}
+\end{figure}
 
 \section{Sprint Retrospective}
 
@@ -457,11 +498,14 @@ end to end with zero LLM calls, backed by a 104-term taxonomy and an
 11-candidate pool the team grew and owns itself rather than waiting on
 data that was never going to arrive. Beyond the committed backlog: a
 twelve-finding hardening pass fixed real correctness and efficiency
-issues before they could compound in Sprint 3, and live testing against
-real TDRs -- once the matching view actually existed to test against --
-found and fixed a genuine extraction-merge data-loss bug and a
-scoring-visibility gap that no mocked test had caught, plus a proactive
-upload-deduplication fix. The retrieval-quality eval (Recall@3 = 1.0,
-Precision@3 = 0.33 across 11 varied positions) and the newly-honest gold
-matching set give Sprint 3's LLM-judgment and human-in-the-loop work a
-real, growing foundation to build on rather than a synthetic placeholder.
+issues before they could compound in Sprint 3, and two rounds of live
+testing against real TDRs found and fixed four defects no mocked test had
+caught: an extraction-merge data-loss bug, a scoring-visibility gap, TDR
+reprocessing accumulating stale positions indefinitely, and matching job
+enqueue not resetting stale Redis progress state. Additionally, a proactive
+upload-deduplication guard with an explicit \texttt{force=true} escape hatch
+was added to prevent pipeline bugs from being permanently masked by file
+caching. The retrieval-quality eval (Recall@3 = 1.0, Precision@3 = 0.33 across
+11 varied positions) and the newly-honest gold matching set give Sprint 3's
+LLM-judgment and human-in-the-loop work a real, growing foundation to build
+on rather than a synthetic placeholder.

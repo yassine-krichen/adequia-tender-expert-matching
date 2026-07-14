@@ -9,6 +9,33 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/adequia
 
+  checkpointer-setup:
+    build: ./backend
+    command: uv run --no-dev python -m app.mcp.setup_checkpointer
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file: ./backend/.env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/adequia
+
+  mcp:
+    build: ./backend
+    command: uv run --no-dev python -m app.mcp.server
+    expose: ["8100"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file: ./backend/.env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/adequia
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+    healthcheck:
+      test: ["CMD", "uv", "run", "--no-dev", "python", "-c", "import socket; socket.create_connection(('localhost', 8100), timeout=2)"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
   api:
     build: ./backend
     ports: ["8000:8000"]
@@ -19,6 +46,10 @@ services:
         condition: service_started
       migrate:
         condition: service_completed_successfully
+      checkpointer-setup:
+        condition: service_completed_successfully
+      mcp:
+        condition: service_healthy
     env_file: ./backend/.env
     environment:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/adequia
@@ -27,6 +58,7 @@ services:
       # where localhost is the host itself — inside this container it
       # would mean the container, not the host running Ollama.
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - MCP_SERVER_URL=http://mcp:8100
 
   worker:
     build: ./backend
@@ -38,11 +70,16 @@ services:
         condition: service_started
       migrate:
         condition: service_completed_successfully
+      checkpointer-setup:
+        condition: service_completed_successfully
+      mcp:
+        condition: service_healthy
     env_file: ./backend/.env
     environment:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/adequia
       - REDIS_URL=redis://redis:6379
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - MCP_SERVER_URL=http://mcp:8100
 
   postgres:
     image: pgvector/pgvector:pg16

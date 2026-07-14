@@ -23,6 +23,15 @@ dependencies = [
     "langchain-text-splitters>=0.3",
     "pypdf>=5.1",
     "python-docx>=1.1",
+    "langgraph-checkpoint-postgres>=2.0",
+    # langgraph-checkpoint-postgres pulls plain `psycopg`, which has no
+    # working pq wrapper without libpq installed on the host (confirmed:
+    # ImportError on Windows dev machines with no local libpq). The
+    # `[binary]` extra ships a prebuilt libpq, needed for `uv run` outside
+    # Docker; the Linux container image works either way.
+    "psycopg[binary]>=3.2",
+    "mcp>=1.2",
+    "langchain-mcp-adapters>=0.1",
 ]
 
 [dependency-groups]

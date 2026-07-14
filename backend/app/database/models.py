@@ -141,7 +141,7 @@ class Anomaly(Base):
         UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
     match_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("match_results.match_id")
+        UUID(as_uuid=True), ForeignKey("match_results.match_id", ondelete="CASCADE")
     )
     type: Mapped[str] = mapped_column(Text, nullable=False)
     severity: Mapped[str] = mapped_column(Text, nullable=False)

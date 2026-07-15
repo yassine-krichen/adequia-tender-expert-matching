@@ -84,8 +84,11 @@ class CandidateCV(BaseModel):
     certifications: list[Certification]
     experience: list[Experience]
     languages: list[LanguageProficiency]
+    birth_date: date | None = None
     raw_skills: list[str]
     normalized_skills: list[NormalizedSkill] = Field(default_factory=list)
     total_years_experience: float
     raw_text: str
     source_file_path: str
+
+    _coerce_birth_date = field_validator("birth_date", mode="before")(coerce_partial_date)

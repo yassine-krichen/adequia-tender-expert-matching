@@ -9,6 +9,7 @@ class AnomalyType(str, Enum):
     date_overlap = "date_overlap"
     expired_certification = "expired_certification"
     education_date_inconsistency = "education_date_inconsistency"
+    age_graduation_implausibility = "age_graduation_implausibility"
     unverifiable_claim = "unverifiable_claim"
     title_seniority_mismatch = "title_seniority_mismatch"
     missing_mandatory_requirement = "missing_mandatory_requirement"
@@ -29,17 +30,24 @@ class Anomaly(BaseModel):
 
 class Citation(BaseModel):
     claim: str  # the claim being supported
-    source_doc: str  # "cv" | "tdr"
+    # "cv"/"tdr": a literal substring of the CV's/TDR's raw text. "assessment":
+    # the pipeline's own derived/judged text (e.g. a hard-filter failure
+    # reason or an LLM's qualitative-fit justification), not a document
+    # excerpt -- source_span for these is the judgment text itself,
+    # self-referential and honest about not being a real document quote.
+    source_doc: str  # "cv" | "tdr" | "assessment"
     source_span: str
 
 
 class SubScores(BaseModel):
     """education_score/experience_score/certification_score/language_score
-    are unset this sprint — only skill_score and sector_score are computed
-    (see docs/scrum/sprint-2-plan.md ADQ-16). The other four need
-    detect_anomalies/generate_report context to score meaningfully and are
-    Sprint 3 work; leaving them null is more honest than a fabricated
-    placeholder number.
+    stay unset — skill_score and sector_score are computed unconditionally
+    (see docs/scrum/sprint-2-plan.md ADQ-16), and qualitative_fit_score is
+    computed conditionally, only when check_hard_filters passes (ADQ-19) —
+    an LLM judgment of depth/seniority/domain fit beyond keyword matching.
+    The remaining four still need detect_anomalies/generate_report context
+    to score meaningfully; leaving them null is more honest than a
+    fabricated placeholder number.
     """
 
     education_score: float | None = None
@@ -48,6 +56,7 @@ class SubScores(BaseModel):
     sector_score: float
     language_score: float | None = None
     skill_score: float
+    qualitative_fit_score: float | None = None
 
 
 class MatchResult(BaseModel):

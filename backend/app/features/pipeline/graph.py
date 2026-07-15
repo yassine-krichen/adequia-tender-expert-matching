@@ -1,11 +1,13 @@
+from langchain_core.embeddings import Embeddings
+from langchain_mcp_adapters.client import MultiServerMCPClient
 from langgraph.graph import END, StateGraph
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.pipeline.nodes.detect_anomalies import detect_anomalies
-from app.features.pipeline.nodes.extract import extract
-from app.features.pipeline.nodes.generate_report import generate_report
-from app.features.pipeline.nodes.ingest import ingest
-from app.features.pipeline.nodes.normalize_skills import normalize_skills
-from app.features.pipeline.nodes.score import score
+from app.common.llm.router import ExtractionRouter
+from app.features.pipeline.nodes.detect_anomalies import make_detect_anomalies_node
+from app.features.pipeline.nodes.generate_report import make_generate_report_node
+from app.features.pipeline.nodes.normalize_skills import make_normalize_skills_node
+from app.features.pipeline.nodes.score import make_score_node
 from app.features.pipeline.state import PipelineState
 
 
@@ -16,19 +18,30 @@ def route_after_hard_filter(state: PipelineState) -> str:
     return "detect_anomalies" if state["hard_filter_passed"] else "generate_report"
 
 
-def build_matching_graph() -> StateGraph[PipelineState]:
+def build_matching_graph(
+    *,
+    session: AsyncSession,
+    router: ExtractionRouter,
+    mcp_client: MultiServerMCPClient,
+    embeddings: Embeddings,
+) -> StateGraph[PipelineState]:
     graph = StateGraph(PipelineState)
 
-    graph.add_node("ingest", ingest)
-    graph.add_node("extract", extract)
-    graph.add_node("normalize_skills", normalize_skills)
-    graph.add_node("score", score)
-    graph.add_node("detect_anomalies", detect_anomalies)
-    graph.add_node("generate_report", generate_report)
+    # mypy can't match a `Callable[[PipelineState], Awaitable[dict[str,
+    # Any]]]`-typed value (as opposed to a literal `def`) against
+    # StateGraph.add_node's overloaded Node protocol union -- a known
+    # mypy/langgraph limitation, not a real type error (each node closure's
+    # signature is otherwise exactly what add_node expects).
+    graph.add_node(  # type: ignore[call-overload]
+        "normalize_skills", make_normalize_skills_node(session=session, embeddings=embeddings)
+    )
+    graph.add_node(  # type: ignore[call-overload]
+        "score", make_score_node(router=router, mcp_client=mcp_client, embeddings=embeddings)
+    )
+    graph.add_node("detect_anomalies", make_detect_anomalies_node(router=router))  # type: ignore[call-overload]
+    graph.add_node("generate_report", make_generate_report_node(session, router))  # type: ignore[call-overload]
 
-    graph.set_entry_point("ingest")
-    graph.add_edge("ingest", "extract")
-    graph.add_edge("extract", "normalize_skills")
+    graph.set_entry_point("normalize_skills")
     graph.add_edge("normalize_skills", "score")
     graph.add_conditional_edges(
         "score",

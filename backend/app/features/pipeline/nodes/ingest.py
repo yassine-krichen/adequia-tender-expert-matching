@@ -8,7 +8,6 @@ from pypdf import PdfReader
 from pypdf.errors import PdfReadError
 
 from app.common.exceptions import DomainError
-from app.features.pipeline.state import PipelineState
 
 
 class UnsupportedDocumentError(DomainError):
@@ -55,16 +54,3 @@ def _extract_docx_text(file_bytes: bytes, filename: str) -> str:
     if not text:
         raise CorruptDocumentError(f"No extractable text found in DOCX: {filename}")
     return text
-
-
-def ingest(state: PipelineState) -> PipelineState:
-    """Matching-graph guard: cv_raw_text/tdr_raw_text are populated by the
-    upload endpoints before this graph runs (extract_raw_text above, called
-    from app.features.candidates/app.features.tdrs) — this node only
-    validates they arrived non-empty before the graph proceeds to extract.
-    """
-    if not state["cv_raw_text"].strip():
-        raise CorruptDocumentError("Pipeline state has empty cv_raw_text")
-    if not state["tdr_raw_text"].strip():
-        raise CorruptDocumentError("Pipeline state has empty tdr_raw_text")
-    return state

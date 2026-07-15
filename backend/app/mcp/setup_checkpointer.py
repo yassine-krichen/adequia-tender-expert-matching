@@ -19,6 +19,7 @@ import sys
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 from app.config.settings import get_settings
+from app.mcp.checkpointer import get_checkpointer_conninfo
 
 if sys.platform == "win32":
     # psycopg's async mode can't run on Windows' default ProactorEventLoop
@@ -28,16 +29,8 @@ if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
-def _to_psycopg_conninfo(database_url: str) -> str:
-    """AsyncPostgresSaver uses psycopg (v3), not asyncpg -- the app's
-    DATABASE_URL is an asyncpg SQLAlchemy URL (`postgresql+asyncpg://...`).
-    psycopg accepts a plain `postgresql://` conninfo string.
-    """
-    return database_url.replace("postgresql+asyncpg://", "postgresql://", 1)
-
-
 async def setup() -> None:
-    conninfo = _to_psycopg_conninfo(get_settings().database_url)
+    conninfo = get_checkpointer_conninfo(get_settings().database_url)
 
     async with AsyncPostgresSaver.from_conn_string(conninfo) as checkpointer:
         await checkpointer.setup()

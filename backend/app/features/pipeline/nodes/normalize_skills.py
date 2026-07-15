@@ -1,3 +1,6 @@
+from collections.abc import Awaitable, Callable
+from typing import Any
+
 from langchain_core.embeddings import Embeddings
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -152,9 +155,19 @@ async def normalize_position_skills(
     ]
 
 
-def normalize_skills(state: PipelineState) -> PipelineState:
-    """Graph-node form -- still unwired (graph.py isn't invoked anywhere
-    yet, same as extract.py's extract(state)). normalize_cv_skills above
-    is what's actually called by the matching worker.
+def make_normalize_skills_node(
+    *, session: AsyncSession, embeddings: Embeddings
+) -> Callable[[PipelineState], Awaitable[dict[str, Any]]]:
+    """ADQ-19 node factory -- also what makes the graph's entry node real
+    (the graph starts here now, not at ingest/extract). Thin wrapper: all
+    the actual retrieval/rerank/retry logic stays in normalize_cv_skills
+    above, untouched.
     """
-    raise NotImplementedError
+
+    async def _normalize_skills_node(state: PipelineState) -> dict[str, Any]:
+        cv = state["cv_extracted"]
+        assert cv is not None
+        result = await normalize_cv_skills(cv, session=session, embeddings=embeddings)
+        return {"normalized_skills": result}
+
+    return _normalize_skills_node

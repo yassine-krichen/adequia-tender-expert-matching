@@ -17,6 +17,7 @@ Run from backend/: `uv run python scripts/generate_synthetic_cvs.py`
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 
 from docx import Document
@@ -58,6 +59,7 @@ class Candidate:
     full_name: str
     email: str
     phone: str
+    birth_date: date
     summary: str
     education: list[Education]
     certifications: list[Certification]
@@ -76,6 +78,7 @@ CANDIDATES: list[Candidate] = [
         full_name="Nadia Ben Salah",
         email="nadia.bensalah@example.com",
         phone="+216 20 123 456",
+        birth_date=date(1984, 4, 12),
         summary=(
             "Cheffe de projet SI avec 15 ans d'expérience dans le pilotage de "
             "programmes de transformation digitale pour le secteur public "
@@ -132,6 +135,7 @@ CANDIDATES: list[Candidate] = [
         full_name="Karim Trabelsi",
         email="karim.trabelsi@example.com",
         phone="+216 22 987 654",
+        birth_date=date(1989, 7, 3),
         summary=(
             "Architecte logiciel avec 10 ans d'expérience en conception de "
             "systèmes distribués et développement backend pour des projets "
@@ -185,6 +189,7 @@ CANDIDATES: list[Candidate] = [
         full_name="Salma Gharbi",
         email="salma.gharbi@example.com",
         phone="+216 24 555 321",
+        birth_date=date(1992, 11, 20),
         summary=(
             "Experte base de données et Business Intelligence, 8 ans "
             "d'expérience dans la conception d'entrepôts de données et de "
@@ -238,6 +243,7 @@ CANDIDATES: list[Candidate] = [
         full_name="Mehdi Aouadi",
         email="mehdi.aouadi@example.com",
         phone="+216 26 741 852",
+        birth_date=date(1994, 2, 15),
         summary=(
             "Analyste fonctionnel avec 6 ans d'expérience dans le recueil de "
             "besoins et la rédaction de spécifications pour des projets "
@@ -289,6 +295,7 @@ CANDIDATES: list[Candidate] = [
         full_name="Yosra Chaabane",
         email="yosra.chaabane@example.com",
         phone="+216 21 369 258",
+        birth_date=date(1995, 9, 8),
         summary=(
             "Ingénieure QA avec 5 ans d'expérience en tests fonctionnels et "
             "automatisés pour des applications web du secteur public."
@@ -329,6 +336,7 @@ CANDIDATES: list[Candidate] = [
         full_name="Amine Ferjani",
         email="amine.ferjani@example.com",
         phone="+216 23 147 963",
+        birth_date=date(1993, 6, 25),
         summary=(
             "Expert DevOps et infrastructure, 7 ans d'expérience dans le "
             "déploiement et l'exploitation de plateformes cloud pour des "
@@ -387,6 +395,7 @@ CANDIDATES: list[Candidate] = [
         full_name="Ines Belhadj",
         email="ines.belhadj@example.com",
         phone="+216 25 741 369",
+        birth_date=date(1994, 1, 30),
         summary=(
             "Ingénieure IA avec 6 ans d'expérience en traitement du langage "
             "naturel et architectures RAG, spécialisée dans la conception de "
@@ -449,6 +458,7 @@ CANDIDATES: list[Candidate] = [
         full_name="Youssef Kammoun",
         email="youssef.kammoun@example.com",
         phone="+216 27 852 963",
+        birth_date=date(1995, 5, 17),
         summary=(
             "Développeur mobile avec 5 ans d'expérience dans la conception "
             "d'applications multi-plateformes et l'intégration d'assistants "
@@ -504,6 +514,7 @@ CANDIDATES: list[Candidate] = [
         full_name="Rania Snoussi",
         email="rania.snoussi@example.com",
         phone="+216 28 963 741",
+        birth_date=date(1991, 10, 4),
         summary=(
             "Experte cybersécurité avec 9 ans d'expérience en développement "
             "sécurisé et audit applicatif, spécialisée dans la remédiation "
@@ -564,6 +575,7 @@ CANDIDATES: list[Candidate] = [
         full_name="Walid Mejri",
         email="walid.mejri@example.com",
         phone="+216 29 174 852",
+        birth_date=date(1992, 8, 22),
         summary=(
             "Développeur .NET/C# senior avec 8 ans d'expérience dans la "
             "conception d'applications d'entreprise multi-niveaux pour la "
@@ -616,6 +628,7 @@ CANDIDATES: list[Candidate] = [
         full_name="Nizar Chebbi",
         email="nizar.chebbi@example.com",
         phone="+216 20 486 357",
+        birth_date=date(1989, 3, 11),
         summary=(
             "Architecte logiciel avec 11 ans d'expérience en conception "
             "d'architectures microservices et en mise en place de chaînes "
@@ -692,6 +705,7 @@ def render_pdf(candidate: Candidate, output_path: Path) -> None:
     story = [
         Paragraph(candidate.full_name, name_style),
         Paragraph(f"{candidate.email} — {candidate.phone}", body_style),
+        Paragraph(f"Né(e) le: {candidate.birth_date:%d/%m/%Y}", body_style),
         Spacer(1, 8),
         Paragraph(candidate.summary, body_style),
         Paragraph("Formation", heading_style),
@@ -734,6 +748,7 @@ def render_docx(candidate: Candidate, output_path: Path) -> None:
     document = Document()
     document.add_heading(candidate.full_name, level=0)
     document.add_paragraph(f"{candidate.email} — {candidate.phone}")
+    document.add_paragraph(f"Né(e) le: {candidate.birth_date:%d/%m/%Y}")
     document.add_paragraph(candidate.summary)
 
     document.add_heading("Formation", level=1)

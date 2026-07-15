@@ -15,6 +15,7 @@ class Settings(BaseSettings):
 
     database_url: str
     redis_url: str
+    mcp_server_url: str
 
     groq_api_keys: str
     gemini_api_keys: str

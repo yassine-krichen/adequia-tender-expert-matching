@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import datetime
 from enum import Enum
 
 from pydantic import BaseModel, Field
@@ -19,6 +19,13 @@ class AnomalySeverity(str, Enum):
     info = "info"
     warning = "warning"
     blocking = "blocking"
+
+
+class ReviewDecision(str, Enum):
+    approved = "approved"
+    rejected = "rejected"
+    overridden_to_approve = "overridden_to_approve"
+    overridden_to_reject = "overridden_to_reject"
 
 
 class Anomaly(BaseModel):
@@ -85,4 +92,4 @@ class MatchResult(BaseModel):
     reviewer_decision: str | None = None  # "approved" | "rejected" | "overridden"
     reviewer_id: str | None = None
     reviewer_note: str | None = None
-    decided_at: date | None = None
+    decided_at: datetime | None = None

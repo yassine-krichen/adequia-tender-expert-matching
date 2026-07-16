@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.common.llm.router import ExtractionRouter
 from app.features.pipeline.nodes.detect_anomalies import make_detect_anomalies_node
 from app.features.pipeline.nodes.generate_report import make_generate_report_node
+from app.features.pipeline.nodes.human_review import human_review
 from app.features.pipeline.nodes.normalize_skills import make_normalize_skills_node
 from app.features.pipeline.nodes.score import make_score_node
 from app.features.pipeline.state import PipelineState
@@ -40,6 +41,7 @@ def build_matching_graph(
     )
     graph.add_node("detect_anomalies", make_detect_anomalies_node(router=router))  # type: ignore[call-overload]
     graph.add_node("generate_report", make_generate_report_node(session, router))  # type: ignore[call-overload]
+    graph.add_node("human_review", human_review)
 
     graph.set_entry_point("normalize_skills")
     graph.add_edge("normalize_skills", "score")
@@ -49,6 +51,11 @@ def build_matching_graph(
         {"detect_anomalies": "detect_anomalies", "generate_report": "generate_report"},
     )
     graph.add_edge("detect_anomalies", "generate_report")
-    graph.add_edge("generate_report", END)
+    # Both branches (hard-filter pass and fail) converge here uniformly --
+    # a reviewer can override a hard-filter rejection too, so
+    # overridden_to_approve must stay reachable for failed candidates (see
+    # human_review's docstring).
+    graph.add_edge("generate_report", "human_review")
+    graph.add_edge("human_review", END)
 
     return graph

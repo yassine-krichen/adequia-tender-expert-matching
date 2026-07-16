@@ -1,7 +1,7 @@
 from typing import TypedDict
 
 from app.domain.cv import CandidateCV, NormalizedSkill
-from app.domain.matching import Anomaly, Citation, SubScores
+from app.domain.matching import Anomaly, Citation, ReviewDecision, SubScores
 from app.domain.tdr import ExpertPosition
 
 
@@ -30,3 +30,4 @@ class PipelineState(TypedDict):
     rationale: str | None
     citations: list[Citation]
     needs_human_review: bool
+    reviewer_decision: ReviewDecision | None

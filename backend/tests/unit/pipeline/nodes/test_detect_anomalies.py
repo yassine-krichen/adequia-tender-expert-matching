@@ -104,6 +104,7 @@ def _state(*, cv: CandidateCV | None = None, position: ExpertPosition | None = N
         "rationale": None,
         "citations": [],
         "needs_human_review": False,
+        "reviewer_decision": None,
     }
 
 

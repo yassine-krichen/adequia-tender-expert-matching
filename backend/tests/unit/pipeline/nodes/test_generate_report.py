@@ -53,6 +53,7 @@ def _state(
         "rationale": None,
         "citations": [],
         "needs_human_review": False,
+        "reviewer_decision": None,
     }
 
 

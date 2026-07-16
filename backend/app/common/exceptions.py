@@ -44,6 +44,37 @@ class ResourceNotReadyError(DomainError):
     status_code = 409
 
 
+class AlreadyReviewedError(DomainError):
+    """A review decision has already been recorded for this match."""
+
+    status_code = 409
+
+
+class NoPendingReviewError(DomainError):
+    """No paused human_review interrupt exists for this match's thread --
+    the checkpoint was never written, or has already been consumed.
+    """
+
+    status_code = 409
+
+
+class ReviewPersistenceFailedError(DomainError):
+    """The LangGraph checkpoint thread was already resumed/completed for
+    this match, but writing the decision back to match_results /
+    historical_decisions failed afterwards (dropped connection, constraint
+    violation, etc).
+
+    The checkpoint and the DB now disagree: the graph considers the review
+    done, but match_results.reviewer_decision is still NULL. This is not a
+    permanent stuck state -- retrying submit_review with the same decision
+    will detect the already-resumed-but-unwritten checkpoint and recover by
+    writing the decision straight to the DB, without touching the graph
+    again.
+    """
+
+    status_code = 500
+
+
 async def domain_error_handler(_: Request, exc: Exception) -> JSONResponse:
     assert isinstance(exc, DomainError)
     return JSONResponse(status_code=exc.status_code, content={"message": exc.message})

@@ -155,6 +155,12 @@ async def run_matching_job(
                         "needs_human_review": False,
                     },
                 )
+                # ADQ-24: the graph now ends in human_review's interrupt(),
+                # not generate_report -- ainvoke() returns as soon as that
+                # interrupt fires, with every field below already computed
+                # and an extra "__interrupt__" key riding along (unread
+                # here). final_state reflects "state as of the pending
+                # human_review interrupt," not a fully finished run.
                 final_state = await graph.ainvoke(
                     initial_state, config={"configurable": {"thread_id": str(match_id)}}
                 )

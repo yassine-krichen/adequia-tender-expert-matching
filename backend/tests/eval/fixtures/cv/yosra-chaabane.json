@@ -1,0 +1,27 @@
+{
+  "source_file": "docs/cvs/synthetic/yosra-chaabane.pdf",
+  "note": "Hand-verified against the full CV text (single-page synthetic PDF, QA engineer profile, single employer).",
+  "expected": {
+    "full_name_contains": "Yosra Chaabane",
+    "education": [
+      {"degree_contains": "ingénieur", "institution_contains": "ISI Ariana", "graduation_year": 2019}
+    ],
+    "certifications": [
+      {"name_contains": "ISTQB"}
+    ],
+    "experience": [
+      {"title_contains": "QA", "employer_contains": "ST2i", "start_year": 2020, "end_year": null}
+    ],
+    "languages": [
+      {"language_contains": "Arabe"},
+      {"language_contains": "Français"},
+      {"language_contains": "Anglais"}
+    ],
+    "total_years_experience_min": 5.5,
+    "total_years_experience_max": 7.8
+  },
+  "known_limitations": [
+    "Language proficiency level not asserted (see amine-ferjani.json for why).",
+    "Only one experience entry in this CV (no prior employer) -- exercises the single-entry total_years_experience path."
+  ]
+}

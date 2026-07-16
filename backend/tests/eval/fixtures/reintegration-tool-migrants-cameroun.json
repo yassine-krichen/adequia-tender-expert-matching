@@ -1,0 +1,9 @@
+{
+  "source_file": "docs/tdrs/reintegration-tool-migrants-cameroun.pdf",
+  "note": "Hand-verified against the full text -- this is a firm-level TDR (OIM Cameroun) for a company to build a digital tool, with all qualification criteria attached to the company, not to named individual experts.",
+  "expected_positions": [],
+  "known_limitations": [
+    "Section 'Profil recherche et conditions de candidature' lists company-level requirements (statut juridique, ancrage international, 'expertise technique confirmee (minimum 5 ans)') attached to l'entreprise, not to a person -- individual team roles are mentioned only as documents to submit ('profils des membres cles de l'equipe: ingenieurs, data scientists, developpeurs, UX/UI designers') without any diploma/experience figure attached to any of them.",
+    "Negative fixture: exercises the same 'firm-level criteria are not an expert position' guardrail path as reoi-pakistan-customs.json."
+  ]
+}

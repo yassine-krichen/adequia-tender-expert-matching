@@ -1,0 +1,27 @@
+{
+  "source_file": "docs/cvs/synthetic/karim-trabelsi.docx",
+  "note": "Hand-verified against the full CV text (single-page synthetic DOCX, software architect profile).",
+  "expected": {
+    "full_name_contains": "Karim Trabelsi",
+    "education": [
+      {"degree_contains": "ingénieur", "institution_contains": "ENSI", "graduation_year": 2013}
+    ],
+    "certifications": [
+      {"name_contains": "AWS"}
+    ],
+    "experience": [
+      {"title_contains": "Architecte logiciel", "employer_contains": "ST2i", "start_year": 2019, "end_year": null},
+      {"title_contains": "Développeur backend", "employer_contains": "Vermeg", "start_year": 2013, "end_year": 2019}
+    ],
+    "languages": [
+      {"language_contains": "Arabe"},
+      {"language_contains": "Français"},
+      {"language_contains": "Anglais"}
+    ],
+    "total_years_experience_min": 12.5,
+    "total_years_experience_max": 14.8
+  },
+  "known_limitations": [
+    "Language proficiency level not asserted (see amine-ferjani.json for why)."
+  ]
+}

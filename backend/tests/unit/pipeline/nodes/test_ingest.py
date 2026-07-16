@@ -10,9 +10,9 @@ from app.features.pipeline.nodes.ingest import (
 
 _TDRS_DIR = Path(__file__).resolve().parents[5] / "docs" / "tdrs"
 _REAL_TDRS = [
-    "2. TDR Mise en place du SI CI_Avenant contrat_V2.docx",
-    "DP _  Developpement de Applicatif avec 4 modules-revu TAM-ST2I (5).docx",
-    "TDR (8).pdf",
+    "si-ci-avenant-giz.docx",
+    "applicatif-4-modules-st2i.docx",
+    "govtech-education-ecosystem.pdf",
 ]
 
 

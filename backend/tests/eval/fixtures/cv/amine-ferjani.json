@@ -1,0 +1,28 @@
+{
+  "source_file": "docs/cvs/synthetic/amine-ferjani.docx",
+  "note": "Hand-verified against the full CV text (single-page synthetic DOCX, DevOps profile).",
+  "expected": {
+    "full_name_contains": "Amine Ferjani",
+    "education": [
+      {"degree_contains": "ingénieur", "institution_contains": "SUP'COM", "graduation_year": 2017}
+    ],
+    "certifications": [
+      {"name_contains": "Kubernetes"},
+      {"name_contains": "Terraform"}
+    ],
+    "experience": [
+      {"title_contains": "DevOps", "employer_contains": "ST2i", "start_year": 2019, "end_year": null},
+      {"title_contains": "Administrateur", "employer_contains": "Orange", "start_year": 2017, "end_year": 2019}
+    ],
+    "languages": [
+      {"language_contains": "Arabe"},
+      {"language_contains": "Français"},
+      {"language_contains": "Anglais"}
+    ],
+    "total_years_experience_min": 8.5,
+    "total_years_experience_max": 10.8
+  },
+  "known_limitations": [
+    "Language proficiency level (e.g. 'courant', 'natif') is not asserted -- the extraction schema's example levels ('native', 'B2', 'fluent') suggest the model may translate/normalize rather than copy verbatim, so an exact level match would be brittle."
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "source_file": "docs/tdrs/e-idmaj.pdf",
+  "note": "Hand-verified against section VI 'Competences fonctionnelles' + 'Formation & etudes' + 'Experience professionnelle' (AJJ/Fondation Drosos TDR for the E-IDMAJ mobile app, Morocco).",
+  "expected_positions": [
+    {
+      "title_contains_any": [
+        "developpement technique",
+        "développement technique",
+        "prestataire technique",
+        "developpeur",
+        "développeur"
+      ],
+      "diploma_contains": "master",
+      "minimum_years_experience": 4
+    }
+  ],
+  "known_limitations": [
+    "The engaged party is a company/startup ('1 prestataire (entreprise ou startup tech)'), not a named individual expert, but the section attaches a concrete diploma (Master ou Doctorat) and years-of-experience requirement to the technical profile expected -- treated as one position per the guardrail's definition (a role with a diploma/experience requirement attached), same reasoning as the worked 'Software Developer' example.",
+    "Two separate 'at least 4 years' experience bullets are given (Big Data/NLP: 4 years; web site creation: 4 years) -- both happen to be 4, so minimum_years_experience=4 is unambiguous here, but note the fixture only captures one figure by design.",
+    "No single literal title heading exists for this role -- 'INTITULE DU POSTE/SERVICE ATTENDU' names the deliverable, not a person's job title -- title_contains_any is intentionally broad."
+  ]
+}

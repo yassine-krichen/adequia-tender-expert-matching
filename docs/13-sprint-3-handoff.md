@@ -170,11 +170,14 @@ The eval harness already exists and is genuinely simple to extend — no new
 code needed to add more gold-standard cases, just new fixture files.
 
 **TDR extraction gold set** (`backend/tests/eval/fixtures/*.json`,
-`test_tdr_extraction_quality.py`): only 3 of the ~11 TDR PDFs in `docs/tdrs/`
-currently have a hand-verified fixture (`tdr_8.json`, `si_ci_avenant.json`,
-`dp_4_modules.json`). The test auto-discovers every `*.json` in that folder
-— to add one, read a real TDR's staffing/positions section once, write a
-JSON file matching this shape:
+`test_tdr_extraction_quality.py`): 12 of the 13 TDR documents in `docs/tdrs/`
+now have a hand-verified fixture, one fixture per doc (`docs/tdrs/foo.pdf`
+pairs with `fixtures/foo.json`). The remaining doc
+(`automatisation-taches-dopt.pdf`) is a scanned image PDF with no extractable
+text layer — needs OCR before it can get a fixture at all (see
+`docs/scrum/spike-ocr-findings.md`). The test auto-discovers every `*.json`
+in that folder — to add one, read a real TDR's staffing/positions section
+once, write a JSON file matching this shape:
 
 ```json
 {
@@ -194,17 +197,15 @@ Drop it in `backend/tests/eval/fixtures/`, done — `test_tdr_extraction_quality
 picks it up automatically via glob. Run with `uv run pytest -m eval` (not part
 of the default test run — hits real LLM providers, costs real quota/time).
 
-**CV extraction gold set**: does **not** exist yet as its own eval (there's
-only the CV-*position* matching gold set,
-`fixtures/matching/gold_matching_set.json`, which tests matching quality, not
-raw field-extraction correctness). If you want this too, it needs a new
-`test_cv_extraction_quality.py` mirroring the TDR one exactly (same
-`@pytest.mark.eval`, same glob-fixture pattern), with fixtures shaped for
-whatever CV fields matter most (education, certifications, experience dates —
-whatever `docs/04-evaluation-metrics.md`'s "field-level F1" section names).
-Recommend treating this as a **small, separate task**, not folded into any
-of the 7 Sprint 3 stories' scope or points — it's valuable groundwork but
-nobody budgeted it, and Sprint 3 is already the heaviest sprint.
+**CV extraction gold set** (`backend/tests/eval/fixtures/cv/*.json`,
+`test_cv_extraction_quality.py`): now exists, all 11 synthetic CVs in
+`docs/cvs/synthetic/` covered, one fixture per CV. Mirrors the TDR eval's
+structure (`@pytest.mark.eval`, glob-fixture pattern) with fixtures shaped
+for full_name/education/certifications/experience/languages/
+total_years_experience, per `docs/04-evaluation-metrics.md`'s "field-level
+F1" section. This is separate from the CV-*position* matching gold set
+(`fixtures/matching/gold_matching_set.json`), which tests matching quality,
+not raw field-extraction correctness.
 
 ## Small things worth remembering
 

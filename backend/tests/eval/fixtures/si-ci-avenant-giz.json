@@ -1,34 +1,57 @@
 {
-  "source_file": "docs/tdrs/2. TDR Mise en place du SI CI_Avenant contrat_V2.docx",
+  "source_file": "docs/tdrs/si-ci-avenant-giz.docx",
   "note": "Hand-verified against the real numbered 'Qualifications de l'expert·e N' sections (GIZ/MEP Tunisia SI mission).",
   "expected_positions": [
     {
-      "title_contains_any": ["direction de l'équipe", "direction de l'equipe", "chef de projet", "directeur de mission", "chef d'équipe"],
+      "title_contains_any": [
+        "direction de l'équipe",
+        "direction de l'equipe",
+        "chef de projet",
+        "directeur de mission",
+        "chef d'équipe"
+      ],
       "diploma_contains": null,
       "minimum_years_experience": 15
     },
     {
-      "title_contains_any": ["expert en design", "expert·e en design", "expert en conception graphique"],
+      "title_contains_any": [
+        "expert en design",
+        "expert·e en design",
+        "expert en conception graphique"
+      ],
       "diploma_contains": "bac+3",
       "minimum_years_experience": 5
     },
     {
-      "title_contains_any": ["architecture des systèmes", "architecture des systemes"],
+      "title_contains_any": [
+        "architecture des systèmes",
+        "architecture des systemes"
+      ],
       "diploma_contains": null,
       "minimum_years_experience": 5
     },
     {
-      "title_contains_any": ["expert en sécurité", "expert en securite", "expert·e en sécurité"],
+      "title_contains_any": [
+        "expert en sécurité",
+        "expert en securite",
+        "expert·e en sécurité"
+      ],
       "diploma_contains": null,
       "minimum_years_experience": 3
     },
     {
-      "title_contains_any": ["audit de sécurité", "audit de securite"],
+      "title_contains_any": [
+        "audit de sécurité",
+        "audit de securite"
+      ],
       "diploma_contains": null,
       "minimum_years_experience": 3
     },
     {
-      "title_contains_any": ["développement", "developpement"],
+      "title_contains_any": [
+        "développement",
+        "developpement"
+      ],
       "diploma_contains": null,
       "minimum_years_experience": 3
     }

@@ -1,0 +1,18 @@
+{
+  "source_file": "docs/tdrs/software-developer-unfpa.pdf",
+  "note": "Hand-verified against the 'Required expertise, qualifications and competencies' section (UNFPA Egypt CO individual consultant TOR).",
+  "expected_positions": [
+    {
+      "title_contains_any": [
+        "software developer",
+        "developer"
+      ],
+      "diploma_contains": null,
+      "minimum_years_experience": null
+    }
+  ],
+  "known_limitations": [
+    "No formal diploma is stated (only 'Certification in google software design or similar'), and no numeric years-of-experience figure is given ('Previous experience in similar projects' is qualitative) -- diploma_contains and minimum_years_experience are correctly null here, not extraction gaps.",
+    "This document's qualifications list (ASP/ASP.Net/VB.NET, MS SQL Server, English/Arabic) closely matches the extraction guardrail's own worked example ('Software Developer... ASP.NET/VB.NET; MS SQL Server... English and Arabic') -- a good canary for the 'one position, not one per bullet' rule specifically."
+  ]
+}

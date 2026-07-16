@@ -1,24 +1,33 @@
 {
-  "source_file": "docs/tdrs/TDR (8).pdf",
+  "source_file": "docs/tdrs/govtech-education-ecosystem.pdf",
   "note": "Hand-verified against the real 'IV. EQUIPE DU PROJET' section (World Bank GovTech program TDR).",
   "expected_positions": [
     {
-      "title_contains_any": ["chef de projet"],
+      "title_contains_any": [
+        "chef de projet"
+      ],
       "diploma_contains": "bac+5",
       "minimum_years_experience": 15
     },
     {
-      "title_contains_any": ["architecte technique"],
+      "title_contains_any": [
+        "architecte technique"
+      ],
       "diploma_contains": "bac+5",
       "minimum_years_experience": 10
     },
     {
-      "title_contains_any": ["consultant fonctionnel"],
+      "title_contains_any": [
+        "consultant fonctionnel"
+      ],
       "diploma_contains": "bac+4",
       "minimum_years_experience": 10
     },
     {
-      "title_contains_any": ["développeur", "developpeur"],
+      "title_contains_any": [
+        "développeur",
+        "developpeur"
+      ],
       "diploma_contains": "bac+3",
       "minimum_years_experience": null
     }

@@ -1,0 +1,29 @@
+{
+  "source_file": "docs/tdrs/marketing-numerique-cedeao.pdf",
+  "note": "Hand-verified against section '6. Qualification du consultant' -- two distinct roles each with their own diploma/experience heading (ARAA/CEDEAO digital marketing consultant TDR, West Africa seed platforms).",
+  "expected_positions": [
+    {
+      "title_contains_any": [
+        "marketing numerique",
+        "marketing numérique",
+        "consultant en marketing"
+      ],
+      "diploma_contains": "bac + 3",
+      "minimum_years_experience": 5
+    },
+    {
+      "title_contains_any": [
+        "expert semencier",
+        "expert en semences",
+        "systemes semenciers",
+        "systèmes semenciers"
+      ],
+      "diploma_contains": "bac + 5",
+      "minimum_years_experience": 5
+    }
+  ],
+  "known_limitations": [
+    "The main consultant role lists two different experience figures ('5 annees minimum' in web platform creation/maintenance vs '2 ans' in digital marketing specifically) -- minimum_years_experience=5 asserts the larger, primary figure; the fixture doesn't assert the secondary 2-year figure since ExpertPosition only carries one number.",
+    "Diploma text in the source is 'BAC + 3' / 'BAC + 5' with spaces around '+', unlike the tighter 'bac+N' token seen in other TDRs -- diploma_contains uses the spaced form to match verbatim."
+  ]
+}

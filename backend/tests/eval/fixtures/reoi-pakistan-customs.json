@@ -1,0 +1,9 @@
+{
+  "source_file": "docs/tdrs/reoi-pakistan-customs.pdf",
+  "note": "Hand-verified against the full text -- this is a firm-level Request for Expressions of Interest (World Bank QCBS), not an individual-expert TOR.",
+  "expected_positions": [],
+  "known_limitations": [
+    "Document lists firm-level shortlisting criteria only (years in business, project track record, data-privacy compliance) and explicitly states 'Key Experts CV will not be evaluated at the shortlisting stage' -- no individual role has a diploma/experience requirement attached to it, so per the extraction guardrail this should yield zero positions rather than reinterpreting firm criteria as an expert position.",
+    "Negative fixture: exercises the 'report zero positions rather than reinterpreting unrelated content' guardrail path."
+  ]
+}

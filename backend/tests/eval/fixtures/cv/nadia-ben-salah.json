@@ -1,0 +1,29 @@
+{
+  "source_file": "docs/cvs/synthetic/nadia-ben-salah.pdf",
+  "note": "Hand-verified against the full CV text (single-page synthetic PDF, SI project lead profile, also used by test_service.py integration test).",
+  "expected": {
+    "full_name_contains": "Nadia Ben Salah",
+    "education": [
+      {"degree_contains": "ingénieur", "institution_contains": "INSAT", "graduation_year": 2008},
+      {"degree_contains": "Master", "institution_contains": "IHEC Carthage", "graduation_year": 2011}
+    ],
+    "certifications": [
+      {"name_contains": "PMP"},
+      {"name_contains": "PRINCE2"}
+    ],
+    "experience": [
+      {"title_contains": "Cheffe de projet SI", "employer_contains": "ST2i", "start_year": 2016, "end_year": null},
+      {"title_contains": "Consultante SI senior", "employer_contains": "Deloitte", "start_year": 2011, "end_year": 2015}
+    ],
+    "languages": [
+      {"language_contains": "Arabe"},
+      {"language_contains": "Français"},
+      {"language_contains": "Anglais"}
+    ],
+    "total_years_experience_min": 14.5,
+    "total_years_experience_max": 16.8
+  },
+  "known_limitations": [
+    "Language proficiency level not asserted (see amine-ferjani.json for why)."
+  ]
+}

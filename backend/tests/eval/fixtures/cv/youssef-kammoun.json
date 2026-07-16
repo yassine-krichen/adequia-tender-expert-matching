@@ -1,0 +1,27 @@
+{
+  "source_file": "docs/cvs/synthetic/youssef-kammoun.pdf",
+  "note": "Hand-verified against the full CV text (single-page synthetic PDF, mobile developer profile).",
+  "expected": {
+    "full_name_contains": "Youssef Kammoun",
+    "education": [
+      {"degree_contains": "ingénieur", "institution_contains": "ISIMM", "graduation_year": 2019}
+    ],
+    "certifications": [
+      {"name_contains": "Android Developer"}
+    ],
+    "experience": [
+      {"title_contains": "Développeur Mobile Senior", "employer_contains": "ST2i", "start_year": 2021, "end_year": null},
+      {"title_contains": "Développeur Full-Stack", "employer_contains": "Expensya", "start_year": 2019, "end_year": 2021}
+    ],
+    "languages": [
+      {"language_contains": "Arabe"},
+      {"language_contains": "Français"},
+      {"language_contains": "Anglais"}
+    ],
+    "total_years_experience_min": 7.0,
+    "total_years_experience_max": 9.4
+  },
+  "known_limitations": [
+    "Language proficiency level not asserted (see amine-ferjani.json for why)."
+  ]
+}

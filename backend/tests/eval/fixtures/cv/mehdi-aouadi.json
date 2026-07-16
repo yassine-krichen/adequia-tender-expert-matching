@@ -1,0 +1,28 @@
+{
+  "source_file": "docs/cvs/synthetic/mehdi-aouadi.docx",
+  "note": "Hand-verified against the full CV text (single-page synthetic DOCX, functional analyst profile).",
+  "expected": {
+    "full_name_contains": "Mehdi Aouadi",
+    "education": [
+      {"degree_contains": "ingénieur", "institution_contains": "ISIMM", "graduation_year": 2018}
+    ],
+    "certifications": [
+      {"name_contains": "Business Analysis"}
+    ],
+    "experience": [
+      {"title_contains": "Analyste fonctionnel senior", "employer_contains": "ST2i", "start_year": 2021, "end_year": null},
+      {"title_contains": "Analyste fonctionnel", "employer_contains": "Sofrecom", "start_year": 2018, "end_year": 2021}
+    ],
+    "languages": [
+      {"language_contains": "Arabe"},
+      {"language_contains": "Français"},
+      {"language_contains": "Anglais"}
+    ],
+    "total_years_experience_min": 7.5,
+    "total_years_experience_max": 9.8
+  },
+  "known_limitations": [
+    "Language proficiency level not asserted (see amine-ferjani.json for why).",
+    "'Analyste fonctionnel senior' vs 'Analyste fonctionnel' at two different employers overlap on the substring 'Analyste fonctionnel' -- title_contains match is order-independent over the actual list, so this only works because employer_contains disambiguates (ST2i vs Sofrecom)."
+  ]
+}

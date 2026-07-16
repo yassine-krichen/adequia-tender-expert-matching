@@ -1,0 +1,18 @@
+{
+  "source_file": "docs/tdrs/ai-chatbot-gafi.pdf",
+  "note": "Hand-verified against section '4. Qualifications of Key Experts' (AfDB/GAFI Egypt TOR for an AI chatbot PoC).",
+  "expected_positions": [
+    {
+      "title_contains_any": [
+        "senior ai",
+        "machine learning expert",
+        "ai & machine learning"
+      ],
+      "diploma_contains": "master",
+      "minimum_years_experience": 10
+    }
+  ],
+  "known_limitations": [
+    "Single-expert TOR, no numbered 'Expert N' headings -- only one position expected."
+  ]
+}

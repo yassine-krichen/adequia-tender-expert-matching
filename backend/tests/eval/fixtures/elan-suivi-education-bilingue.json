@@ -1,0 +1,22 @@
+{
+  "source_file": "docs/tdrs/elan-suivi-education-bilingue.pdf",
+  "note": "Hand-verified against section '8. Profil d'expertise' (OIF/IFEF ELAN programme TDR, bilingual education data platform) -- a single bulleted profile for the selected firm/consultant group, no numbered 'Expert N' headings.",
+  "expected_positions": [
+    {
+      "title_contains_any": [
+        "data science",
+        "intelligence artificielle",
+        "expert data",
+        "consultant data",
+        "data scientist",
+        "expert en data"
+      ],
+      "diploma_contains": null,
+      "minimum_years_experience": 3
+    }
+  ],
+  "known_limitations": [
+    "No diploma is stated for this profile at all (only 'au moins trois ans d'experience' and a list of technical skills: R/Python, NLP algorithms, OpenAI API integration) -- diploma_contains is correctly null.",
+    "No literal position title exists anywhere in the section ('le cabinet ou groupe de consultants selectionne...') -- the LLM must synthesize a title from the bulleted skill list per the guardrail's worked example, so title_contains_any is deliberately wide and may need revision after the first real run against this fixture."
+  ]
+}

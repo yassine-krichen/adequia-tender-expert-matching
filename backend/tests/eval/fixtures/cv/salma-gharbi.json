@@ -1,0 +1,28 @@
+{
+  "source_file": "docs/cvs/synthetic/salma-gharbi.pdf",
+  "note": "Hand-verified against the full CV text (single-page synthetic PDF, BI/data expert profile).",
+  "expected": {
+    "full_name_contains": "Salma Gharbi",
+    "education": [
+      {"degree_contains": "Master", "institution_contains": "FSEG Tunis", "graduation_year": 2016}
+    ],
+    "certifications": [
+      {"name_contains": "Oracle"},
+      {"name_contains": "Power BI"}
+    ],
+    "experience": [
+      {"title_contains": "BI", "employer_contains": "ST2i", "start_year": 2020, "end_year": null},
+      {"title_contains": "Administratrice de bases de données", "employer_contains": "Tunisie Telecom", "start_year": 2016, "end_year": 2020}
+    ],
+    "languages": [
+      {"language_contains": "Arabe"},
+      {"language_contains": "Français"},
+      {"language_contains": "Anglais"}
+    ],
+    "total_years_experience_min": 9.5,
+    "total_years_experience_max": 11.8
+  },
+  "known_limitations": [
+    "Language proficiency level not asserted (see amine-ferjani.json for why)."
+  ]
+}

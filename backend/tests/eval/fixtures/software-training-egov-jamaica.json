@@ -1,0 +1,18 @@
+{
+  "source_file": "docs/tdrs/software-training-egov-jamaica.pdf",
+  "note": "Hand-verified against section 8.2 'Key Skills/Qualifications' (individual key instructors), distinct from section 8.1's firm-level criteria (Jamaica eGov/World Bank SPSTP training TOR).",
+  "expected_positions": [
+    {
+      "title_contains_any": [
+        "instructor",
+        "trainer"
+      ],
+      "diploma_contains": "bachelor",
+      "minimum_years_experience": 5
+    }
+  ],
+  "known_limitations": [
+    "Section 8.1 'The Consulting Firm' also states 'At least 8 years' experience' but that requirement is attached to the firm, not an individual expert -- only section 8.2's individual key-instructor requirement (Bachelor's degree, 5 years relevant experience) should surface as a position.",
+    "No literal job title like 'Instructor' appears as a heading -- the role is referred to as 'key instructor(s)' inline, so title_contains_any is intentionally broad."
+  ]
+}

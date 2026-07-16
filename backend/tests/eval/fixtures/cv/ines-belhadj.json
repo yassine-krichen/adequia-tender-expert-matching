@@ -1,0 +1,27 @@
+{
+  "source_file": "docs/cvs/synthetic/ines-belhadj.docx",
+  "note": "Hand-verified against the full CV text (single-page synthetic DOCX, AI/RAG engineer profile).",
+  "expected": {
+    "full_name_contains": "Ines Belhadj",
+    "education": [
+      {"degree_contains": "ingénieur", "institution_contains": "ENSI", "graduation_year": 2018}
+    ],
+    "certifications": [
+      {"name_contains": "Machine Learning Engineer"}
+    ],
+    "experience": [
+      {"title_contains": "Ingénieure IA", "employer_contains": "ST2i", "start_year": 2022, "end_year": null},
+      {"title_contains": "Data Scientist", "employer_contains": "InstaDeep", "start_year": 2018, "end_year": 2022}
+    ],
+    "languages": [
+      {"language_contains": "Arabe"},
+      {"language_contains": "Français"},
+      {"language_contains": "Anglais"}
+    ],
+    "total_years_experience_min": 7.5,
+    "total_years_experience_max": 9.8
+  },
+  "known_limitations": [
+    "Language proficiency level not asserted (see amine-ferjani.json for why)."
+  ]
+}

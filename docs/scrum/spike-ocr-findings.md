@@ -8,9 +8,9 @@
 
 | File | Type | Pages | Extracted chars | Chars/page |
 |---|---|---|---|---|
-| `TDR (8).pdf` | real TDR | 193 | 324,334 | ~1,680 |
-| `2. TDR Mise en place du SI CI_Avenant contrat_V2.docx` | real TDR | — | 56,400 | n/a (docx) |
-| `DP _ Developpement de Applicatif avec 4 modules-revu TAM-ST2I (5).docx` | real TDR | — | 40,952 | n/a (docx) |
+| `govtech-education-ecosystem.pdf` | real TDR | 193 | 324,334 | ~1,680 |
+| `si-ci-avenant-giz.docx` | real TDR | — | 56,400 | n/a (docx) |
+| `applicatif-4-modules-st2i.docx` | real TDR | — | 40,952 | n/a (docx) |
 | `nadia-ben-salah.pdf` | synthetic CV | 1 | 1,301 | 1,301 |
 | `salma-gharbi.pdf` | synthetic CV | 1 | 1,112 | 1,112 |
 | `yosra-chaabane.pdf` | synthetic CV | 1 | 789 | 789 |

@@ -1,6 +1,7 @@
 'use client';
 
 import { Info } from 'lucide-react';
+import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
 import { FileUpload } from '@/common/components/file-upload';
@@ -105,7 +106,9 @@ function PositionMatches({ matches }: { matches: MatchResult[] }) {
       <TableBody>
         {matches.map((match) => (
           <TableRow key={match.match_id}>
-            <TableCell>{match.candidate_full_name}</TableCell>
+            <TableCell>
+              <Link href={`/matches/${match.match_id}`}>{match.candidate_full_name}</Link>
+            </TableCell>
             <TableCell>
               {match.compatibility_score != null ? `${Math.round(match.compatibility_score * 100)}%` : '—'}
             </TableCell>

@@ -32,3 +32,56 @@ export type MatchingStatus = {
   positions_done: number | null;
   positions_total: number | null;
 };
+
+// Mirrors backend/app/domain/matching.py Anomaly/Citation/MatchResult
+// field-for-field (snake_case) -- same no-translation-layer convention as
+// above. Named MatchDetail, not MatchResult -- that name is already taken by
+// the list-view shape above (GET /positions/{id}/matches), which is missing
+// qualitative_fit_score/anomalies/citations/reviewer fields entirely.
+export type Anomaly = {
+  type:
+    | 'employment_gap'
+    | 'date_overlap'
+    | 'expired_certification'
+    | 'education_date_inconsistency'
+    | 'age_graduation_implausibility'
+    | 'unverifiable_claim'
+    | 'title_seniority_mismatch'
+    | 'missing_mandatory_requirement';
+  severity: 'info' | 'warning' | 'blocking';
+  description: string;
+  source_citation: string;
+};
+
+export type Citation = { claim: string; source_doc: string; source_span: string };
+
+export type MatchDetail = {
+  match_id: string;
+  cv_id: string;
+  tdr_id: string;
+  position_id: string;
+  hard_filter_passed: boolean;
+  hard_filter_failures: string[];
+  compatibility_score: number | null;
+  sub_scores: {
+    education_score: number | null;
+    experience_score: number | null;
+    certification_score: number | null;
+    sector_score: number;
+    language_score: number | null;
+    skill_score: number;
+    qualitative_fit_score: number | null;
+  } | null;
+  anomalies: Anomaly[];
+  rationale: string | null;
+  citations: Citation[];
+  reviewer_decision: string | null;
+  reviewer_id: string | null;
+  reviewer_note: string | null;
+  decided_at: string | null;
+};
+
+export type ReviewDecisionRequest = {
+  decision: 'approved' | 'rejected' | 'overridden_to_approve' | 'overridden_to_reject';
+  note: string | null;
+};

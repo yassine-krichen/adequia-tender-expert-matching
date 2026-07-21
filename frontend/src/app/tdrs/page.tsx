@@ -1,13 +1,23 @@
 'use client';
 
-import { Info } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
+import { EmptyState } from '@/common/components/empty-state';
 import { FileUpload } from '@/common/components/file-upload';
+import { InfoTooltip } from '@/common/components/info-tooltip';
+import { SubScoreBar } from '@/common/components/sub-score-bar';
 import { Button } from '@/common/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/common/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/common/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/common/components/ui/table';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/common/components/ui/tooltip';
 import { Badge } from '@/components/reui/badge';
 import { getMatchingStatus } from '@/features/matching/api/get-matching-status';
@@ -18,6 +28,7 @@ import { getTdr } from '@/features/tdrs/api/get-tdr';
 import { getTdrStatus } from '@/features/tdrs/api/get-tdr-status';
 import { uploadTdr } from '@/features/tdrs/api/upload-tdr';
 import type { TdrExtraction, TdrStatus } from '@/features/tdrs/types/tdr.types';
+import { useGuidedTour } from '@/features/tour/use-guided-tour';
 
 const POLL_INTERVAL_MS = 1500;
 
@@ -45,42 +56,11 @@ function describeMatchingProgress(status: MatchingStatus): string {
   return 'Starting matching…';
 }
 
-function InfoTooltip({ text }: { text: string }) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        {/* A plain <Info> SVG has no focus/keyboard semantics -- wrapping
-            it in a real button makes the tooltip reachable by keyboard
-            and screen readers, not just mouse hover. */}
-        <button
-          type="button"
-          aria-label="More info"
-          className="inline-flex rounded-sm text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <Info className="size-3.5" />
-        </button>
-      </TooltipTrigger>
-      <TooltipContent>{text}</TooltipContent>
-    </Tooltip>
-  );
-}
-
-function SubScoreBar({ label, value }: { label: string; value: number }) {
-  const percent = Math.round(value * 100);
-  return (
-    <div className="flex items-center gap-2 text-xs">
-      <span className="w-12 text-muted-foreground">{label}</span>
-      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted" role="presentation">
-        <div className="h-full bg-primary" style={{ width: `${percent}%` }} />
-      </div>
-      <span className="w-8 text-right text-muted-foreground">{percent}%</span>
-    </div>
-  );
-}
-
 function PositionMatches({ matches }: { matches: MatchResult[] }) {
   if (matches.length === 0) {
-    return <p className="text-sm text-muted-foreground">No shortlisted candidates for this position.</p>;
+    return (
+      <p className="text-sm text-muted-foreground">No shortlisted candidates for this position.</p>
+    );
   }
 
   return (
@@ -110,7 +90,9 @@ function PositionMatches({ matches }: { matches: MatchResult[] }) {
               <Link href={`/matches/${match.match_id}`}>{match.candidate_full_name}</Link>
             </TableCell>
             <TableCell>
-              {match.compatibility_score != null ? `${Math.round(match.compatibility_score * 100)}%` : '—'}
+              {match.compatibility_score != null
+                ? `${Math.round(match.compatibility_score * 100)}%`
+                : '—'}
             </TableCell>
             <TableCell>
               {match.hard_filter_passed ? (
@@ -140,6 +122,8 @@ function PositionMatches({ matches }: { matches: MatchResult[] }) {
 }
 
 export default function TdrsPage() {
+  useGuidedTour();
+
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<TdrExtraction | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -319,7 +303,7 @@ export default function TdrsPage() {
         Upload a TDR (PDF or docx) to see its mission, client, and expert positions extracted.
       </p>
 
-      <Card>
+      <Card data-tour="tdr-upload">
         <CardHeader>
           <CardTitle>Upload TDR</CardTitle>
         </CardHeader>
@@ -361,6 +345,23 @@ export default function TdrsPage() {
         </div>
       )}
 
+      {!result && !isUploading && !error && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <EmptyState
+            icon={FileText}
+            title="No expert positions yet"
+            description="Upload a TDR above to see its mission and expert positions extracted here."
+            data-tour="tdr-positions"
+          />
+          <EmptyState
+            icon={FileText}
+            title="No matches yet"
+            description="Once a TDR is uploaded, run matching to see shortlisted candidates for each position here."
+            data-tour="tdr-matches"
+          />
+        </div>
+      )}
+
       {result && (
         <Card>
           <CardHeader>
@@ -370,7 +371,7 @@ export default function TdrsPage() {
             <p>Client: {result.client ?? '—'}</p>
             <p>Sector: {result.sector ?? '—'}</p>
 
-            <div className="space-y-4">
+            <div className="space-y-4" data-tour="tdr-positions">
               <div className="flex items-center justify-between">
                 <h3 className="font-heading text-sm text-muted-foreground">Expert positions</h3>
                 <Button
@@ -401,8 +402,51 @@ export default function TdrsPage() {
                       ` — ${position.minimum_years_experience}+ years`}
                     {position.mandatory_diploma && ` — ${position.mandatory_diploma}`}
                   </p>
+                  <div className="space-y-1 text-sm text-muted-foreground">
+                    <p className="flex items-start gap-1">
+                      <span className="inline-flex items-center gap-1">
+                        Required certifications
+                        <InfoTooltip text="Certifications this position's TDR explicitly requires — not the candidate's own certifications." />
+                      </span>
+                      :{' '}
+                      {position.required_certifications.length > 0
+                        ? position.required_certifications.join(', ')
+                        : '—'}
+                    </p>
+                    <p className="flex items-start gap-1">
+                      <span className="inline-flex items-center gap-1">
+                        Required languages
+                        <InfoTooltip text="Languages and minimum proficiency levels this position's TDR requires." />
+                      </span>
+                      :{' '}
+                      {position.required_languages.length > 0
+                        ? position.required_languages
+                            .map((lang) => `${lang.language} (${lang.minimum_level})`)
+                            .join(', ')
+                        : '—'}
+                    </p>
+                    <p className="flex items-start gap-1">
+                      <span className="inline-flex items-center gap-1">
+                        Required skills
+                        <InfoTooltip text="Skills extracted from the TDR's requirements for this position, used to compute the skill sub-score during matching." />
+                      </span>
+                      :{' '}
+                      {position.required_skills.length > 0
+                        ? position.required_skills.join(', ')
+                        : '—'}
+                    </p>
+                    <p className="flex items-start gap-1">
+                      <span className="inline-flex items-center gap-1">
+                        Evaluation weight
+                        <InfoTooltip text="This position's relative weight in the overall mission evaluation, as stated in the TDR (when specified)." />
+                      </span>
+                      : {position.evaluation_weight != null ? position.evaluation_weight : '—'}
+                    </p>
+                  </div>
                   {matchingStatus === 'done' && matchesByPosition[position.position_id] && (
-                    <PositionMatches matches={matchesByPosition[position.position_id]} />
+                    <div data-tour="tdr-matches">
+                      <PositionMatches matches={matchesByPosition[position.position_id]} />
+                    </div>
                   )}
                 </div>
               ))}

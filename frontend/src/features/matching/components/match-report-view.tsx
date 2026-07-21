@@ -2,17 +2,25 @@
 
 import { useState } from 'react';
 
+import { SubScoreBar } from '@/common/components/sub-score-bar';
 import { Button } from '@/common/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/common/components/ui/card';
 import { Textarea } from '@/common/components/ui/textarea';
 import { Badge } from '@/components/reui/badge';
 import { getMatch } from '@/features/matching/api/get-match';
 import { submitReview } from '@/features/matching/api/submit-review';
-import type { Anomaly, MatchDetail, ReviewDecisionRequest } from '@/features/matching/types/match.types';
+import type {
+  Anomaly,
+  MatchDetail,
+  ReviewDecisionRequest,
+} from '@/features/matching/types/match.types';
 
 const SEVERITY_ORDER: Record<Anomaly['severity'], number> = { blocking: 0, warning: 1, info: 2 };
 
-const SEVERITY_BADGE_VARIANT: Record<Anomaly['severity'], 'destructive-light' | 'warning-light' | 'info-light'> = {
+const SEVERITY_BADGE_VARIANT: Record<
+  Anomaly['severity'],
+  'destructive-light' | 'warning-light' | 'info-light'
+> = {
   blocking: 'destructive-light',
   warning: 'warning-light',
   info: 'info-light',
@@ -24,19 +32,6 @@ const DECISION_LABEL: Record<string, string> = {
   overridden_to_approve: 'Overridden to approve',
   overridden_to_reject: 'Overridden to reject',
 };
-
-function SubScoreBar({ label, value }: { label: string; value: number }) {
-  const percent = Math.round(value * 100);
-  return (
-    <div className="flex items-center gap-2 text-xs">
-      <span className="w-32 text-muted-foreground">{label}</span>
-      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted" role="presentation">
-        <div className="h-full bg-primary" style={{ width: `${percent}%` }} />
-      </div>
-      <span className="w-8 text-right text-muted-foreground">{percent}%</span>
-    </div>
-  );
-}
 
 function sortedAnomalies(anomalies: Anomaly[]): Anomaly[] {
   return [...anomalies].sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
@@ -68,7 +63,10 @@ export function MatchReportView({ match }: { match: MatchDetail }) {
   const [error, setError] = useState<string | null>(null);
   const [lastAttempt, setLastAttempt] = useState<ReviewDecisionRequest | null>(null);
 
-  async function submitDecision(decision: ReviewDecisionRequest['decision'], noteValue: string | null) {
+  async function submitDecision(
+    decision: ReviewDecisionRequest['decision'],
+    noteValue: string | null
+  ) {
     setSubmitting(true);
     setError(null);
     setLastAttempt({ decision, note: noteValue });
@@ -102,7 +100,10 @@ export function MatchReportView({ match }: { match: MatchDetail }) {
 
   function handleOverrideSubmit() {
     if (!note.trim()) return;
-    void submitDecision(overrideDirection === 'approve' ? 'overridden_to_approve' : 'overridden_to_reject', note);
+    void submitDecision(
+      overrideDirection === 'approve' ? 'overridden_to_approve' : 'overridden_to_reject',
+      note
+    );
   }
 
   function handleRetry() {
@@ -139,18 +140,26 @@ export function MatchReportView({ match }: { match: MatchDetail }) {
 
           <p>
             <span className="text-muted-foreground">Compatibility score: </span>
-            {matchState.compatibility_score != null ? `${Math.round(matchState.compatibility_score * 100)}%` : '—'}
+            {matchState.compatibility_score != null
+              ? `${Math.round(matchState.compatibility_score * 100)}%`
+              : '—'}
           </p>
 
           {matchState.sub_scores && (
             <div className="max-w-sm space-y-1">
               <SubScoreBar label="Education" value={matchState.sub_scores.education_score ?? 0} />
               <SubScoreBar label="Experience" value={matchState.sub_scores.experience_score ?? 0} />
-              <SubScoreBar label="Certification" value={matchState.sub_scores.certification_score ?? 0} />
+              <SubScoreBar
+                label="Certification"
+                value={matchState.sub_scores.certification_score ?? 0}
+              />
               <SubScoreBar label="Sector" value={matchState.sub_scores.sector_score} />
               <SubScoreBar label="Language" value={matchState.sub_scores.language_score ?? 0} />
               <SubScoreBar label="Skill" value={matchState.sub_scores.skill_score} />
-              <SubScoreBar label="Qualitative fit" value={matchState.sub_scores.qualitative_fit_score ?? 0} />
+              <SubScoreBar
+                label="Qualitative fit"
+                value={matchState.sub_scores.qualitative_fit_score ?? 0}
+              />
             </div>
           )}
         </CardContent>
@@ -196,10 +205,14 @@ export function MatchReportView({ match }: { match: MatchDetail }) {
                 <li key={index}>
                   <details>
                     <summary className="flex cursor-pointer items-center gap-2 text-sm">
-                      <Badge variant={SEVERITY_BADGE_VARIANT[anomaly.severity]}>{anomaly.severity}</Badge>
+                      <Badge variant={SEVERITY_BADGE_VARIANT[anomaly.severity]}>
+                        {anomaly.severity}
+                      </Badge>
                       {anomaly.description}
                     </summary>
-                    <p className="mt-1 pl-1 text-sm text-muted-foreground">{anomaly.source_citation}</p>
+                    <p className="mt-1 pl-1 text-sm text-muted-foreground">
+                      {anomaly.source_citation}
+                    </p>
                   </details>
                 </li>
               ))}
@@ -217,9 +230,12 @@ export function MatchReportView({ match }: { match: MatchDetail }) {
 
           {matchState.reviewer_decision !== null ? (
             <p role="status">
-              Reviewed: {DECISION_LABEL[matchState.reviewer_decision] ?? matchState.reviewer_decision}
+              Reviewed:{' '}
+              {DECISION_LABEL[matchState.reviewer_decision] ?? matchState.reviewer_decision}
               {matchState.reviewer_note && (
-                <span className="block text-sm text-muted-foreground">Note: {matchState.reviewer_note}</span>
+                <span className="block text-sm text-muted-foreground">
+                  Note: {matchState.reviewer_note}
+                </span>
               )}
             </p>
           ) : (
@@ -229,10 +245,20 @@ export function MatchReportView({ match }: { match: MatchDetail }) {
                   <Button type="button" onClick={handleApprove} disabled={submitting}>
                     Approve
                   </Button>
-                  <Button type="button" variant="destructive" onClick={handleReject} disabled={submitting}>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={handleReject}
+                    disabled={submitting}
+                  >
                     Reject
                   </Button>
-                  <Button type="button" variant="outline" onClick={() => setMode('override')} disabled={submitting}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setMode('override')}
+                    disabled={submitting}
+                  >
                     Override
                   </Button>
                 </div>
@@ -265,7 +291,11 @@ export function MatchReportView({ match }: { match: MatchDetail }) {
                     disabled={submitting}
                   />
                   <div className="flex gap-2">
-                    <Button type="button" onClick={handleOverrideSubmit} disabled={submitting || !note.trim()}>
+                    <Button
+                      type="button"
+                      onClick={handleOverrideSubmit}
+                      disabled={submitting || !note.trim()}
+                    >
                       Submit override
                     </Button>
                     <Button
@@ -290,7 +320,13 @@ export function MatchReportView({ match }: { match: MatchDetail }) {
               <p role="alert" className="text-destructive">
                 {error}
               </p>
-              <Button type="button" size="sm" variant="outline" onClick={handleRetry} disabled={submitting}>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handleRetry}
+                disabled={submitting}
+              >
                 Retry
               </Button>
             </div>

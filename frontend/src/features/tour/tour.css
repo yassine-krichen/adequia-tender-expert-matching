@@ -1,0 +1,58 @@
+/* Overrides driver.js's default popover look to match this app's theme —
+   see frontend/src/styles/globals.css for the source tokens (dark-mode
+   aware since these are the same custom properties next-themes toggles). */
+
+.driver-popover {
+  background-color: var(--card);
+  color: var(--card-foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
+  font-family: var(--font-sans);
+}
+
+.driver-popover-title {
+  font-family: var(--font-heading);
+  color: var(--card-foreground);
+}
+
+.driver-popover-description {
+  color: var(--muted-foreground);
+}
+
+.driver-popover-progress-text {
+  color: var(--muted-foreground);
+}
+
+.driver-popover-footer-btn {
+  background-color: var(--secondary);
+  color: var(--secondary-foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  text-shadow: none;
+  font-family: var(--font-sans);
+}
+
+.driver-popover-footer-btn:hover {
+  background-color: var(--muted);
+  color: var(--foreground);
+}
+
+.driver-popover-next-btn {
+  background-color: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+  border-color: var(--primary) !important;
+}
+
+.driver-popover-close-btn {
+  color: var(--muted-foreground);
+}
+
+.driver-popover-arrow-side-top.driver-popover-arrow,
+.driver-popover-arrow {
+  border-color: var(--card);
+}
+
+.driver-active-element {
+  border-radius: var(--radius-md);
+}

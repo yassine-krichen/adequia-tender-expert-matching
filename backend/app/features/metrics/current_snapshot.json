@@ -1,0 +1,65 @@
+{
+  "extraction": {
+    "status": "available",
+    "values": {
+      "tdr_pass_rate": 0.923,
+      "tdr_passed": 12,
+      "tdr_total": 13,
+      "cv_pass_rate": 1.0,
+      "cv_passed": 11,
+      "cv_total": 11
+    },
+    "dataset": "test_tdr_extraction_quality.py (13 real TDR PDFs) + test_cv_extraction_quality.py (11 synthetic CVs)",
+    "sample_size": 24,
+    "computed_at": "2026-07-20T00:00:00Z",
+    "note": "Document-level pass-rate, not field-level F1 — pending ADQ-33. The 13th TDR is a scanned PDF pending OCR."
+  },
+  "retrieval": {
+    "status": "available",
+    "values": {
+      "recall_at_3": 1.0,
+      "precision_at_3": 0.33
+    },
+    "dataset": "gold_matching_set.json (test_matching_retrieval_quality.py)",
+    "sample_size": 11,
+    "computed_at": "2026-07-20T00:00:00Z",
+    "note": "Precision@3 of 0.33 is expected — only one truly relevant candidate per position against a k=3 shortlist."
+  },
+  "anomaly_detection": {
+    "status": "available",
+    "values": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "false_positive_rate": 0.0
+    },
+    "dataset": "test_anomaly_detection_quality.py — synthetic injection set, 4 rule-based anomaly types",
+    "sample_size": null,
+    "computed_at": "2026-07-20T00:00:00Z",
+    "note": "Covers employment_gap, date_overlap, expired_certification, education_date_inconsistency only — title_seniority_mismatch and unverifiable_claim are LLM-based with no tunable threshold and aren't covered by this eval."
+  },
+  "guardrails": {
+    "status": "available",
+    "values": {
+      "pass_rate": 1.0,
+      "passed": 5,
+      "total": 5
+    },
+    "dataset": "test_injection_resistance.py — real-LLM injection-resistance set",
+    "sample_size": 5,
+    "computed_at": "2026-07-20T00:00:00Z",
+    "note": "Caught and fixed a real vulnerability during this sprint (an injected instruction pushed a qualitative-fit score to an attacker-chosen value)."
+  },
+  "scoring_agreement": {
+    "status": "pending",
+    "pending_reason": "Needs ADQ-33's Spearman correlation / Cohen's kappa work against the gold matching set."
+  },
+  "report_quality": {
+    "status": "pending",
+    "pending_reason": "Needs ADQ-29's RAGAS-style faithfulness/groundedness wiring on generated rationales."
+  },
+  "efficiency": {
+    "status": "pending",
+    "pending_reason": "Needs ADQ-33's time/cost/latency measurement work."
+  }
+}

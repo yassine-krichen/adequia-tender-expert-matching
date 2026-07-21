@@ -4,19 +4,55 @@ This file is what turns the project from "we built a pipeline" into "we measured
 it and it works." Build the eval harness in week 1, alongside the extraction
 node — do not leave this for the end.
 
-> **Status as of Sprint 2:** this remains the target design (50-100 CV gold
-> extraction set, DeepEval CI wiring, RAGAS-style faithfulness scoring,
-> synthetic anomaly injection — none of that exists yet at this scale).
-> What's actually built and running: a 3-fixture extraction-quality eval
-> (`backend/tests/eval/test_tdr_extraction_quality.py`) and an 11-entry
-> gold **matching** set (`backend/tests/eval/fixtures/matching/gold_matching_set.json`,
-> `test_matching_retrieval_quality.py`) — the latter is deliberately *not*
-> a stand-in waiting on real historical staffing decisions (see
-> `docs/08-company-data-checklist.md`); it's grown alongside the candidate/
-> TDR pool as the actual working ground truth for retrieval quality. Real
-> historical decisions, if they ever arrive, would still add something
-> this set can't: genuine accept/reject *outcomes*, not just plausible-fit
-> labels.
+> **Status as of Sprint 3 close-out:** DeepEval CI wiring and RAGAS-style
+> faithfulness scoring are still the target design, not built yet — that's
+> Sprint 4's ADQ-29/ADQ-30. The 50-100 CV gold extraction set was never
+> reached at that scale either; what exists is smaller but real. What's
+> actually built and running:
+> - **TDR extraction eval**: 12 of 13 real TDR PDFs hand-verified
+>   (`backend/tests/eval/test_tdr_extraction_quality.py`; the 13th is a
+>   scanned PDF pending OCR).
+> - **CV extraction eval**: all 11 synthetic candidates hand-verified
+>   (`backend/tests/eval/test_cv_extraction_quality.py`, added alongside
+>   the TDR set expansion).
+> - **Gold matching set**: 11 entries
+>   (`backend/tests/eval/fixtures/matching/gold_matching_set.json`,
+>   `test_matching_retrieval_quality.py`) — deliberately *not* a stand-in
+>   waiting on real historical staffing decisions (see
+>   `docs/08-company-data-checklist.md`, never answered); it's grown
+>   alongside the candidate/TDR pool as the actual working ground truth for
+>   retrieval quality. Live result: Recall@3 = 1.0, Precision@3 = 0.33 (the
+>   latter is expected — only one truly relevant candidate per position
+>   against a k=3 shortlist). Real historical decisions, if they ever
+>   arrive, would still add something this set can't: genuine accept/reject
+>   *outcomes*, not just plausible-fit labels.
+> - **Synthetic anomaly injection eval** (ADQ-21,
+>   `test_anomaly_detection_quality.py`): the 4 rule-based anomaly types
+>   only (the two LLM-based types — `title_seniority_mismatch`,
+>   `unverifiable_claim` — have no tunable numeric threshold, so this eval
+>   doesn't cover them). Live result: 1.00 precision/recall/F1 across all 4
+>   types, 0% false-positive rate on clean baselines — current thresholds
+>   (90-day gap, 30-day overlap tolerance, 16-45 plausible graduation age)
+>   confirmed sound, no retuning needed. Measurement only, no CI gate, by
+>   design.
+> - **Injection-resistance eval** (ADQ-23, `test_injection_resistance.py`):
+>   real-LLM guardrail suite, 100% pass rate required. This is not
+>   theoretical — it caught a real vulnerability live (an instruction
+>   embedded in a CV field pushed a qualitative-fit score to exactly the
+>   value the injection demanded), fixed and re-verified against a live
+>   model. All 5 cases pass now.
+>
+> **Not yet built, squarely Sprint 4's job**: RAGAS-style faithfulness/
+> groundedness scoring on generated rationales (ADQ-29), a DeepEval CI
+> regression suite wiring all of the above gold sets into `eval.yml` with
+> real fail-the-build thresholds (ADQ-30 — note `eval.yml` currently runs
+> `pytest tests/eval` with no `-m eval` override against an `addopts =
+> "-m 'not eval'"` default, which likely deselects everything; this needs
+> fixing as part of ADQ-30, not a separate ticket), Spearman/Cohen's kappa
+> scoring agreement against the gold matching set, and time/cost/latency
+> efficiency numbers. ADQ-33 (final metrics pass) is the story that pulls
+> all of this into the one-page summary table this file's "Reporting
+> format" section describes.
 
 ## Datasets you need
 

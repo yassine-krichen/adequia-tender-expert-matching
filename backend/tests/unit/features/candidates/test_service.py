@@ -1,12 +1,15 @@
 import hashlib
+import uuid
 from collections.abc import Sequence
 from io import BytesIO
 from pathlib import Path
 from typing import Any
 
 from fastapi import UploadFile
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.models import CV, Candidate
+from app.database.models import CV, EMBEDDING_DIMENSION, Candidate
 from app.domain.cv import LanguageProficiency
 from app.features.candidates.service import CandidatesService
 from app.features.pipeline.nodes.extract import (
@@ -25,12 +28,24 @@ class _FakeEmbeddings:
         return [1.0]
 
 
-class _FakeRouter:
-    def __init__(self) -> None:
-        self.extraction_calls = 0
+class _FakeEmbeddings768:
+    """The real `embedding` column is a fixed-width pgvector(768) -- the
+    real-session (SQLite) tests insert against the actual column type, so
+    (unlike _FakeSession, which never validates dimensionality) they need
+    a vector of the real width or the insert itself raises.
+    """
 
-    def get_embedding_model(self) -> _FakeEmbeddings:
-        return _FakeEmbeddings()
+    def embed_query(self, text: str) -> list[float]:
+        return [1.0] * EMBEDDING_DIMENSION
+
+
+class _FakeRouter:
+    def __init__(self, *, real_embedding_dim: bool = False) -> None:
+        self.extraction_calls = 0
+        self._real_embedding_dim = real_embedding_dim
+
+    def get_embedding_model(self) -> _FakeEmbeddings | _FakeEmbeddings768:
+        return _FakeEmbeddings768() if self._real_embedding_dim else _FakeEmbeddings()
 
     def invoke_extraction(
         self, messages: Sequence[Any], structured_output: type[Any] | None = None
@@ -123,6 +138,119 @@ async def test_upload_cv_extracts_and_persists_candidate_and_cv() -> None:
     assert cv_rows[0].candidate_id == candidate_rows[0].candidate_id
     assert cv_rows[0].extracted_json["full_name"] == "Nadia Ben Salah"
     assert cv_rows[0].embedding == [1.0]
+
+
+_LEGACY_EXTRACTED_JSON = {
+    "candidate_id": "22222222-2222-2222-2222-222222222222",
+    "full_name": "Legacy Someone",
+    "education": [],
+    "certifications": [],
+    "experience": [],
+    "languages": [],
+    "raw_skills": [],
+    "normalized_skills": [],
+    "total_years_experience": 0.0,
+    "raw_text": "legacy pre-migration extraction",
+    "source_file_path": "legacy.pdf",
+}
+
+
+async def _seed_legacy_null_hash_cv(session: AsyncSession) -> uuid.UUID:
+    """A CV row inserted before migration 0006 added content_hash: the
+    column exists but is NULL because there was no stored file to hash
+    retroactively (see backend/scripts/backfill_cv_content_hash.py).
+    """
+    legacy_candidate_id = uuid.uuid4()
+    session.add(Candidate(candidate_id=legacy_candidate_id, full_name="Legacy Someone"))
+    await session.flush()
+    session.add(
+        CV(
+            candidate_id=legacy_candidate_id,
+            raw_text="legacy pre-migration extraction",
+            source_file_path="legacy.pdf",
+            content_hash=None,
+            extracted_json=_LEGACY_EXTRACTED_JSON,
+        )
+    )
+    await session.commit()
+    return legacy_candidate_id
+
+
+async def test_upload_cv_uploaded_twice_without_force_reuses_same_candidate(
+    db_session: AsyncSession,
+) -> None:
+    """Regression test for a live bug: re-uploading a CV whose existing row
+    predates the content_hash column (migration 0006) had a NULL hash, so
+    the dedup lookup silently missed it and a second upload of the exact
+    same file created a brand-new Candidate/CV pair for the same person
+    instead of reusing the existing candidate_id -- see
+    backend/scripts/backfill_cv_content_hash.py.
+
+    Uses a real SQLite-backed session (not _FakeSession, which ignores
+    query predicates and would happily "match" any pre-seeded CV row
+    regardless of its hash). A legacy NULL-hash CV row is seeded first: if
+    the dedup lookup ever regresses to "find any CV row" instead of
+    "WHERE content_hash == :hash", the first upload below would
+    incorrectly short-circuit to that unrelated legacy candidate instead
+    of running extraction and creating a new one.
+    """
+    router = _FakeRouter(real_embedding_dim=True)
+    service = CandidatesService(router=router)  # type: ignore[arg-type]
+    legacy_candidate_id = await _seed_legacy_null_hash_cv(db_session)
+    file_bytes = _SYNTHETIC_CV_PATH.read_bytes()
+
+    first = await service.upload_cv(
+        UploadFile(file=BytesIO(file_bytes), filename="nadia.pdf"), db_session
+    )
+    second = await service.upload_cv(
+        UploadFile(file=BytesIO(file_bytes), filename="nadia-again.pdf"), db_session
+    )
+
+    assert first.candidate_id == second.candidate_id
+    assert first.candidate_id != str(legacy_candidate_id)
+    assert router.extraction_calls == 1  # second upload short-circuited to the cached result
+
+    candidate_rows = (await db_session.execute(select(Candidate))).scalars().all()
+    cv_rows = (await db_session.execute(select(CV))).scalars().all()
+    assert len(candidate_rows) == 2  # the seeded legacy one + the new one
+    assert len(cv_rows) == 2
+    new_cv = next(row for row in cv_rows if row.content_hash is not None)
+    assert str(new_cv.candidate_id) == first.candidate_id
+
+
+async def test_upload_cv_uploaded_twice_with_force_reuses_same_candidate(
+    db_session: AsyncSession,
+) -> None:
+    """Same regression as above, but for the force=True path: force must
+    re-extract in place on the SAME candidate/CV row across two real
+    upload_cv calls, never spin up a second Candidate/CV pair -- and must
+    still resolve to the newly created candidate, not the seeded legacy
+    NULL-hash row.
+    """
+    router = _FakeRouter(real_embedding_dim=True)
+    service = CandidatesService(router=router)  # type: ignore[arg-type]
+    legacy_candidate_id = await _seed_legacy_null_hash_cv(db_session)
+    file_bytes = _SYNTHETIC_CV_PATH.read_bytes()
+
+    first = await service.upload_cv(
+        UploadFile(file=BytesIO(file_bytes), filename="nadia.pdf"), db_session
+    )
+    second = await service.upload_cv(
+        UploadFile(file=BytesIO(file_bytes), filename="nadia-again.pdf"),
+        db_session,
+        force=True,
+    )
+
+    assert first.candidate_id == second.candidate_id
+    assert first.candidate_id != str(legacy_candidate_id)
+    assert router.extraction_calls == 2  # force re-ran extraction on the second upload
+
+    candidate_rows = (await db_session.execute(select(Candidate))).scalars().all()
+    cv_rows = (await db_session.execute(select(CV))).scalars().all()
+    assert len(candidate_rows) == 2  # the seeded legacy one + the new one
+    assert len(cv_rows) == 2
+    new_cv = next(row for row in cv_rows if row.content_hash is not None)
+    assert str(new_cv.candidate_id) == first.candidate_id
 
 
 async def test_upload_cv_returns_existing_candidate_on_duplicate_file_without_re_extracting() -> None:

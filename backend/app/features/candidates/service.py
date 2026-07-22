@@ -63,6 +63,7 @@ class CandidatesService:
             candidate_id=str(candidate_id),
             source_file_path=filename,
             router=self._router,
+            mask_pii=get_settings().pii_masking_enabled,
         )
 
         embedding = self._router.get_embedding_model().embed_query(

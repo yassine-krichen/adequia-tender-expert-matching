@@ -151,8 +151,29 @@ cost-per-CV metric this produces.
 
 Real CVs are real personal data. Even for an internship prototype:
 - Prefer working against **anonymized** exports where possible during development
-- Consider a local pre-processing pass (you already run Ollama) to strip or mask
-  direct identifiers (name, phone, email, photo) before anything is sent to a
-  cloud LLM API, if the company allows real data to leave their infrastructure at
-  all — confirm this explicitly with them before sending any real CV to a
-  third-party API
+- **Implemented (ADQ-32)**: a lightweight local pre-processing pass
+  (`app/common/pii.py`, `PII_MASKING_ENABLED`, on by default) regex-masks
+  email/phone out of both CV and TDR text, and additionally masks the
+  candidate's own name on CVs (`[EMAIL]`/`[PHONE]`/`[NOM]`), before that text
+  ever reaches a cloud provider — this runs after `extract_raw_text` but
+  strictly before `ModelRouter` decides cloud vs. local Ollama, so it applies
+  regardless of which provider ends up serving the call. `CandidateCV.full_name`
+  is populated from the locally-detected name (more trustworthy than whatever
+  the LLM extracts from a masked prompt), falling back to the LLM's own value
+  only when local detection finds nothing. The stored `raw_text` on `CV`/`TDR`
+  rows is always the original, unmasked text — masking is transient, applied
+  only to the outbound LLM message, so citation/source-span semantics are
+  untouched.
+  - This is a **best-effort, heuristic mitigation, not full PII compliance**:
+    name detection is a regex heuristic (a capitalized 2-4 word line near the
+    top of the document, or an explicit "Nom"/"Nom et Prénom" label) — it can
+    miss unusual CV layouts, and isn't NER-grade. A full on-device extraction
+    pipeline (no cloud LLM call at all) stays an icebox item, not something
+    this masking pass claims to replace.
+  - **Photo exposure is already zero by construction**, no masking needed:
+    `extract_raw_text` (`app/features/pipeline/nodes/ingest.py`) only ever
+    calls `PdfReader.extract_text()`/reads `.docx` paragraph text — it never
+    touches embedded images, so a CV photo never enters the pipeline at all,
+    let alone reaches a cloud LLM call.
+  - Confirm with the company explicitly before sending any real CV to a
+    third-party API at all, regardless of this mitigation.

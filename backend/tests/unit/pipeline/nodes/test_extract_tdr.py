@@ -35,15 +35,18 @@ class _FakeRouter:
     def __init__(self, responses: Sequence[_TDRChunkExtraction | Exception]) -> None:
         self._responses = iter(responses)
         self.call_count = 0
+        self.last_messages: Sequence[Any] | None = None
 
     def invoke_extraction(
         self, messages: Sequence[Any], structured_output: type[Any] | None = None
     ) -> _TDRChunkExtraction:
+        self.last_messages = messages
         return self._next_response()
 
     def invoke_reasoning(
         self, messages: Sequence[Any], structured_output: type[Any] | None = None
     ) -> _TDRChunkExtraction:
+        self.last_messages = messages
         return self._next_response()
 
     def _next_response(self) -> _TDRChunkExtraction:
@@ -178,6 +181,47 @@ def test_extract_tdr_builds_tdr_with_positions_from_retrieved_chunks() -> None:
     assert result.positions[0].position_title == "Chef de projet"
     assert result.positions[0].position_id  # system-assigned, non-empty
     assert router.call_count == 1
+
+
+def test_extract_tdr_masks_contact_info_before_the_llm_message_by_default() -> None:
+    """ADQ-32: unlike CVs, only email/phone are masked -- never a name-shaped
+    heuristic, which would risk mangling mission_title/client extraction.
+    """
+    router = _FakeRouter([_TDRChunkExtraction(positions=[])])
+    embeddings = _FakeEmbeddings([1.0], {})
+    raw_text = "Contact: soumission@example.com – Tel: 71 123 456"
+
+    extract_tdr(
+        raw_text,
+        tdr_id="tdr-1",
+        source_file_path="tdr.pdf",
+        router=router,
+        embeddings=embeddings,
+    )
+
+    assert router.last_messages is not None
+    sent_text = "\n".join(str(m.content) for m in router.last_messages)
+    assert "soumission@example.com" not in sent_text
+    assert "71 123 456" not in sent_text
+
+
+def test_extract_tdr_sends_the_raw_text_unmasked_when_mask_pii_is_disabled() -> None:
+    router = _FakeRouter([_TDRChunkExtraction(positions=[])])
+    embeddings = _FakeEmbeddings([1.0], {})
+    raw_text = "Contact: soumission@example.com – Tel: 71 123 456"
+
+    extract_tdr(
+        raw_text,
+        tdr_id="tdr-1",
+        source_file_path="tdr.pdf",
+        router=router,
+        embeddings=embeddings,
+        mask_pii=False,
+    )
+
+    assert router.last_messages is not None
+    sent_text = "\n".join(str(m.content) for m in router.last_messages)
+    assert "soumission@example.com" in sent_text
 
 
 def test_extract_tdr_falls_back_to_untitled_mission_when_title_never_found() -> None:

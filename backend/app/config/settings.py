@@ -42,6 +42,12 @@ class Settings(BaseSettings):
     # the most common cause of a 403 Forbidden on trace ingestion.
     langsmith_endpoint: str | None = None
 
+    # Secure by default (deny-by-default posture, docs/01-architecture.md) --
+    # regex-masks email/phone (and, for CVs, the candidate's own name) out
+    # of the outbound LLM prompt before ModelRouter picks cloud vs. Ollama.
+    # See app/common/pii.py.
+    pii_masking_enabled: bool = True
+
     environment: str = "development"
     log_level: str = Field(default="INFO")
 

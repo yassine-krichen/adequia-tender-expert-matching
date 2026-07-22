@@ -66,17 +66,20 @@ class _FakeRouter:
         self.call_count = 0
         self.extraction_call_count = 0
         self.reasoning_call_count = 0
+        self.last_messages: Sequence[Any] | None = None
 
     def invoke_extraction(
         self, messages: Sequence[Any], structured_output: type[Any] | None = None
     ) -> _CVExtraction:
         self.extraction_call_count += 1
+        self.last_messages = messages
         return self._next_response()
 
     def invoke_reasoning(
         self, messages: Sequence[Any], structured_output: type[Any] | None = None
     ) -> _CVExtraction:
         self.reasoning_call_count += 1
+        self.last_messages = messages
         return self._next_response()
 
     def _next_response(self) -> _CVExtraction:
@@ -165,6 +168,65 @@ def test_extract_cv_accepts_unsplit_degree_and_quoted_graduation_year() -> None:
 
     assert result.education[0].field is None
     assert result.education[0].graduation_year == 2008
+
+
+def test_extract_cv_masks_contact_info_and_name_before_the_llm_message_by_default() -> None:
+    """ADQ-32: the outbound LLM message must never carry the candidate's raw
+    email/phone/name -- mask_pii defaults to True (secure by default).
+    """
+    router = _FakeRouter([_sample_extraction()])
+    raw_text = "Jane Doe\njane.doe@example.com – +216 23 147 963\nExpert DevOps"
+
+    extract_cv(raw_text, candidate_id="cand-1", source_file_path="cv.pdf", router=router)
+
+    assert router.last_messages is not None
+    sent_text = "\n".join(str(m.content) for m in router.last_messages)
+    assert "jane.doe@example.com" not in sent_text
+    assert "23 147 963" not in sent_text
+    assert "Jane Doe" not in sent_text
+
+
+def test_extract_cv_overrides_full_name_with_the_locally_detected_name() -> None:
+    """The locally-detected name (read straight from the unmasked original
+    text) is more trustworthy than whatever the LLM extracted from a
+    masked prompt where the name itself was replaced with [NOM].
+    """
+    router = _FakeRouter([_sample_extraction()])  # _sample_extraction's full_name is "Jane Doe"
+    raw_text = "Karim Trabelsi\nkarim@example.com – +216 55 987 654\nArchitecte logiciel"
+
+    result = extract_cv(raw_text, candidate_id="cand-1", source_file_path="cv.pdf", router=router)
+
+    assert result.full_name == "Karim Trabelsi"
+
+
+def test_extract_cv_falls_back_to_the_llms_full_name_when_no_name_is_locally_detected() -> None:
+    router = _FakeRouter([_sample_extraction()])
+    raw_text = "curriculum vitae\nexpert devops, 7 ans d'expérience"
+
+    result = extract_cv(raw_text, candidate_id="cand-1", source_file_path="cv.pdf", router=router)
+
+    assert result.full_name == "Jane Doe"
+
+
+def test_extract_cv_sends_the_raw_text_unmasked_when_mask_pii_is_disabled() -> None:
+    router = _FakeRouter([_sample_extraction()])
+    raw_text = "Jane Doe\njane.doe@example.com – +216 23 147 963\nExpert DevOps"
+
+    result = extract_cv(
+        raw_text,
+        candidate_id="cand-1",
+        source_file_path="cv.pdf",
+        router=router,
+        mask_pii=False,
+    )
+
+    assert router.last_messages is not None
+    sent_text = "\n".join(str(m.content) for m in router.last_messages)
+    assert "jane.doe@example.com" in sent_text
+    # mask_pii=False also disables the local name-detection override --
+    # today's (pre-ADQ-32) behavior of trusting the LLM's own full_name.
+    assert result.full_name == "Jane Doe"
+    assert result.raw_text == raw_text
 
 
 def test_extract_cv_retries_once_on_validation_failure() -> None:

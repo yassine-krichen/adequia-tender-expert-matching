@@ -45,3 +45,13 @@ export type TdrStatus = {
   chunks_total: number | null;
   error_message: string | null;
 };
+
+// Mirrors backend/app/features/tdrs/schemas.py TdrSummary field-for-field
+// (snake_case) -- same no-translation-layer convention as above. GET /tdrs
+// response shape -- the past-TDRs list, not a full extraction dump.
+export type TdrSummary = {
+  tdr_id: string;
+  mission_title: string | null;
+  status: string;
+  created_at: string;
+};

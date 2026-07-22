@@ -1,4 +1,17 @@
+from datetime import datetime
+
 from pydantic import BaseModel
+
+
+class TdrSummary(BaseModel):
+    """GET /tdrs response shape -- the past-TDRs list, not a full extraction
+    dump. Mirrors CandidateSummary in the candidates feature.
+    """
+
+    tdr_id: str
+    mission_title: str | None
+    status: str
+    created_at: datetime
 
 
 class TdrUploadAck(BaseModel):

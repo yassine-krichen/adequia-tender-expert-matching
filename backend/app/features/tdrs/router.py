@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db_session
 from app.domain.tdr import TDR
-from app.features.tdrs.schemas import MatchingStatus, TdrStatus, TdrUploadAck
+from app.features.tdrs.schemas import MatchingStatus, TdrStatus, TdrSummary, TdrUploadAck
 from app.features.tdrs.service import TdrsService
 
 router = APIRouter(prefix="/tdrs", tags=["tdrs"])
@@ -24,6 +24,11 @@ async def upload_tdr(
     known-bad.
     """
     return await service.upload_tdr(file, session, force=force)
+
+
+@router.get("", response_model=list[TdrSummary])
+async def list_tdrs(session: AsyncSession = Depends(get_db_session)) -> list[TdrSummary]:
+    return await service.list_tdrs(session)
 
 
 @router.get("/{tdr_id}/status", response_model=TdrStatus)

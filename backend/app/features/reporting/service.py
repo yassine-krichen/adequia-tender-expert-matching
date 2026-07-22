@@ -18,7 +18,10 @@ from app.common.exceptions import (
 from app.common.llm.router import ModelRouter
 from app.config.settings import get_settings
 from app.database.models import CV as CVModel
+from app.database.models import TDR as TDRModel
 from app.database.models import Anomaly as AnomalyModel
+from app.database.models import Candidate as CandidateModel
+from app.database.models import ExpertPosition as ExpertPositionModel
 from app.database.models import HistoricalDecision as HistoricalDecisionModel
 from app.database.models import MatchResult as MatchResultModel
 from app.domain.matching import (
@@ -26,11 +29,11 @@ from app.domain.matching import (
     AnomalySeverity,
     AnomalyType,
     Citation,
-    MatchResult,
     ReviewDecision,
     SubScores,
 )
 from app.features.pipeline.graph import build_matching_graph
+from app.features.reporting.schemas import MatchReportDetail
 from app.mcp.checkpointer import get_checkpointer_conninfo
 from app.mcp.client import get_mcp_client
 
@@ -50,10 +53,19 @@ class ReportingService:
         self._mcp_client = get_mcp_client(get_settings())
         self._embeddings = self._router.get_embedding_model()
 
-    async def get_match(self, match_id: UUID, session: AsyncSession) -> MatchResult:
+    async def get_match(self, match_id: UUID, session: AsyncSession) -> MatchReportDetail:
         match_row = await session.get(MatchResultModel, match_id)
         if match_row is None:
             raise NotFoundError(f"Match {match_id} not found")
+
+        cv_row = await session.get(CVModel, match_row.cv_id)
+        assert cv_row is not None  # FK guarantees it exists alongside the match_result
+        candidate_row = await session.get(CandidateModel, cv_row.candidate_id)
+        assert candidate_row is not None  # FK guarantees it exists alongside the CV row
+        position_row = await session.get(ExpertPositionModel, match_row.position_id)
+        assert position_row is not None  # FK guarantees it exists alongside the match_result
+        tdr_row = await session.get(TDRModel, match_row.tdr_id)
+        assert tdr_row is not None  # FK guarantees it exists alongside the match_result
 
         anomaly_rows = (
             (await session.execute(select(AnomalyModel).where(AnomalyModel.match_id == match_id)))
@@ -74,7 +86,7 @@ class ReportingService:
             SubScores.model_validate(match_row.sub_scores_json) if match_row.sub_scores_json else None
         )
 
-        return MatchResult(
+        return MatchReportDetail(
             match_id=str(match_row.match_id),
             cv_id=str(match_row.cv_id),
             tdr_id=str(match_row.tdr_id),
@@ -94,11 +106,14 @@ class ReportingService:
             reviewer_id=match_row.reviewer_id,
             reviewer_note=match_row.reviewer_note,
             decided_at=match_row.decided_at,
+            candidate_full_name=candidate_row.full_name,
+            position_title=position_row.position_title,
+            tdr_mission_title=tdr_row.mission_title or "",
         )
 
     async def submit_review(
         self, match_id: UUID, decision: ReviewDecision, note: str | None, session: AsyncSession
-    ) -> MatchResult:
+    ) -> MatchReportDetail:
         match_row = await session.get(MatchResultModel, match_id)
         if match_row is None:
             raise NotFoundError(f"Match {match_id} not found")

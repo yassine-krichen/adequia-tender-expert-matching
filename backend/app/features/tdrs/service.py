@@ -14,7 +14,7 @@ from app.common.exceptions import NotFoundError, ResourceNotReadyError
 from app.config.settings import get_settings
 from app.database.models import TDR as TDRModel
 from app.domain.tdr import TDR
-from app.features.tdrs.schemas import MatchingStatus, TdrStatus, TdrUploadAck
+from app.features.tdrs.schemas import MatchingStatus, TdrStatus, TdrSummary, TdrUploadAck
 from app.worker import matching_tasks
 from app.worker.tasks import run_tdr_extraction
 
@@ -169,6 +169,19 @@ class TdrsService:
 
         assert row.extracted_json is not None  # guaranteed once status == "done"
         return TDR.model_validate(row.extracted_json)
+
+    async def list_tdrs(self, session: AsyncSession) -> list[TdrSummary]:
+        stmt = select(TDRModel).order_by(TDRModel.created_at.desc())
+        rows = (await session.execute(stmt)).scalars().all()
+        return [
+            TdrSummary(
+                tdr_id=str(row.tdr_id),
+                mission_title=row.mission_title,
+                status=row.status,
+                created_at=row.created_at,
+            )
+            for row in rows
+        ]
 
     async def run_matching(self, tdr_id: UUID, session: AsyncSession) -> None:
         """Kicks off the matching pipeline for every position on this TDR.

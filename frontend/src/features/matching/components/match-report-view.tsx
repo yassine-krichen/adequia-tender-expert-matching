@@ -1,5 +1,17 @@
 'use client';
 
+import {
+  Award,
+  Briefcase,
+  Building2,
+  Check,
+  GraduationCap,
+  Languages,
+  Pencil,
+  Star,
+  Wrench,
+  X,
+} from 'lucide-react';
 import { useState } from 'react';
 
 import { SubScoreBar } from '@/common/components/sub-score-bar';
@@ -115,7 +127,10 @@ export function MatchReportView({ match }: { match: MatchDetail }) {
 
   return (
     <div className="space-y-6">
-      <h1 className="font-heading text-2xl">Match report</h1>
+      <h1 className="font-heading text-2xl">
+        {matchState.candidate_full_name} — {matchState.position_title} (
+        {matchState.tdr_mission_title})
+      </h1>
 
       <Card>
         <CardHeader>
@@ -125,9 +140,15 @@ export function MatchReportView({ match }: { match: MatchDetail }) {
           <div className="flex items-center gap-2">
             <span className="text-muted-foreground">Hard filter:</span>
             {matchState.hard_filter_passed ? (
-              <Badge variant="success-light">Passed</Badge>
+              <Badge variant="success-light" className="inline-flex items-center gap-1">
+                <Check className="size-3.5" />
+                Passed
+              </Badge>
             ) : (
-              <Badge variant="destructive-light">Failed</Badge>
+              <Badge variant="destructive-light" className="inline-flex items-center gap-1">
+                <X className="size-3.5" />
+                Failed
+              </Badge>
             )}
           </div>
           {!matchState.hard_filter_passed && matchState.hard_filter_failures.length > 0 && (
@@ -147,16 +168,34 @@ export function MatchReportView({ match }: { match: MatchDetail }) {
 
           {matchState.sub_scores && (
             <div className="max-w-sm space-y-1">
-              <SubScoreBar label="Education" value={matchState.sub_scores.education_score ?? 0} />
-              <SubScoreBar label="Experience" value={matchState.sub_scores.experience_score ?? 0} />
               <SubScoreBar
+                icon={GraduationCap}
+                label="Education"
+                value={matchState.sub_scores.education_score ?? 0}
+              />
+              <SubScoreBar
+                icon={Briefcase}
+                label="Experience"
+                value={matchState.sub_scores.experience_score ?? 0}
+              />
+              <SubScoreBar
+                icon={Award}
                 label="Certification"
                 value={matchState.sub_scores.certification_score ?? 0}
               />
-              <SubScoreBar label="Sector" value={matchState.sub_scores.sector_score} />
-              <SubScoreBar label="Language" value={matchState.sub_scores.language_score ?? 0} />
-              <SubScoreBar label="Skill" value={matchState.sub_scores.skill_score} />
               <SubScoreBar
+                icon={Building2}
+                label="Sector"
+                value={matchState.sub_scores.sector_score}
+              />
+              <SubScoreBar
+                icon={Languages}
+                label="Language"
+                value={matchState.sub_scores.language_score ?? 0}
+              />
+              <SubScoreBar icon={Wrench} label="Skill" value={matchState.sub_scores.skill_score} />
+              <SubScoreBar
+                icon={Star}
                 label="Qualitative fit"
                 value={matchState.sub_scores.qualitative_fit_score ?? 0}
               />
@@ -243,6 +282,7 @@ export function MatchReportView({ match }: { match: MatchDetail }) {
               {mode === 'normal' ? (
                 <div className="flex flex-wrap items-center gap-2">
                   <Button type="button" onClick={handleApprove} disabled={submitting}>
+                    <Check className="size-4" />
                     Approve
                   </Button>
                   <Button
@@ -251,6 +291,7 @@ export function MatchReportView({ match }: { match: MatchDetail }) {
                     onClick={handleReject}
                     disabled={submitting}
                   >
+                    <X className="size-4" />
                     Reject
                   </Button>
                   <Button
@@ -259,6 +300,7 @@ export function MatchReportView({ match }: { match: MatchDetail }) {
                     onClick={() => setMode('override')}
                     disabled={submitting}
                   >
+                    <Pencil className="size-4" />
                     Override
                   </Button>
                 </div>

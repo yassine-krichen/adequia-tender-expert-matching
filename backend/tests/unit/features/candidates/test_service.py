@@ -1,14 +1,17 @@
 import hashlib
 import uuid
 from collections.abc import Sequence
+from datetime import datetime, timezone
 from io import BytesIO
 from pathlib import Path
 from typing import Any
 
+import pytest
 from fastapi import UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.common.exceptions import NotFoundError
 from app.database.models import CV, EMBEDDING_DIMENSION, Candidate
 from app.domain.cv import LanguageProficiency
 from app.features.candidates.service import CandidatesService
@@ -318,3 +321,62 @@ async def test_upload_cv_with_force_re_extracts_in_place_instead_of_using_cache(
     assert len(candidate_rows) == 1
     assert len(cv_rows) == 1
     assert session.committed is True
+
+
+# --- get_candidate_cv ------------------------------------------------------
+#
+# Uses the real SQLite-backed db_session fixture (not _FakeSession, which
+# ignores query predicates and can't prove a `WHERE candidate_id == ... ORDER
+# BY created_at DESC` lookup actually filters/orders correctly).
+
+
+async def test_get_candidate_cv_returns_the_most_recently_created_cv(
+    db_session: AsyncSession,
+) -> None:
+    candidate_id = uuid.uuid4()
+    db_session.add(Candidate(candidate_id=candidate_id, full_name="Nadia Ben Salah"))
+    await db_session.flush()
+    older_extracted = {
+        **_LEGACY_EXTRACTED_JSON,
+        "candidate_id": str(candidate_id),
+        "full_name": "Old",
+        "raw_text": "older",
+    }
+    newer_extracted = {
+        **_LEGACY_EXTRACTED_JSON,
+        "candidate_id": str(candidate_id),
+        "full_name": "New",
+        "raw_text": "newer",
+    }
+    db_session.add(
+        CV(
+            candidate_id=candidate_id,
+            raw_text="older",
+            extracted_json=older_extracted,
+            created_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        )
+    )
+    db_session.add(
+        CV(
+            candidate_id=candidate_id,
+            raw_text="newer",
+            extracted_json=newer_extracted,
+            created_at=datetime(2026, 2, 1, tzinfo=timezone.utc),
+        )
+    )
+    await db_session.commit()
+    service = CandidatesService(router=_FakeRouter())  # type: ignore[arg-type]
+
+    cv = await service.get_candidate_cv(candidate_id, db_session)
+
+    assert cv.full_name == "New"
+    assert cv.raw_text == "newer"
+
+
+async def test_get_candidate_cv_raises_not_found_error_when_no_cv_exists_for_the_candidate(
+    db_session: AsyncSession,
+) -> None:
+    service = CandidatesService(router=_FakeRouter())  # type: ignore[arg-type]
+
+    with pytest.raises(NotFoundError):
+        await service.get_candidate_cv(uuid.uuid4(), db_session)

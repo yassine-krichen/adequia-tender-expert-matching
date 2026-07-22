@@ -17,7 +17,10 @@ from app.common.exceptions import (
     ValidationFailedError,
 )
 from app.database.models import CV as CVModel
+from app.database.models import TDR as TDRModel
 from app.database.models import Anomaly as AnomalyModel
+from app.database.models import Candidate as CandidateModel
+from app.database.models import ExpertPosition as ExpertPositionModel
 from app.database.models import HistoricalDecision as HistoricalDecisionModel
 from app.database.models import MatchResult as MatchResultModel
 from app.domain.matching import ReviewDecision
@@ -219,6 +222,32 @@ def _match_row(match_id: UUID, cv_id: UUID, **overrides: Any) -> MatchResultMode
     return MatchResultModel(**defaults)
 
 
+def _report_context_rows(
+    match_row: MatchResultModel,
+    *,
+    cv_row: CVModel | None = None,
+    candidate_full_name: str = "Test Candidate",
+    position_title: str = "Test Position",
+    tdr_mission_title: str = "Test Mission",
+) -> list[Any]:
+    """Seeds the FK-guaranteed rows get_match now joins across (CV ->
+    Candidate, ExpertPosition, TDR) so tests hit real rows instead of the
+    new assert-not-None guards. Pass cv_row when a test already needs a
+    specific candidate_id (e.g. for historical_decision assertions) --
+    otherwise one is created here.
+    """
+    if cv_row is None:
+        cv_row = CVModel(
+            cv_id=match_row.cv_id, candidate_id=uuid4(), raw_text="raw", extracted_json={}
+        )
+    candidate_row = CandidateModel(candidate_id=cv_row.candidate_id, full_name=candidate_full_name)
+    position_row = ExpertPositionModel(
+        position_id=match_row.position_id, position_title=position_title, requirements_json={}
+    )
+    tdr_row = TDRModel(tdr_id=match_row.tdr_id, mission_title=tdr_mission_title)
+    return [cv_row, candidate_row, position_row, tdr_row]
+
+
 def _service() -> ReportingService:
     return ReportingService(router=_FakeRouter())  # type: ignore[arg-type]
 
@@ -255,7 +284,18 @@ async def test_get_match_assembles_anomalies_citations_and_sub_scores_from_store
         description="120-day gap",
         source_citation="span-a",
     )
-    session = _FakeSession(rows=[row], anomalies=[anomaly_row])
+    session = _FakeSession(
+        rows=[
+            row,
+            *_report_context_rows(
+                row,
+                candidate_full_name="Nadia Ben Salah",
+                position_title="Senior Consultant",
+                tdr_mission_title="Digital Transformation Mission",
+            ),
+        ],
+        anomalies=[anomaly_row],
+    )
     service = _service()
 
     result = await service.get_match(match_id, session)  # type: ignore[arg-type]
@@ -272,12 +312,15 @@ async def test_get_match_assembles_anomalies_citations_and_sub_scores_from_store
     assert result.reviewer_id == "anonymous"
     assert result.reviewer_note == "Looks solid."
     assert result.decided_at == datetime(2026, 1, 1, 12, 0, 0)
+    assert result.candidate_full_name == "Nadia Ben Salah"
+    assert result.position_title == "Senior Consultant"
+    assert result.tdr_mission_title == "Digital Transformation Mission"
 
 
 async def test_get_match_sub_scores_is_none_when_sub_scores_json_column_is_none() -> None:
     match_id, cv_id = uuid4(), uuid4()
     row = _match_row(match_id, cv_id, sub_scores_json=None)
-    session = _FakeSession(rows=[row])
+    session = _FakeSession(rows=[row, *_report_context_rows(row)])
     service = _service()
 
     result = await service.get_match(match_id, session)  # type: ignore[arg-type]
@@ -337,7 +380,7 @@ async def test_submit_review_does_not_require_a_note_for_a_plain_approve_or_reje
     match_id, cv_id = uuid4(), uuid4()
     row = _match_row(match_id, cv_id)
     cv_row = CVModel(cv_id=cv_id, candidate_id=uuid4(), raw_text="raw", extracted_json={})
-    session = _FakeSession(rows=[row, cv_row])
+    session = _FakeSession(rows=[row, *_report_context_rows(row, cv_row=cv_row)])
     service = _service()
     _patch_graph(monkeypatch, _FakeCompiledGraph(_pending_snapshot()))
 
@@ -384,7 +427,7 @@ async def test_submit_review_recovers_a_stranded_resume_without_calling_ainvoke_
     match_id, cv_id = uuid4(), uuid4()
     row = _match_row(match_id, cv_id)
     cv_row = CVModel(cv_id=cv_id, candidate_id=uuid4(), raw_text="raw", extracted_json={})
-    session = _FakeSession(rows=[row, cv_row])
+    session = _FakeSession(rows=[row, *_report_context_rows(row, cv_row=cv_row)])
     service = _service()
     compiled = _FakeCompiledGraph(_stranded_snapshot("approved"))
     _patch_graph(monkeypatch, compiled)
@@ -411,7 +454,7 @@ async def test_submit_review_logs_a_warning_when_the_stranded_decision_differs_f
     match_id, cv_id = uuid4(), uuid4()
     row = _match_row(match_id, cv_id)
     cv_row = CVModel(cv_id=cv_id, candidate_id=uuid4(), raw_text="raw", extracted_json={})
-    session = _FakeSession(rows=[row, cv_row])
+    session = _FakeSession(rows=[row, *_report_context_rows(row, cv_row=cv_row)])
     service = _service()
     compiled = _FakeCompiledGraph(_stranded_snapshot("rejected"))
     _patch_graph(monkeypatch, compiled)
@@ -476,7 +519,7 @@ async def test_submit_review_writes_a_historical_decision_with_was_selected_deri
     match_id, cv_id, candidate_id, tdr_id = uuid4(), uuid4(), uuid4(), uuid4()
     row = _match_row(match_id, cv_id, tdr_id=tdr_id)
     cv_row = CVModel(cv_id=cv_id, candidate_id=candidate_id, raw_text="raw", extracted_json={})
-    session = _FakeSession(rows=[row, cv_row])
+    session = _FakeSession(rows=[row, *_report_context_rows(row, cv_row=cv_row)])
     service = _service()
     _patch_graph(monkeypatch, _FakeCompiledGraph(_pending_snapshot()))
 
@@ -497,7 +540,7 @@ async def test_submit_review_updates_the_match_row_and_resumes_the_paused_graph(
     match_id, cv_id = uuid4(), uuid4()
     row = _match_row(match_id, cv_id)
     cv_row = CVModel(cv_id=cv_id, candidate_id=uuid4(), raw_text="raw", extracted_json={})
-    session = _FakeSession(rows=[row, cv_row])
+    session = _FakeSession(rows=[row, *_report_context_rows(row, cv_row=cv_row)])
     service = _service()
     compiled = _FakeCompiledGraph(_pending_snapshot())
     _patch_graph(monkeypatch, compiled)

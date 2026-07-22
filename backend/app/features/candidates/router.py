@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,3 +29,10 @@ async def upload_cv(
 @router.get("", response_model=list[CandidateSummary])
 async def list_candidates(session: AsyncSession = Depends(get_db_session)) -> list[CandidateSummary]:
     return await service.list_candidates(session)
+
+
+@router.get("/{candidate_id}", response_model=CandidateCV)
+async def get_candidate_cv(
+    candidate_id: UUID, session: AsyncSession = Depends(get_db_session)
+) -> CandidateCV:
+    return await service.get_candidate_cv(candidate_id, session)

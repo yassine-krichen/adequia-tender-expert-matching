@@ -79,6 +79,9 @@ export type MatchDetail = {
   reviewer_id: string | null;
   reviewer_note: string | null;
   decided_at: string | null;
+  candidate_full_name: string;
+  position_title: string;
+  tdr_mission_title: string;
 };
 
 export type ReviewDecisionRequest = {

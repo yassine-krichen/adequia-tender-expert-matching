@@ -1,4 +1,5 @@
 import hashlib
+from datetime import datetime
 from io import BytesIO
 from typing import Any
 from uuid import uuid4
@@ -53,12 +54,28 @@ class _FakeRedis:
         self.expired.append((key, seconds))
 
 
+class _FakeScalars:
+    """Mirrors tests/unit/features/reporting/test_service.py's _FakeScalars
+    -- backs list_tdrs's `.scalars().all()` call."""
+
+    def __init__(self, rows: list[Any]) -> None:
+        self._rows = rows
+
+    def all(self) -> list[Any]:
+        return self._rows
+
+
 class _FakeResult:
-    def __init__(self, row: Any | None) -> None:
-        self._row = row
+    def __init__(self, rows: list[Any]) -> None:
+        self._rows = rows
 
     def scalar_one_or_none(self) -> Any | None:
-        return self._row
+        """Fakes upload_tdr's dedup lookup -- the first pre-seeded TDRModel
+        row, same as a real single-row dedup hit."""
+        return self._rows[0] if self._rows else None
+
+    def scalars(self) -> _FakeScalars:
+        return _FakeScalars(self._rows)
 
 
 class _FakeSession:
@@ -79,12 +96,24 @@ class _FakeSession:
         return None
 
     async def execute(self, _stmt: Any) -> _FakeResult:
-        """Fakes upload_tdr's `select(TDRModel).where(content_hash == ...)`
-        -- returns the first TDRModel row already present (pre-seeded via
-        session.added), same as a real dedup hit.
+        """Doesn't parse the actual `select(...)` statement -- returns every
+        pre-seeded TDRModel row, same simplification tests/unit/features/
+        reporting/test_service.py's fake session already makes. Fine for
+        both upload_tdr's dedup lookup (scalar_one_or_none, first row) and
+        list_tdrs (scalars().all(), every row).
+
+        Sorted by created_at desc here (rather than left in insertion
+        order) so a test can verify list_tdrs actually returns
+        newest-first -- that's normally the real DB's ORDER BY doing the
+        work, faked here since there's no real query engine behind this
+        session.
         """
-        existing_tdr = next((row for row in self.added if isinstance(row, TDRModel)), None)
-        return _FakeResult(existing_tdr)
+        tdr_rows = sorted(
+            (row for row in self.added if isinstance(row, TDRModel)),
+            key=lambda row: row.created_at,
+            reverse=True,
+        )
+        return _FakeResult(tdr_rows)
 
 
 async def test_upload_tdr_creates_a_processing_row_and_enqueues_the_extraction_job() -> None:
@@ -364,3 +393,37 @@ async def test_get_matching_status_reports_processing_progress() -> None:
     assert status.status == "processing"
     assert status.positions_done == 1
     assert status.positions_total == 3
+
+
+async def test_list_tdrs_returns_every_tdr_ordered_by_created_at_descending() -> None:
+    session = _FakeSession()
+    older = TDRModel(
+        tdr_id=uuid4(),
+        mission_title="Older Mission",
+        status="done",
+        created_at=datetime(2026, 1, 1),
+    )
+    newer = TDRModel(
+        tdr_id=uuid4(),
+        mission_title="Newer Mission",
+        status="processing",
+        created_at=datetime(2026, 2, 1),
+    )
+    # Seeded oldest-first -- list_tdrs itself must be the thing that orders
+    # by created_at desc, not an artifact of insertion order.
+    session.added.extend([older, newer])
+    service = TdrsService(queue=_FakeQueue(), redis_client=_FakeRedis())  # type: ignore[arg-type]
+
+    summaries = await service.list_tdrs(session)  # type: ignore[arg-type]
+
+    assert [s.mission_title for s in summaries] == ["Newer Mission", "Older Mission"]
+    assert summaries[0].tdr_id == str(newer.tdr_id)
+    assert summaries[0].status == "processing"
+
+
+async def test_list_tdrs_returns_an_empty_list_when_no_tdrs_exist() -> None:
+    service = TdrsService(queue=_FakeQueue(), redis_client=_FakeRedis())  # type: ignore[arg-type]
+
+    summaries = await service.list_tdrs(_FakeSession())  # type: ignore[arg-type]
+
+    assert summaries == []

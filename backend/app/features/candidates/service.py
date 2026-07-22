@@ -1,10 +1,11 @@
 import hashlib
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi import UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.common.exceptions import NotFoundError
 from app.common.llm.router import ModelRouter
 from app.config.settings import get_settings
 from app.database.models import CV, Candidate
@@ -124,3 +125,18 @@ class CandidatesService:
             )
             for row in rows
         ]
+
+    async def get_candidate_cv(self, candidate_id: UUID, session: AsyncSession) -> CandidateCV:
+        # A candidate has exactly one CV today (no re-upload/update flow
+        # yet), but order by created_at desc rather than assuming a single
+        # row so this doesn't silently pick a stale one once re-upload lands.
+        stmt = (
+            select(CV)
+            .where(CV.candidate_id == candidate_id)
+            .order_by(CV.created_at.desc())
+            .limit(1)
+        )
+        cv_row = (await session.execute(stmt)).scalar_one_or_none()
+        if cv_row is None:
+            raise NotFoundError(f"No CV found for candidate {candidate_id}")
+        return CandidateCV.model_validate(cv_row.extracted_json)

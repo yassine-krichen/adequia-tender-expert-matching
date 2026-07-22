@@ -6,8 +6,6 @@ import { useEffect, useRef, useState } from 'react';
 
 import { EmptyState } from '@/common/components/empty-state';
 import { FileUpload } from '@/common/components/file-upload';
-import { InfoTooltip } from '@/common/components/info-tooltip';
-import { SubScoreBar } from '@/common/components/sub-score-bar';
 import { Button } from '@/common/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/common/components/ui/card';
 import {
@@ -18,16 +16,16 @@ import {
   TableHeader,
   TableRow,
 } from '@/common/components/ui/table';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/common/components/ui/tooltip';
-import { Badge } from '@/components/reui/badge';
 import { getMatchingStatus } from '@/features/matching/api/get-matching-status';
 import { getPositionMatches } from '@/features/matching/api/get-position-matches';
 import { runMatching } from '@/features/matching/api/run-matching';
 import type { MatchResult, MatchingStatus } from '@/features/matching/types/match.types';
 import { getTdr } from '@/features/tdrs/api/get-tdr';
 import { getTdrStatus } from '@/features/tdrs/api/get-tdr-status';
+import { listTdrs } from '@/features/tdrs/api/list-tdrs';
 import { uploadTdr } from '@/features/tdrs/api/upload-tdr';
-import type { TdrExtraction, TdrStatus } from '@/features/tdrs/types/tdr.types';
+import { TdrPositionsList } from '@/features/tdrs/components/tdr-positions-list';
+import type { TdrExtraction, TdrStatus, TdrSummary } from '@/features/tdrs/types/tdr.types';
 import { useGuidedTour } from '@/features/tour/use-guided-tour';
 
 const POLL_INTERVAL_MS = 1500;
@@ -56,71 +54,6 @@ function describeMatchingProgress(status: MatchingStatus): string {
   return 'Starting matching…';
 }
 
-function PositionMatches({ matches }: { matches: MatchResult[] }) {
-  if (matches.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">No shortlisted candidates for this position.</p>
-    );
-  }
-
-  return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Candidate</TableHead>
-          <TableHead>
-            <span className="inline-flex items-center gap-1">
-              Compatibility
-              <InfoTooltip text="Overall match score combining skill coverage and sector fit against this position's requirements." />
-            </span>
-          </TableHead>
-          <TableHead>
-            <span className="inline-flex items-center gap-1">
-              Hard filter
-              <InfoTooltip text="Whether the candidate meets this position's mandatory requirements (diploma, minimum experience, required certifications). A failed hard filter means the candidate wasn't scored further." />
-            </span>
-          </TableHead>
-          <TableHead>Sub-scores</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {matches.map((match) => (
-          <TableRow key={match.match_id}>
-            <TableCell>
-              <Link href={`/matches/${match.match_id}`}>{match.candidate_full_name}</Link>
-            </TableCell>
-            <TableCell>
-              {match.compatibility_score != null
-                ? `${Math.round(match.compatibility_score * 100)}%`
-                : '—'}
-            </TableCell>
-            <TableCell>
-              {match.hard_filter_passed ? (
-                <Badge variant="success-light">Passed</Badge>
-              ) : (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Badge variant="destructive-light">Failed</Badge>
-                  </TooltipTrigger>
-                  <TooltipContent>{match.hard_filter_failures.join('; ')}</TooltipContent>
-                </Tooltip>
-              )}
-            </TableCell>
-            <TableCell>
-              {match.sub_scores && (
-                <div className="min-w-32 space-y-1">
-                  <SubScoreBar label="Skill" value={match.sub_scores.skill_score} />
-                  <SubScoreBar label="Sector" value={match.sub_scores.sector_score} />
-                </div>
-              )}
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
-  );
-}
-
 export default function TdrsPage() {
   useGuidedTour();
 
@@ -137,6 +70,26 @@ export default function TdrsPage() {
   const [matchingError, setMatchingError] = useState<string | null>(null);
   const [matchesByPosition, setMatchesByPosition] = useState<Record<string, MatchResult[]>>({});
   const matchPollHandle = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [pastTdrs, setPastTdrs] = useState<TdrSummary[]>([]);
+  const [isLoadingPastTdrs, setIsLoadingPastTdrs] = useState(true);
+  const [pastTdrsError, setPastTdrsError] = useState<string | null>(null);
+
+  async function loadPastTdrs() {
+    setIsLoadingPastTdrs(true);
+    const listResult = await listTdrs();
+    if (listResult.error !== null) {
+      setPastTdrsError(listResult.error);
+    } else {
+      setPastTdrsError(null);
+      setPastTdrs(listResult.data);
+    }
+    setIsLoadingPastTdrs(false);
+  }
+
+  useEffect(() => {
+    void loadPastTdrs();
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -185,6 +138,9 @@ export default function TdrsPage() {
       } else {
         setResult(tdrResult.data);
       }
+      // The upload just added or updated a TDR — refetch so the past-TDRs
+      // list reflects it immediately instead of waiting for a manual reload.
+      await loadPastTdrs();
     }
 
     pollHandle.current = setTimeout(poll, POLL_INTERVAL_MS);
@@ -371,86 +327,31 @@ export default function TdrsPage() {
             <p>Client: {result.client ?? '—'}</p>
             <p>Sector: {result.sector ?? '—'}</p>
 
-            <div className="space-y-4" data-tour="tdr-positions">
-              <div className="flex items-center justify-between">
-                <h3 className="font-heading text-sm text-muted-foreground">Expert positions</h3>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={handleRunMatching}
-                  disabled={matchingStatus === 'processing'}
-                >
-                  {matchingStatus === 'processing' ? 'Matching…' : 'Run matching'}
-                </Button>
-              </div>
-              {matchingStatus === 'processing' && matchingMessage && (
-                <p className="text-sm text-muted-foreground" role="status">
-                  {matchingMessage}
-                </p>
-              )}
-              {matchingError && (
-                <p role="alert" className="text-sm text-destructive">
-                  {matchingError}
-                </p>
-              )}
-
-              {result.positions.map((position) => (
-                <div key={position.position_id} className="space-y-2 border-t border-border pt-3">
-                  <p>
-                    <span className="font-medium">{position.position_title}</span>
-                    {position.minimum_years_experience != null &&
-                      ` — ${position.minimum_years_experience}+ years`}
-                    {position.mandatory_diploma && ` — ${position.mandatory_diploma}`}
-                  </p>
-                  <div className="space-y-1 text-sm text-muted-foreground">
-                    <p className="flex items-start gap-1">
-                      <span className="inline-flex items-center gap-1">
-                        Required certifications
-                        <InfoTooltip text="Certifications this position's TDR explicitly requires — not the candidate's own certifications." />
-                      </span>
-                      :{' '}
-                      {position.required_certifications.length > 0
-                        ? position.required_certifications.join(', ')
-                        : '—'}
-                    </p>
-                    <p className="flex items-start gap-1">
-                      <span className="inline-flex items-center gap-1">
-                        Required languages
-                        <InfoTooltip text="Languages and minimum proficiency levels this position's TDR requires." />
-                      </span>
-                      :{' '}
-                      {position.required_languages.length > 0
-                        ? position.required_languages
-                            .map((lang) => `${lang.language} (${lang.minimum_level})`)
-                            .join(', ')
-                        : '—'}
-                    </p>
-                    <p className="flex items-start gap-1">
-                      <span className="inline-flex items-center gap-1">
-                        Required skills
-                        <InfoTooltip text="Skills extracted from the TDR's requirements for this position, used to compute the skill sub-score during matching." />
-                      </span>
-                      :{' '}
-                      {position.required_skills.length > 0
-                        ? position.required_skills.join(', ')
-                        : '—'}
-                    </p>
-                    <p className="flex items-start gap-1">
-                      <span className="inline-flex items-center gap-1">
-                        Evaluation weight
-                        <InfoTooltip text="This position's relative weight in the overall mission evaluation, as stated in the TDR (when specified)." />
-                      </span>
-                      : {position.evaluation_weight != null ? position.evaluation_weight : '—'}
-                    </p>
-                  </div>
-                  {matchingStatus === 'done' && matchesByPosition[position.position_id] && (
-                    <div data-tour="tdr-matches">
-                      <PositionMatches matches={matchesByPosition[position.position_id]} />
-                    </div>
-                  )}
-                </div>
-              ))}
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleRunMatching}
+                disabled={matchingStatus === 'processing'}
+              >
+                {matchingStatus === 'processing' ? 'Matching…' : 'Run matching'}
+              </Button>
             </div>
+            {matchingStatus === 'processing' && matchingMessage && (
+              <p className="text-sm text-muted-foreground" role="status">
+                {matchingMessage}
+              </p>
+            )}
+            {matchingError && (
+              <p role="alert" className="text-sm text-destructive">
+                {matchingError}
+              </p>
+            )}
+
+            <TdrPositionsList
+              positions={result.positions}
+              matchesByPosition={matchingStatus === 'done' ? matchesByPosition : undefined}
+            />
 
             <details>
               <summary className="cursor-pointer text-muted-foreground">Raw JSON</summary>
@@ -459,6 +360,53 @@ export default function TdrsPage() {
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Past TDRs</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {pastTdrsError && (
+            <p role="alert" className="text-destructive">
+              {pastTdrsError}
+            </p>
+          )}
+          {!pastTdrsError && isLoadingPastTdrs && (
+            <p className="text-sm text-muted-foreground" role="status">
+              Loading…
+            </p>
+          )}
+          {!pastTdrsError && !isLoadingPastTdrs && pastTdrs.length === 0 && (
+            <EmptyState
+              icon={FileText}
+              title="No TDRs yet"
+              description="Upload a TDR above to see it appear here."
+            />
+          )}
+          {!pastTdrsError && !isLoadingPastTdrs && pastTdrs.length > 0 && (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Mission</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pastTdrs.map((tdr) => (
+                  <TableRow key={tdr.tdr_id}>
+                    <TableCell>
+                      <Link href={`/tdrs/${tdr.tdr_id}`}>{tdr.mission_title ?? '—'}</Link>
+                    </TableCell>
+                    <TableCell>{tdr.status}</TableCell>
+                    <TableCell>{new Date(tdr.created_at).toLocaleString()}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </main>
   );
 }

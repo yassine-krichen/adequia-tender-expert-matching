@@ -13,7 +13,7 @@ from app.features.pipeline.nodes.generate_report import (
     _HARD_FILTER_FAILURE_RATIONALE,
     RationaleClaim,
     RationaleOutput,
-    _assemble_citations,
+    assemble_citations,
     generate_rationale,
     make_generate_report_node,
 )
@@ -70,7 +70,7 @@ def _ledger_entry(
     )
 
 
-# --- _assemble_citations (code-driven, never model-trusted) ---------------
+# --- assemble_citations (code-driven, never model-trusted) ---------------
 
 
 def test_assemble_citations_keeps_sentence_and_citation_for_a_valid_ledger_id() -> None:
@@ -79,7 +79,7 @@ def test_assemble_citations_keeps_sentence_and_citation_for_a_valid_ledger_id() 
         claims=[RationaleClaim(sentence="Le candidat maîtrise Python.", cited_ledger_ids=["skill-matched-0"])]
     )
 
-    sentences, citations = _assemble_citations(output, ledger)
+    sentences, citations, _total = assemble_citations(output, ledger)
 
     assert sentences == ["Le candidat maîtrise Python."]
     assert citations == [
@@ -93,7 +93,7 @@ def test_assemble_citations_drops_sentence_citing_only_a_hallucinated_ledger_id(
         claims=[RationaleClaim(sentence="Faux fait.", cited_ledger_ids=["does-not-exist"])]
     )
 
-    sentences, citations = _assemble_citations(output, ledger)
+    sentences, citations, _total = assemble_citations(output, ledger)
 
     assert sentences == []
     assert citations == []
@@ -110,7 +110,7 @@ def test_assemble_citations_mixed_sentence_keeps_only_the_valid_citation() -> No
         ]
     )
 
-    sentences, citations = _assemble_citations(output, ledger)
+    sentences, citations, _total = assemble_citations(output, ledger)
 
     assert sentences == ["Le candidat maîtrise Python et autre chose."]
     assert len(citations) == 1
@@ -126,7 +126,7 @@ def test_assemble_citations_does_not_crash_when_every_cited_id_across_multiple_c
         ]
     )
 
-    sentences, citations = _assemble_citations(output, ledger)
+    sentences, citations, _total = assemble_citations(output, ledger)
 
     assert sentences == []
     assert citations == []

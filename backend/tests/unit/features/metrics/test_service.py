@@ -12,8 +12,20 @@ _SNAPSHOT_PATH = (
     Path(__file__).resolve().parents[4] / "app" / "features" / "metrics" / "current_snapshot.json"
 )
 
-_AVAILABLE_GROUPS = ("extraction", "retrieval", "anomaly_detection", "guardrails")
-_PENDING_GROUPS = ("scoring_agreement", "report_quality", "efficiency")
+_AVAILABLE_GROUPS = (
+    "extraction",
+    "retrieval",
+    "anomaly_detection",
+    "guardrails",
+    "scoring_agreement",
+    "report_quality",
+    "efficiency",
+)
+# All 7 groups are now available as of ADQ-33's final metrics pass -- kept
+# as an explicit empty tuple (rather than deleting the parametrized test
+# below) so a future group added back in "pending" status is still covered
+# by the same test without needing new test code.
+_PENDING_GROUPS: tuple[str, ...] = ()
 
 
 def _raw_snapshot() -> dict:
@@ -75,6 +87,49 @@ async def test_get_current_metrics_reads_the_real_values_recorded_for_extraction
         "cv_total": 11,
     }
     assert snapshot.extraction.sample_size == 24
+
+
+async def test_get_current_metrics_reads_the_real_values_recorded_for_scoring_agreement() -> None:
+    """Pins the real Cohen's kappa/n computed by scripts/measure_scoring_agreement.py
+    against live match_results.reviewer_decision data (ADQ-33) -- n=2 is a
+    small real sample (only 2 reviewed match_results exist so far), not a
+    placeholder."""
+    service = MetricsService()
+
+    snapshot = await service.get_current_metrics()
+
+    assert snapshot.scoring_agreement.values == {"cohens_kappa": 1.0, "n": 2}
+    assert snapshot.scoring_agreement.sample_size == 2
+
+
+async def test_get_current_metrics_reads_the_real_values_recorded_for_report_quality() -> None:
+    """Pins the real faithfulness/citation_coverage computed by
+    test_report_faithfulness_quality.py (ADQ-29) against live LLM judge
+    calls."""
+    service = MetricsService()
+
+    snapshot = await service.get_current_metrics()
+
+    assert snapshot.report_quality.values == {"faithfulness": 0.91, "citation_coverage": 1.0}
+    assert snapshot.report_quality.sample_size == 11
+
+
+async def test_get_current_metrics_reads_the_real_values_recorded_for_efficiency() -> None:
+    """Pins the real per-node latency computed by scripts/measure_efficiency.py
+    (ADQ-33) against real pipeline node calls -- cost_usd is a hard $0 fact
+    (free-tier-only architecture), not a measurement."""
+    service = MetricsService()
+
+    snapshot = await service.get_current_metrics()
+
+    assert snapshot.efficiency.values == {
+        "overall_per_match_p50_s": 3.52,
+        "overall_per_match_p95_s": 4.65,
+        "extract_tdr_p50_s": 838.65,
+        "extract_cv_p50_s": 195.42,
+        "cost_usd": 0.0,
+    }
+    assert snapshot.efficiency.sample_size == 28
 
 
 # --- MetricsSnapshot schema validation ------------------------------------

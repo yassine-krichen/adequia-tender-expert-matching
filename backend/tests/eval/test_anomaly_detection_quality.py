@@ -37,6 +37,7 @@ from app.features.pipeline.nodes.detect_anomalies import (
     check_employment_gaps,
     check_expired_certifications,
 )
+from tests.eval._scoring import _TypeCounts
 
 # --- builder helpers, mirroring test_detect_anomalies.py's style -----------
 
@@ -259,28 +260,6 @@ def inject_implausible_graduation_age(birth_date: date, education: list[Educatio
 
 
 # --- eval harness ------------------------------------------------------
-
-
-@dataclass
-class _TypeCounts:
-    true_positives: int = 0
-    false_positives: int = 0
-    false_negatives: int = 0
-
-    @property
-    def precision(self) -> float:
-        denom = self.true_positives + self.false_positives
-        return self.true_positives / denom if denom else 0.0
-
-    @property
-    def recall(self) -> float:
-        denom = self.true_positives + self.false_negatives
-        return self.true_positives / denom if denom else 0.0
-
-    @property
-    def f1(self) -> float:
-        p, r = self.precision, self.recall
-        return 2 * p * r / (p + r) if (p + r) else 0.0
 
 
 @pytest.mark.eval

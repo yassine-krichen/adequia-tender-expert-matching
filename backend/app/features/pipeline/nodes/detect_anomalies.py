@@ -172,7 +172,7 @@ _PLAUSIBILITY_GUARDRAIL_PROMPT = (
 
 def _is_genuine_citation(source_citation: str, experience: Sequence[Experience]) -> bool:
     """Citation validation is code, never model-trusted -- mirrors
-    generate_report.py's _assemble_citations, which drops any hallucinated
+    generate_report.py's assemble_citations, which drops any hallucinated
     ledger id instead of trusting the model's claim. Here there's no ledger
     of ids to check against, just the raw source_spans the model was given,
     so the check is a verbatim substring match against at least one of them.

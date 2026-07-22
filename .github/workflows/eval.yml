@@ -15,9 +15,49 @@ jobs:
         with:
           version: "latest"
       - run: uv sync --all-extras
-      # Runs the RAGAS/DeepEval suite against the gold datasets from
-      # docs/04-evaluation-metrics.md. Spends real LLM API tokens — manual
-      # trigger only, run before milestones/demos or after prompt/weight changes.
-      - run: uv run pytest tests/eval
+      # Runs the RAGAS-style/DeepEval-style suite against the gold datasets
+      # from docs/04-evaluation-metrics.md. Spends real LLM API tokens —
+      # manual trigger only, run before milestones/demos or after
+      # prompt/weight changes.
+      #
+      # `-m eval` is mandatory here: pyproject.toml's global
+      # `addopts = "-m 'not eval'"` silently deselects every test under
+      # tests/eval/ without it (confirmed real bug — this workflow was
+      # previously a no-op that always reported success on zero tests run).
+      #
+      # Known, intentional gap: test_matching_retrieval_quality.py needs a
+      # live seeded Postgres+pgvector stack (a real CV pool with the
+      # synthetic candidates uploaded, see its own docstring) to do
+      # anything meaningful. Standing that up in GitHub Actions is out of
+      # ADQ-30's scope, so it's excluded here via --ignore rather than left
+      # to "self-skip": DATABASE_URL below points at a placeholder host
+      # nothing is listening on, so importing/running that test as-is would
+      # error out on the first DB connection attempt, not skip cleanly —
+      # it must be run manually against a real seeded dev stack instead
+      # (`uv run pytest tests/eval/test_matching_retrieval_quality.py -m eval`).
+      #
+      # Also a known limitation, not fully solved here: GitHub-hosted
+      # runners can't reach a local Ollama instance, so the fallback tier
+      # of ModelRouter's Groq -> Gemini -> Ollama chain is unreachable from
+      # this job. As long as GROQ_API_KEYS/GEMINI_API_KEYS below are real,
+      # valid free-tier keys with quota left, the remaining eval tests
+      # should succeed on one of the first two tiers -- but if both key
+      # pools are exhausted/rate-limited mid-run, the router falls through
+      # to Ollama and the job fails outright instead of degrading
+      # gracefully. Re-run later (free-tier quotas reset daily) rather than
+      # trying to stand up a reachable Ollama in CI for this.
+      - run: uv run pytest tests/eval -m eval --ignore=tests/eval/test_matching_retrieval_quality.py
         env:
-          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5433/adequia
+          REDIS_URL: redis://localhost:6379
+          MCP_SERVER_URL: http://localhost:8100
+          GROQ_API_KEYS: ${{ secrets.GROQ_API_KEYS }}
+          GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}
+          OLLAMA_BASE_URL: http://localhost:11434
+          GROQ_EXTRACTION_MODEL: llama-3.1-8b-instant
+          GROQ_REASONING_MODEL: llama-3.3-70b-versatile
+          GEMINI_EXTRACTION_MODEL: gemini-2.5-flash-lite
+          GEMINI_REASONING_MODEL: gemini-2.5-flash
+          OLLAMA_EXTRACTION_MODEL: hermes3:3b
+          OLLAMA_REASONING_MODEL: hermes3:3b
+          EMBEDDING_MODEL: nomic-embed-text

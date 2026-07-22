@@ -18,7 +18,11 @@ outcomes, not just "who's a plausible fit"). One entry
 extraction rather than hand-written, to keep the set honest about what
 production extractions actually look like. Skips if the synthetic CVs
 haven't been uploaded to the CV pool this suite runs against yet (see the
-skip message for how to seed them).
+skip message for how to seed them) -- but that skip only fires against a
+real, reachable Postgres. This test needs a live seeded Postgres+pgvector
+stack to run at all, so it's excluded from .github/workflows/eval.yml
+(no such stack there) and must be run manually against a seeded dev
+stack instead.
 """
 
 import json

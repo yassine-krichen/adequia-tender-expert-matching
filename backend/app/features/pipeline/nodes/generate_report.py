@@ -48,6 +48,15 @@ _REPORT_GUARDRAIL_PROMPT = (
     "least one real ledger id in cited_ledger_ids -- never state anything "
     "that is not grounded in a ledger entry, and never invent numbers, "
     "skills, or details not present in the ledger.\n\n"
+    "Paraphrasing a ledger entry's wording is fine; adding any descriptive "
+    "elaboration, qualifier, sub-skill, or example not present in the "
+    "ledger entry's own text is not -- e.g. if the fact only says the "
+    "candidate masters \"Gestion de projet\", never add a specific aspect "
+    "of it (\"notamment la planification et l'organisation\") that isn't "
+    "itself a separate ledger entry. When a sentence cites more than one "
+    "ledger id, every part of that sentence must trace to at least one of "
+    "the cited entries -- never bridge two facts with an invented detail "
+    "that belongs to neither.\n\n"
     "Use natural HR language (\"ce profil...\", \"notamment...\", "
     "\"en revanche...\"). Never surface internal technical terms such as "
     "\"hard filter\", \"compatibility score\", \"sub-score\", or "
@@ -83,14 +92,20 @@ def generate_rationale(
     )
 
 
-def _assemble_citations(
+def assemble_citations(
     rationale_output: RationaleOutput, ledger: list[LedgerEntry]
-) -> tuple[list[str], list[Citation]]:
+) -> tuple[list[str], list[Citation], int]:
     """Citation assembly is code, never model-trusted -- a sentence whose
     every cited id is hallucinated (not a real ledger id) is dropped
     entirely, since an uncited sentence can't back "every claim has a
     citation." Surviving (sentence, ledger_id) pairs are deduped before
     becoming Citations.
+
+    No leading underscore (ADQ-29) -- test_report_faithfulness_quality.py
+    imports this directly to compute citation coverage
+    (surviving-claims-with-valid-citations / total-claims-before-filtering)
+    against the real production assembly logic, rather than duplicating it.
+    The third return value is that pre-filter total claim count.
     """
     ledger_by_id = {entry.id: entry for entry in ledger}
     surviving_sentences: list[str] = []
@@ -127,7 +142,7 @@ def _assemble_citations(
                 )
             )
 
-    return surviving_sentences, citations
+    return surviving_sentences, citations, len(rationale_output.claims)
 
 
 async def _resolve_taxonomy_names(state: PipelineState, *, session: AsyncSession) -> dict[str, str]:
@@ -165,7 +180,7 @@ def make_generate_report_node(
             return {"rationale": _HARD_FILTER_FAILURE_RATIONALE, "citations": citations}
 
         rationale_output = generate_rationale(ledger, router=router)
-        surviving_sentences, citations = _assemble_citations(rationale_output, ledger)
+        surviving_sentences, citations, _total_claims = assemble_citations(rationale_output, ledger)
 
         compatibility_score = state["compatibility_score"]
         assert compatibility_score is not None
@@ -173,7 +188,7 @@ def make_generate_report_node(
         if surviving_sentences:
             # "notamment :" only makes sense followed by at least one
             # surviving sentence -- if every claim got dropped as
-            # hallucinated (_assemble_citations above), fall back to a
+            # hallucinated (assemble_citations above), fall back to a
             # plain sentence rather than leaving a dangling colon with
             # nothing after it.
             opening = f"Ce profil correspond à {pct}% des critères demandés, notamment :"

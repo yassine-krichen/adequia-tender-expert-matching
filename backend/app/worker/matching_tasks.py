@@ -8,6 +8,7 @@ from uuid import UUID, uuid4
 from langchain_core.embeddings import Embeddings
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from langsmith import traceable
 from redis import Redis
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -61,6 +62,7 @@ def make_redis_matching_progress_reporter(
     return report
 
 
+@traceable(name="matching_run")
 async def run_matching_job(
     tdr_id: str,
     *,
@@ -83,6 +85,13 @@ async def run_matching_job(
     upsert against, same delete-then-insert idempotency as the taxonomy
     seed script). anomalies rows cascade-delete alongside their match_result
     (migration 0007), no separate delete needed here.
+
+    @traceable (ADQ-31): every candidate's graph.ainvoke() call below is
+    tagged with its own tdr_id/position_id/candidate_id, but without this
+    wrapper each would surface as its own flat top-level trace. Wrapping
+    the whole run gives one parent trace per TDR that groups every
+    position/candidate's run underneath it -- see _run()'s call site for
+    how tdr_id reaches this run's own metadata via langsmith_extra.
     """
     tdr_row = await session.get(TDRModel, UUID(tdr_id))
     assert tdr_row is not None, f"TDR {tdr_id} must exist before matching is enqueued"
@@ -162,7 +171,20 @@ async def run_matching_job(
                 # here). final_state reflects "state as of the pending
                 # human_review interrupt," not a fully finished run.
                 final_state = await graph.ainvoke(
-                    initial_state, config={"configurable": {"thread_id": str(match_id)}}
+                    initial_state,
+                    config={
+                        "configurable": {"thread_id": str(match_id)},
+                        # ADQ-31: lets a trace be filtered/grouped by TDR,
+                        # position, or candidate in the LangSmith UI on top
+                        # of the parent-trace grouping run_matching_job's
+                        # own @traceable wrapper already provides.
+                        "tags": [f"tdr:{tdr_id}", f"position:{position_row.position_id}"],
+                        "metadata": {
+                            "tdr_id": tdr_id,
+                            "position_id": str(position_row.position_id),
+                            "candidate_id": str(cv_row.candidate_id),
+                        },
+                    },
                 )
 
                 session.add(
@@ -233,6 +255,11 @@ async def _run(tdr_id: str) -> None:
                 checkpointer=checkpointer,
                 embeddings=router.get_embedding_model(),
                 on_progress=on_progress,
+                # ADQ-31: tdr_id is only known at call time (not at
+                # @traceable's decoration time), so it's threaded onto the
+                # parent trace's metadata this way rather than as a
+                # decorator literal.
+                langsmith_extra={"metadata": {"tdr_id": tdr_id}},
             )
 
 

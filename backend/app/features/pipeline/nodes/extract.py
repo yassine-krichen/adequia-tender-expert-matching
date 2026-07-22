@@ -7,11 +7,13 @@ from uuid import uuid4
 from langchain_core.embeddings import Embeddings
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langsmith import traceable
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from app.common.exceptions import ExtractionFailedError
 from app.common.llm.router import ExtractionRouter
 from app.common.llm.structured import invoke_structured
+from app.common.pii import mask_contact_info, mask_cv_pii
 from app.domain.cv import CandidateCV, Certification, Education, Experience, LanguageProficiency
 from app.domain.tdr import TDR, ExpertPosition, LanguageRequirement
 
@@ -151,15 +153,33 @@ def _compute_total_years_experience(experience: Sequence[Experience]) -> float:
     return round(total_days / 365.25, 1)
 
 
+@traceable(name="extract_cv")
 def extract_cv(
-    raw_text: str, *, candidate_id: str, source_file_path: str, router: ExtractionRouter
+    raw_text: str,
+    *,
+    candidate_id: str,
+    source_file_path: str,
+    router: ExtractionRouter,
+    mask_pii: bool = True,
 ) -> CandidateCV:
     """Structured extraction of a CV into CandidateCV (ADQ-5).
 
     candidate_id/source_file_path are assigned by the caller (the upload
     endpoint / DB insert), not extracted from the CV text.
+
+    mask_pii (ADQ-32, on by default): the text sent to the LLM has
+    email/phone/candidate-name masked before the message is built -- this
+    must happen before ModelRouter picks cloud vs. Ollama, since that
+    decision happens after messages are built. raw_text stored on
+    CandidateCV stays unmasked -- masking is transient, applied only to the
+    outbound LLM message.
     """
-    extraction = _invoke_cv_extraction(raw_text, router)
+    detected_name: str | None = None
+    text_for_llm = raw_text
+    if mask_pii:
+        text_for_llm, detected_name = mask_cv_pii(raw_text)
+
+    extraction = _invoke_cv_extraction(text_for_llm, router)
     try:
         # Converting here (not in _CVExtraction itself) is what actually
         # parses the LLM's free-form date/year strings into real date/int
@@ -178,7 +198,13 @@ def extract_cv(
 
     return CandidateCV(
         candidate_id=candidate_id,
-        full_name=extraction.full_name,
+        # Locally-detected name (from the unmasked original text, before it
+        # ever left the process) is more trustworthy than whatever the LLM
+        # extracted from a masked prompt -- falls back to the LLM's own
+        # value when local detection found nothing (masking disabled, or no
+        # name-shaped line found), so this never regresses today's
+        # behavior.
+        full_name=detected_name or extraction.full_name,
         education=education,
         certifications=certifications,
         experience=experience,
@@ -483,6 +509,7 @@ def _merge_chunk_extractions(
     )
 
 
+@traceable(name="extract_tdr")
 def extract_tdr(
     raw_text: str,
     *,
@@ -491,6 +518,7 @@ def extract_tdr(
     router: ExtractionRouter,
     embeddings: Embeddings,
     on_progress: ProgressCallback | None = None,
+    mask_pii: bool = True,
 ) -> TDR:
     """Structured extraction of a TDR into TDR/ExpertPosition (ADQ-6).
 
@@ -502,6 +530,14 @@ def extract_tdr(
     on_progress, if given, is called at each stage so a caller running this
     on a background worker (app/worker/tasks.py) can surface progress to a
     polling client — this module has no queue/Redis dependency itself.
+
+    mask_pii (ADQ-32, on by default): only email/phone are masked here (not
+    names, unlike CVs) -- a TDR describes a role to be staffed, not a named
+    individual, and a name-shaped heuristic risks mangling
+    mission_title/client extraction. Masking is applied per-chunk, right
+    before that chunk's LLM message is built -- retrieval/chunking above
+    still runs against the unmasked text (embeddings are local-only,
+    never routed to a cloud provider).
     """
     _report_progress(on_progress, "retrieving")
     chunks = _chunk_tdr_text(raw_text)
@@ -510,7 +546,8 @@ def extract_tdr(
     chunk_extractions = []
     for index, chunk in enumerate(relevant_chunks):
         _report_progress(on_progress, "extracting", index, len(relevant_chunks))
-        chunk_extractions.append(_invoke_tdr_chunk_extraction(chunk, router))
+        chunk_for_llm = mask_contact_info(chunk) if mask_pii else chunk
+        chunk_extractions.append(_invoke_tdr_chunk_extraction(chunk_for_llm, router))
 
     _report_progress(on_progress, "merging", len(relevant_chunks), len(relevant_chunks))
     merged = _merge_chunk_extractions(chunk_extractions)

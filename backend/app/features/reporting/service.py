@@ -124,7 +124,21 @@ class ReportingService:
                 mcp_client=self._mcp_client,
                 embeddings=self._embeddings,
             ).compile(checkpointer=checkpointer)
-            config: RunnableConfig = {"configurable": {"thread_id": str(match_id)}}
+            # ADQ-31: same tags/metadata pattern as
+            # app/worker/matching_tasks.py's run_matching_job, for
+            # consistency -- candidate_id isn't cheaply available here
+            # (match_row.cv_id is the CV row's own PK, not the candidate's;
+            # resolving the real candidate_id would need an extra query for
+            # a tracing nicety), so cv_id is used instead.
+            config: RunnableConfig = {
+                "configurable": {"thread_id": str(match_id)},
+                "tags": [f"tdr:{match_row.tdr_id}", f"position:{match_row.position_id}"],
+                "metadata": {
+                    "tdr_id": str(match_row.tdr_id),
+                    "position_id": str(match_row.position_id),
+                    "cv_id": str(match_row.cv_id),
+                },
+            }
 
             # Pre-check rather than attempt-and-translate -- what LangGraph
             # raises for a stale/missing thread was never verified, so this

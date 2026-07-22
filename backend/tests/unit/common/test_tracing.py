@@ -26,10 +26,22 @@ def _make_settings(**overrides: object) -> Settings:
     return Settings(**defaults)  # type: ignore[arg-type]
 
 
-@pytest.fixture(autouse=True)
-def _clean_langsmith_env() -> None:
+def _pop_langsmith_env() -> None:
     for key in ("LANGSMITH_TRACING", "LANGSMITH_API_KEY", "LANGSMITH_PROJECT", "LANGSMITH_ENDPOINT"):
         os.environ.pop(key, None)
+
+
+@pytest.fixture(autouse=True)
+def _clean_langsmith_env() -> None:
+    # Teardown (after yield) matters just as much as setup here: without
+    # it, whatever env vars the last test in this module sets (a fake
+    # LANGSMITH_API_KEY="test-key" with LANGSMITH_TRACING=true) leak into
+    # every test file collected after this one in the same pytest session
+    # -- e.g. extract_cv/extract_tdr's @traceable decorators (ADQ-31) would
+    # then attempt real (failing) network calls under a fake key.
+    _pop_langsmith_env()
+    yield
+    _pop_langsmith_env()
 
 
 def test_configure_langsmith_tracing_sets_env_vars_when_key_present() -> None:

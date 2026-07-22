@@ -71,6 +71,7 @@ async def run_tdr_extraction_job(
             router=router,
             embeddings=embeddings,
             on_progress=on_progress,
+            mask_pii=get_settings().pii_masking_enabled,
         )
 
         tdr_row.status = "done"

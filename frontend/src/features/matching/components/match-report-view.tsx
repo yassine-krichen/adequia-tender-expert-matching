@@ -171,17 +171,17 @@ export function MatchReportView({ match }: { match: MatchDetail }) {
               <SubScoreBar
                 icon={GraduationCap}
                 label="Education"
-                value={matchState.sub_scores.education_score ?? 0}
+                value={matchState.sub_scores.education_score}
               />
               <SubScoreBar
                 icon={Briefcase}
                 label="Experience"
-                value={matchState.sub_scores.experience_score ?? 0}
+                value={matchState.sub_scores.experience_score}
               />
               <SubScoreBar
                 icon={Award}
                 label="Certification"
-                value={matchState.sub_scores.certification_score ?? 0}
+                value={matchState.sub_scores.certification_score}
               />
               <SubScoreBar
                 icon={Building2}
@@ -191,13 +191,13 @@ export function MatchReportView({ match }: { match: MatchDetail }) {
               <SubScoreBar
                 icon={Languages}
                 label="Language"
-                value={matchState.sub_scores.language_score ?? 0}
+                value={matchState.sub_scores.language_score}
               />
               <SubScoreBar icon={Wrench} label="Skill" value={matchState.sub_scores.skill_score} />
               <SubScoreBar
                 icon={Star}
                 label="Qualitative fit"
-                value={matchState.sub_scores.qualitative_fit_score ?? 0}
+                value={matchState.sub_scores.qualitative_fit_score}
               />
             </div>
           )}

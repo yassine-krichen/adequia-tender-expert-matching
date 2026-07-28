@@ -1,9 +1,14 @@
-"""AdéquIA MCP server -- two tools consumed as direct client calls from
+"""AdéquIA MCP server -- one tool consumed as a direct client call from
 matching-pipeline node code (Sprint 3 decision 2, not an LLM tool-calling
 loop). Runs as its own long-lived process (see docker-compose.yml's `mcp`
 service), so it manages its own DB sessions the same way the standalone
 backfill scripts do (app/database/session.py's async_session_factory),
 not via FastAPI's request-scoped dependency.
+
+A second tool, lookup_skill_taxonomy, was removed (had zero callers --
+normalize_skills.py does the equivalent retrieval/rerank in-process
+instead, faster and transactionally consistent, and never needed this
+tool).
 """
 
 from typing import Any
@@ -12,14 +17,8 @@ from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
 from sqlalchemy import select
 
-from app.common.llm.router import ModelRouter
-from app.config.settings import get_settings
-from app.database.models import HistoricalDecision, TDR
+from app.database.models import TDR, HistoricalDecision
 from app.database.session import async_session_factory
-from app.features.pipeline.nodes.normalize_skills import (
-    _rerank_taxonomy_candidates,
-    _retrieve_top_k_taxonomy,
-)
 
 mcp = FastMCP(
     "adequia",
@@ -38,33 +37,6 @@ mcp = FastMCP(
         allowed_origins=["http://mcp:8100", "http://127.0.0.1:*", "http://localhost:*"],
     ),
 )
-
-
-@mcp.tool()
-async def lookup_skill_taxonomy(term: str, top_k: int = 5) -> list[dict[str, Any]]:
-    """Look up the closest skill_taxonomy entries for a free-text term.
-
-    Thin wrapper around normalize_skills.py's existing, tested retrieval +
-    rerank -- reuses the same embedding/rerank logic the matching pipeline
-    already relies on, not a reimplementation.
-    """
-    embeddings = ModelRouter(get_settings()).get_embedding_model()
-
-    async with async_session_factory() as session:
-        candidates = await _retrieve_top_k_taxonomy(
-            term, session=session, embeddings=embeddings, k=top_k
-        )
-
-    ranked = _rerank_taxonomy_candidates(term, candidates)
-    return [
-        {
-            "skill_id": str(taxonomy_row.skill_id),
-            "canonical_name": taxonomy_row.canonical_name,
-            "aliases": taxonomy_row.aliases or [],
-            "similarity": similarity,
-        }
-        for taxonomy_row, similarity in ranked
-    ]
 
 
 @mcp.tool()

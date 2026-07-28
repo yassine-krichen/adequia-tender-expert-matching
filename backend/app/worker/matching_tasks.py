@@ -24,7 +24,10 @@ from app.domain.cv import CandidateCV
 from app.domain.tdr import ExpertPosition
 from app.features.matching.coarse_retrieval import shortlist_candidates
 from app.features.pipeline.graph import build_matching_graph
-from app.features.pipeline.nodes.normalize_skills import normalize_position_skills
+from app.features.pipeline.nodes.normalize_skills import (
+    normalize_position_skills,
+    record_unmatched_skill_candidates,
+)
 from app.features.pipeline.state import PipelineState
 from app.mcp.checkpointer import get_checkpointer_conninfo
 from app.mcp.client import get_mcp_client
@@ -55,7 +58,11 @@ def make_redis_matching_progress_reporter(
     def report(status: str, positions_done: int, positions_total: int) -> None:
         redis_client.hset(
             matching_progress_key(tdr_id),
-            mapping={"status": status, "positions_done": positions_done, "positions_total": positions_total},
+            mapping={
+                "status": status,
+                "positions_done": positions_done,
+                "positions_total": positions_total,
+            },
         )
         redis_client.expire(matching_progress_key(tdr_id), _PROGRESS_TTL_SECONDS)
 
@@ -128,6 +135,7 @@ async def run_matching_job(
             normalized_position_skills = await normalize_position_skills(
                 position, session=session, embeddings=embeddings
             )
+            await record_unmatched_skill_candidates(normalized_position_skills, session=session)
             required_sector_vector = (
                 embeddings.embed_query(position.required_sector_experience)
                 if position.required_sector_experience
@@ -202,7 +210,9 @@ async def run_matching_job(
                             else None
                         ),
                         rationale=final_state["rationale"],
-                        citations_json=[c.model_dump(mode="json") for c in final_state["citations"]],
+                        citations_json=[
+                            c.model_dump(mode="json") for c in final_state["citations"]
+                        ],
                     )
                 )
                 # No relationship() is declared between MatchResultModel and

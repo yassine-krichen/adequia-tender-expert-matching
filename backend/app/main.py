@@ -9,6 +9,7 @@ from app.features.candidates.router import router as candidates_router
 from app.features.matching.router import router as matching_router
 from app.features.metrics.router import router as metrics_router
 from app.features.reporting.router import router as reporting_router
+from app.features.taxonomy_admin.router import router as taxonomy_admin_router
 from app.features.tdrs.router import router as tdrs_router
 
 # Local dev origins only — the dashboard is same-origin in production once
@@ -38,6 +39,7 @@ def create_app() -> FastAPI:
     app.include_router(matching_router)
     app.include_router(reporting_router)
     app.include_router(metrics_router)
+    app.include_router(taxonomy_admin_router)
 
     return app
 

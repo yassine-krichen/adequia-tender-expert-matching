@@ -8,6 +8,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    Integer,
     Numeric,
     Text,
     text,
@@ -30,7 +31,9 @@ class Candidate(Base):
         UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
     full_name: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()")
+    )
 
 
 class CV(Base):
@@ -55,7 +58,9 @@ class CV(Base):
     # per-TDR. Nullable: rows inserted before migration 0003 need the
     # backfill script (backend/scripts/backfill_cv_embeddings.py).
     embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIMENSION))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()")
+    )
 
 
 class TDR(Base):
@@ -83,7 +88,9 @@ class TDR(Base):
     # explicitly on insert, never relies on the default.
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'done'"))
     error_message: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()")
+    )
 
 
 class ExpertPosition(Base):
@@ -106,6 +113,35 @@ class SkillTaxonomy(Base):
     canonical_name: Mapped[str] = mapped_column(Text, nullable=False)
     aliases: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
     embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIMENSION))
+
+
+class SkillTaxonomyCandidate(Base):
+    """Harvested unmatched skill terms (canonical_id is None after
+    normalize_skills.py's retrieval/rerank/retry pipeline) -- see
+    app/features/pipeline/nodes/normalize_skills.py's
+    record_unmatched_skill_candidates and app/features/taxonomy_admin/
+    for the review API this feeds.
+    """
+
+    __tablename__ = "skill_taxonomy_candidates"
+
+    candidate_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    raw_term: Mapped[str] = mapped_column(Text, nullable=False)
+    # Lowercased/stripped raw_term -- the dedup key (unique index).
+    normalized_term: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    occurrence_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
+    best_similarity: Mapped[float | None] = mapped_column(Numeric)
+    # "pending" | "approved" | "rejected" | "merged"
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'pending'"))
+    suggested_canonical_name: Mapped[str | None] = mapped_column(Text)
+    suggested_aliases: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
+    first_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()")
+    )
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    reviewer_note: Mapped[str | None] = mapped_column(Text)
 
 
 class MatchResult(Base):
@@ -131,7 +167,9 @@ class MatchResult(Base):
     reviewer_id: Mapped[str | None] = mapped_column(Text)
     reviewer_note: Mapped[str | None] = mapped_column(Text)
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()")
+    )
 
 
 class Anomaly(Base):

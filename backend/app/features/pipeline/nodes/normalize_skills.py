@@ -1,14 +1,18 @@
+import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
 
 from langchain_core.embeddings import Embeddings
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.models import SkillTaxonomy
+from app.database.models import SkillTaxonomy, SkillTaxonomyCandidate
 from app.domain.cv import CandidateCV, NormalizedSkill
 from app.domain.tdr import ExpertPosition
 from app.features.pipeline.state import PipelineState
+
+logger = logging.getLogger(__name__)
 
 # Cosine similarity threshold to accept a taxonomy match without a retry.
 _CONFIDENCE_THRESHOLD = 0.75
@@ -69,7 +73,9 @@ async def _retrieve_top_k_taxonomy(
 ) -> list[tuple[SkillTaxonomy, float]]:
     query_vector = embeddings.embed_query(term)
     stmt = (
-        select(SkillTaxonomy, SkillTaxonomy.embedding.cosine_distance(query_vector).label("distance"))
+        select(
+            SkillTaxonomy, SkillTaxonomy.embedding.cosine_distance(query_vector).label("distance")
+        )
         .order_by("distance")
         .limit(k)
     )
@@ -86,7 +92,9 @@ async def match_skill_to_taxonomy(
     """
     candidates = await _retrieve_top_k_taxonomy(term, session=session, embeddings=embeddings)
     if not candidates:
-        return NormalizedSkill(raw_term=term, canonical_id=None, confidence=0.0, matched_via="direct")
+        return NormalizedSkill(
+            raw_term=term, canonical_id=None, confidence=0.0, matched_via="direct"
+        )
 
     ranked = _rerank_taxonomy_candidates(term, candidates)
     best_row, best_similarity = ranked[0]
@@ -101,9 +109,13 @@ async def match_skill_to_taxonomy(
 
     rewritten = _rewrite_query(term)
     if rewritten is not None:
-        retry_candidates = await _retrieve_top_k_taxonomy(rewritten, session=session, embeddings=embeddings)
+        retry_candidates = await _retrieve_top_k_taxonomy(
+            rewritten, session=session, embeddings=embeddings
+        )
         if retry_candidates:
-            retry_row, retry_similarity = _rerank_taxonomy_candidates(rewritten, retry_candidates)[0]
+            retry_row, retry_similarity = _rerank_taxonomy_candidates(rewritten, retry_candidates)[
+                0
+            ]
             if retry_similarity > best_similarity:
                 matched = retry_similarity >= _CONFIDENCE_THRESHOLD
                 return NormalizedSkill(
@@ -155,6 +167,66 @@ async def normalize_position_skills(
     ]
 
 
+async def record_unmatched_skill_candidates(
+    skills: list[NormalizedSkill], *, session: AsyncSession
+) -> None:
+    """Harvests genuinely unmatched skill terms (canonical_id is None after
+    match_skill_to_taxonomy's retrieval/rerank/retry -- NOT matched_via ==
+    "llm_fallback", which is currently unreachable: no LLM tier exists in
+    this pipeline yet) into skill_taxonomy_candidates, for human review via
+    /admin/skill-candidates.
+
+    Upserts on normalized_term (ON CONFLICT DO UPDATE occurrence_count += 1)
+    so a repeatedly-unmatched term accumulates a count instead of piling up
+    duplicate rows -- see migration 0008's unique index.
+
+    Deliberately does NOT commit -- rides along on whatever transaction the
+    caller (make_normalize_skills_node / run_matching_job) already commits
+    itself, rather than adding a commit boundary of its own.
+
+    Best-effort side-channel only, same philosophy as score.py's
+    calibrate_against_history: never persisted-vector or scoring critical,
+    so a DB failure here must never break the real matching/normalization
+    run it's attached to.
+
+    Shares the SAME AsyncSession as the rest of run_matching_job, which only
+    commits once per position -- after every candidate in that position's
+    shortlist has been processed. A plain `except: await session.rollback()`
+    here would roll back the ENTIRE outer transaction, wiping out other
+    candidates' already-flushed-but-not-yet-committed MatchResultModel/
+    AnomalyModel rows too. Instead, the upsert runs inside its own SAVEPOINT
+    (session.begin_nested()) so a failure only undoes this harvest's own
+    statement -- the outer transaction and any prior work on the shared
+    session are left untouched.
+    """
+    unmatched = [skill for skill in skills if skill.canonical_id is None]
+    if not unmatched:
+        return
+
+    try:
+        async with session.begin_nested():
+            for skill in unmatched:
+                normalized_term = skill.raw_term.strip().lower()
+                if not normalized_term:
+                    continue
+                stmt = pg_insert(SkillTaxonomyCandidate).values(
+                    raw_term=skill.raw_term,
+                    normalized_term=normalized_term,
+                    occurrence_count=1,
+                    best_similarity=skill.confidence,
+                )
+                stmt = stmt.on_conflict_do_update(
+                    index_elements=[SkillTaxonomyCandidate.normalized_term],
+                    set_={
+                        "occurrence_count": SkillTaxonomyCandidate.occurrence_count + 1,
+                        "best_similarity": stmt.excluded.best_similarity,
+                    },
+                )
+                await session.execute(stmt)
+    except Exception as exc:
+        logger.warning("normalize_skills.harvest_candidates_failed error=%s", type(exc).__name__)
+
+
 def make_normalize_skills_node(
     *, session: AsyncSession, embeddings: Embeddings
 ) -> Callable[[PipelineState], Awaitable[dict[str, Any]]]:
@@ -168,6 +240,7 @@ def make_normalize_skills_node(
         cv = state["cv_extracted"]
         assert cv is not None
         result = await normalize_cv_skills(cv, session=session, embeddings=embeddings)
+        await record_unmatched_skill_candidates(result, session=session)
         return {"normalized_skills": result}
 
     return _normalize_skills_node

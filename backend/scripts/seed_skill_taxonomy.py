@@ -5,6 +5,13 @@ Embeds each canonical_name via the configured embedding model and upserts
 taxonomy grows, not a one-time migration. See docs/scrum/sprint-2-plan.md
 ADQ-10.
 
+This JSON file is the bootstrap source for the original seed entries only.
+Skill candidates approved later via POST /admin/skill-candidates/{id}/approve
+(app/features/taxonomy_admin/service.py) insert straight into the
+skill_taxonomy table without ever touching this file -- the DB and this
+file are allowed to diverge over time; don't expect this file to be a
+complete mirror of the live taxonomy.
+
 Run from backend/: uv run python scripts/seed_skill_taxonomy.py
 """
 

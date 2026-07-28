@@ -58,7 +58,7 @@ export default function TdrDetailPage() {
 
   if (isLoading) {
     return (
-      <main className="mx-auto max-w-2xl space-y-6 p-8">
+      <main className="mx-auto max-w-6xl space-y-6 p-8">
         <p className="text-muted-foreground" role="status">
           Loading…
         </p>
@@ -68,7 +68,7 @@ export default function TdrDetailPage() {
 
   if (error !== null) {
     return (
-      <main className="mx-auto max-w-2xl space-y-6 p-8">
+      <main className="mx-auto max-w-6xl space-y-6 p-8">
         <p role="alert" className="text-destructive">
           {error}
         </p>
@@ -81,7 +81,7 @@ export default function TdrDetailPage() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl space-y-6 p-8">
+    <main className="mx-auto max-w-6xl space-y-6 p-8">
       <Card>
         <CardHeader>
           <CardTitle>{tdr.mission_title}</CardTitle>

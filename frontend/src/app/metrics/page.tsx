@@ -147,7 +147,7 @@ export default function MetricsPage() {
   }, []);
 
   return (
-    <main className="mx-auto max-w-4xl space-y-6 p-8">
+    <main className="mx-auto max-w-6xl space-y-6 p-8">
       <div>
         <h1 className="font-heading text-2xl">Eval metrics</h1>
         <p className="text-muted-foreground">

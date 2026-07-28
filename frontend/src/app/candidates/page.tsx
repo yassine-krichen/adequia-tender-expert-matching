@@ -1,11 +1,11 @@
 'use client';
 
 import { Users } from 'lucide-react';
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 import { EmptyState } from '@/common/components/empty-state';
 import { FileUpload } from '@/common/components/file-upload';
+import { TableLink } from '@/common/components/table-link';
 import { Button } from '@/common/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/common/components/ui/card';
 import {
@@ -78,7 +78,7 @@ export default function CandidatesPage() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl space-y-6 p-8">
+    <main className="mx-auto max-w-6xl space-y-6 p-8">
       <h1 className="font-heading text-2xl">Candidate CV upload</h1>
       <p className="text-muted-foreground">
         Upload a CV (PDF or docx) to see it turned into structured, extracted data.
@@ -157,9 +157,9 @@ export default function CandidatesPage() {
                 {candidates.map((candidate) => (
                   <TableRow key={candidate.candidate_id}>
                     <TableCell>
-                      <Link href={`/candidates/${candidate.candidate_id}`}>
+                      <TableLink href={`/candidates/${candidate.candidate_id}`}>
                         {candidate.full_name}
-                      </Link>
+                      </TableLink>
                     </TableCell>
                     <TableCell>{new Date(candidate.last_updated).toLocaleString()}</TableCell>
                   </TableRow>

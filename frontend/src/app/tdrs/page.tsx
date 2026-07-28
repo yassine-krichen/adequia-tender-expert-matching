@@ -1,11 +1,11 @@
 'use client';
 
 import { FileText } from 'lucide-react';
-import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
 import { EmptyState } from '@/common/components/empty-state';
 import { FileUpload } from '@/common/components/file-upload';
+import { TableLink } from '@/common/components/table-link';
 import { Button } from '@/common/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/common/components/ui/card';
 import {
@@ -16,6 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/common/components/ui/table';
+import { Badge } from '@/components/reui/badge';
 import { getMatchingStatus } from '@/features/matching/api/get-matching-status';
 import { getPositionMatches } from '@/features/matching/api/get-position-matches';
 import { runMatching } from '@/features/matching/api/run-matching';
@@ -29,6 +30,12 @@ import type { TdrExtraction, TdrStatus, TdrSummary } from '@/features/tdrs/types
 import { useGuidedTour } from '@/features/tour/use-guided-tour';
 
 const POLL_INTERVAL_MS = 1500;
+
+const TDR_STATUS_BADGE_VARIANT: Record<string, 'success-light' | 'info-light' | 'destructive-light'> = {
+  done: 'success-light',
+  processing: 'info-light',
+  failed: 'destructive-light',
+};
 
 function describeStep(status: TdrStatus): string {
   switch (status.step) {
@@ -253,7 +260,7 @@ export default function TdrsPage() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl space-y-6 p-8">
+    <main className="mx-auto max-w-6xl space-y-6 p-8">
       <h1 className="font-heading text-2xl">TDR upload</h1>
       <p className="text-muted-foreground">
         Upload a TDR (PDF or docx) to see its mission, client, and expert positions extracted.
@@ -396,9 +403,13 @@ export default function TdrsPage() {
                 {pastTdrs.map((tdr) => (
                   <TableRow key={tdr.tdr_id}>
                     <TableCell>
-                      <Link href={`/tdrs/${tdr.tdr_id}`}>{tdr.mission_title ?? '—'}</Link>
+                      <TableLink href={`/tdrs/${tdr.tdr_id}`}>{tdr.mission_title ?? '—'}</TableLink>
                     </TableCell>
-                    <TableCell>{tdr.status}</TableCell>
+                    <TableCell>
+                      <Badge variant={TDR_STATUS_BADGE_VARIANT[tdr.status] ?? 'outline'}>
+                        {tdr.status}
+                      </Badge>
+                    </TableCell>
                     <TableCell>{new Date(tdr.created_at).toLocaleString()}</TableCell>
                   </TableRow>
                 ))}

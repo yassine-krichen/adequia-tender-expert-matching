@@ -45,6 +45,20 @@ const DECISION_LABEL: Record<string, string> = {
   overridden_to_reject: 'Overridden to reject',
 };
 
+const DECISION_BADGE_VARIANT: Record<string, 'success-light' | 'destructive-light' | 'warning-light'> = {
+  approved: 'success-light',
+  rejected: 'destructive-light',
+  overridden_to_approve: 'warning-light',
+  overridden_to_reject: 'warning-light',
+};
+
+const DECISION_ICON: Record<string, typeof Check> = {
+  approved: Check,
+  rejected: X,
+  overridden_to_approve: Pencil,
+  overridden_to_reject: Pencil,
+};
+
 function sortedAnomalies(anomalies: Anomaly[]): Anomaly[] {
   return [...anomalies].sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
 }
@@ -124,6 +138,9 @@ export function MatchReportView({ match }: { match: MatchDetail }) {
   }
 
   const anomalies = sortedAnomalies(matchState.anomalies);
+  const DecisionIcon = matchState.reviewer_decision
+    ? (DECISION_ICON[matchState.reviewer_decision] ?? Check)
+    : Check;
 
   return (
     <div className="space-y-6">
@@ -172,32 +189,43 @@ export function MatchReportView({ match }: { match: MatchDetail }) {
                 icon={GraduationCap}
                 label="Education"
                 value={matchState.sub_scores.education_score}
+                tooltip="How well the candidate's education level matches this position's required diploma."
               />
               <SubScoreBar
                 icon={Briefcase}
                 label="Experience"
                 value={matchState.sub_scores.experience_score}
+                tooltip="How well the candidate's years and type of experience match this position's requirements."
               />
               <SubScoreBar
                 icon={Award}
                 label="Certification"
                 value={matchState.sub_scores.certification_score}
+                tooltip="How well the candidate's certifications match this position's required certifications."
               />
               <SubScoreBar
                 icon={Building2}
                 label="Sector"
                 value={matchState.sub_scores.sector_score}
+                tooltip="How closely the candidate's sector experience matches this position's required sector."
               />
               <SubScoreBar
                 icon={Languages}
                 label="Language"
                 value={matchState.sub_scores.language_score}
+                tooltip="How well the candidate's language proficiencies match this position's required languages and levels."
               />
-              <SubScoreBar icon={Wrench} label="Skill" value={matchState.sub_scores.skill_score} />
+              <SubScoreBar
+                icon={Wrench}
+                label="Skill"
+                value={matchState.sub_scores.skill_score}
+                tooltip="How well the candidate's listed skills cover this position's required skills."
+              />
               <SubScoreBar
                 icon={Star}
                 label="Qualitative fit"
                 value={matchState.sub_scores.qualitative_fit_score}
+                tooltip="An LLM's judgment of depth, seniority, and domain fit beyond keyword matching — only computed once the candidate passes the hard filters."
               />
             </div>
           )}
@@ -268,15 +296,23 @@ export function MatchReportView({ match }: { match: MatchDetail }) {
           <p className="text-sm text-muted-foreground">Reviewed anonymously — no login yet.</p>
 
           {matchState.reviewer_decision !== null ? (
-            <p role="status">
-              Reviewed:{' '}
-              {DECISION_LABEL[matchState.reviewer_decision] ?? matchState.reviewer_decision}
+            <div role="status" className="space-y-1">
+              <span className="flex items-center gap-2">
+                Reviewed:
+                <Badge
+                  variant={DECISION_BADGE_VARIANT[matchState.reviewer_decision] ?? 'secondary'}
+                  className="inline-flex items-center gap-1"
+                >
+                  <DecisionIcon className="size-3.5" />
+                  {DECISION_LABEL[matchState.reviewer_decision] ?? matchState.reviewer_decision}
+                </Badge>
+              </span>
               {matchState.reviewer_note && (
                 <span className="block text-sm text-muted-foreground">
                   Note: {matchState.reviewer_note}
                 </span>
               )}
-            </p>
+            </div>
           ) : (
             <div className="space-y-3">
               {mode === 'normal' ? (

@@ -24,7 +24,7 @@ export function TopNav() {
 
   return (
     <nav className="border-b border-border">
-      <div className="mx-auto flex max-w-2xl items-center justify-between gap-1 px-8 py-3">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-1 px-8 py-3">
         <div className="flex items-center gap-1">
           {LINKS.map((link) => {
             const isActive = link.href === '/' ? pathname === '/' : pathname.startsWith(link.href);

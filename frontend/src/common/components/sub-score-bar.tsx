@@ -1,19 +1,24 @@
 import type { LucideIcon } from 'lucide-react';
 
+import { InfoTooltip } from '@/common/components/info-tooltip';
+
 export function SubScoreBar({
   icon: Icon,
   label,
   value,
+  tooltip,
 }: {
   icon: LucideIcon;
   label: string;
   value: number | null;
+  tooltip?: string;
 }) {
   return (
     <div className="flex items-center gap-2 text-xs">
       <span className="flex w-32 items-center gap-1.5 text-muted-foreground">
         <Icon className="size-3.5 shrink-0" />
         {label}
+        {tooltip && <InfoTooltip text={tooltip} />}
       </span>
       {value == null ? (
         <span className="flex-1 text-muted-foreground italic">

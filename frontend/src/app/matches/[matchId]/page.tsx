@@ -38,7 +38,7 @@ export default function ReportPage() {
 
   if (isLoading) {
     return (
-      <main className="mx-auto max-w-2xl space-y-6 p-8">
+      <main className="mx-auto max-w-6xl space-y-6 p-8">
         <p className="text-muted-foreground" role="status">
           Loading…
         </p>
@@ -48,7 +48,7 @@ export default function ReportPage() {
 
   if (error !== null) {
     return (
-      <main className="mx-auto max-w-2xl space-y-6 p-8">
+      <main className="mx-auto max-w-6xl space-y-6 p-8">
         <p role="alert" className="text-destructive">
           {error}
         </p>
@@ -61,7 +61,7 @@ export default function ReportPage() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl space-y-6 p-8">
+    <main className="mx-auto max-w-6xl space-y-6 p-8">
       <MatchReportView match={match} />
     </main>
   );

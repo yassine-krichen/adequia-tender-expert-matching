@@ -26,44 +26,48 @@ from app.config.settings import get_settings
 from app.domain.tdr import ExpertPosition
 from app.features.pipeline.nodes.extract import extract_tdr
 from app.features.pipeline.nodes.ingest import extract_raw_text
+from tests.eval._f1_aggregation import aggregate_persisted_f1_results
 from tests.eval._scoring import _TypeCounts
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
+# ADQ-33: the original monolithic F1 test looped over all 12 fixtures
+# (chunked, multi-LLM-call each) in one test and twice blew a 15-minute CI
+# timeout without producing a real aggregate F1 (see the efficiency section
+# of docs/04-evaluation-metrics.md -- extract_tdr p50=838s/doc under
+# quota-exhausted free-tier conditions). Split into two tests instead:
+#
+# 1. `test_tdr_extraction_field_level_f1_per_fixture` (parametrized, one
+#    LLM extraction run per fixture, its own `timeout` marker) persists
+#    that one fixture's TP/FP/FN to `.f1_results/<fixture-stem>.json` --
+#    partial progress survives an interrupted/quota-exhausted run.
+# 2. `test_tdr_extraction_field_level_f1_regression` (not skipped) reads
+#    every persisted result file, sums them, and gates on the aggregate F1
+#    -- or skips with a clear "N/12 computed" message if the per-fixture
+#    test hasn't finished populating every result file yet.
+#
 # Regression gate threshold from the sprint plan's acceptance criteria
 # ("extraction F1 drops >3pts"). Update deliberately when the gold set
 # intentionally grows/shrinks -- not silently, and not to paper over a real
 # regression.
 #
-# TODO(ADQ-33, not yet done): this is still a PLACEHOLDER, not a real
-# measured baseline. Two live attempts to compute the real number failed to
-# complete within a 15-minute hard timeout each -- 13 real TDR PDFs, each
-# needing a full live LLM extraction call, is simply too slow end-to-end
-# under current free-tier Groq/Gemini + local-Ollama-fallback conditions
-# (see the efficiency section of docs/04-evaluation-metrics.md, which
-# independently measured extract_tdr p50=838s per document under quota-
-# exhausted conditions). This is a deliberate, user-approved scope cut for
-# Sprint 4, not an oversight -- see the `skip` marker on
-# `test_tdr_extraction_field_level_f1_regression` below for how this is kept
-# from silently hanging CI or a future dev's local run.
-#
-# Next session, to get the real number, don't just re-run this test as-is
-# (it will hang again for the same reason) -- either:
-#   (a) run it fixture-by-fixture (e.g. parametrize like the per-fixture
-#       test above, so partial progress survives an interruption and each
-#       fixture gets its own timeout), or
-#   (b) run it against paid API access instead of free-tier, which removes
-#       the key-rotation/rate-limit latency entirely.
-# Whichever way, redirect output to a real file (not piped through `tail`),
-# read the real aggregate F1 from the printed report, remove the `skip`
-# marker below, and set this constant to the real measured value.
-_BASELINE_TDR_F1 = 0.85  # PLACEHOLDER -- see TODO above, not a real measurement yet
+# STILL a PLACEHOLDER, not a real measured baseline -- computing the real
+# number requires actually running the per-fixture test above against all
+# 12 fixtures (one real LLM extraction call each) and reading back the
+# aggregate F1 the regression test below reports, then replacing this
+# constant with that measured value (mirroring how test_cv_extraction_
+# quality.py's _BASELINE_CV_F1 was set from a real run).
+_BASELINE_TDR_F1 = 0.85  # PLACEHOLDER -- not a real measurement yet, see note above
 _REGRESSION_TOLERANCE = 0.03
+_F1_RESULTS_DIR = Path(__file__).parent / ".f1_results"
 
 
 def _load_fixtures() -> list[dict[str, Any]]:
-    return [json.loads(path.read_text(encoding="utf-8")) for path in sorted(_FIXTURES_DIR.glob("*.json"))]
+    return [
+        json.loads(path.read_text(encoding="utf-8"))
+        for path in sorted(_FIXTURES_DIR.glob("*.json"))
+    ]
 
 
 def _normalize(text: str) -> str:
@@ -83,17 +87,21 @@ def _diploma_matches(actual_diploma: str | None, diploma_contains: str | None) -
     return _normalize(diploma_contains) in _normalize(actual_diploma)
 
 
-def _find_match(expected: dict[str, Any], actual_positions: list[ExpertPosition]) -> ExpertPosition | None:
+def _find_match(
+    expected: dict[str, Any], actual_positions: list[ExpertPosition]
+) -> ExpertPosition | None:
     for position in actual_positions:
-        if _title_matches(position.position_title, expected["title_contains_any"]) and _diploma_matches(
-            position.mandatory_diploma, expected["diploma_contains"]
-        ):
+        if _title_matches(
+            position.position_title, expected["title_contains_any"]
+        ) and _diploma_matches(position.mandatory_diploma, expected["diploma_contains"]):
             return position
     return None
 
 
 def _format_report(
-    fixture_name: str, expected_positions: list[dict[str, Any]], actual_positions: list[ExpertPosition]
+    fixture_name: str,
+    expected_positions: list[dict[str, Any]],
+    actual_positions: list[ExpertPosition],
 ) -> str:
     lines = [f"Extraction mismatch for {fixture_name}", "", "Expected positions:"]
     for expected in expected_positions:
@@ -136,98 +144,121 @@ def test_tdr_extraction_matches_hand_verified_positions(fixture: dict[str, Any])
             assert match.minimum_years_experience == expected["minimum_years_experience"], report
 
 
-@pytest.mark.eval
-@pytest.mark.skip(
-    reason=(
-        "ADQ-33: doesn't complete live -- 13 real TDR PDFs, each needing a "
-        "full live LLM extraction call, hit a 15-minute hard timeout twice "
-        "this session under free-tier Groq/Gemini + Ollama-fallback "
-        "conditions, without producing a real aggregate F1. Deliberate, "
-        "user-approved scope cut for Sprint 4, not a silent gap -- see the "
-        "TODO above _BASELINE_TDR_F1 for exact next-session steps (run "
-        "fixture-by-fixture, or with paid API access). Do NOT remove this "
-        "skip and re-run as-is; it will hang again for the same reason."
-    )
-)
-def test_tdr_extraction_field_level_f1_regression() -> None:
-    """ADQ-30's DeepEval-style regression gate. Reuses `_find_match` (the
-    same per-field matcher the per-fixture tests above use) to accumulate
-    TP/FP/FN across ALL 13 fixtures into two field types -- "position"
-    (title+diploma identity) and "minimum_years_experience" (only checked
-    once a position is actually matched) -- then asserts the aggregate F1
-    hasn't regressed past `_REGRESSION_TOLERANCE` below `_BASELINE_TDR_F1`.
-
-    Kept entirely separate from the per-fixture parametrized tests above --
-    those stay untouched for their failure-localization value (which
-    fixture broke); this one gate is what CI actually asserts on.
+def _compute_fixture_f1(fixture: dict[str, Any], tdr: Any) -> tuple[_TypeCounts, list[str]]:
+    """One fixture's contribution to the aggregate F1 -- same per-field
+    matching (`_find_match`) the per-fixture positions test above uses,
+    folded into a single _TypeCounts across "position" (title+diploma
+    identity) and "minimum_years_experience" (only checked once a position
+    is actually matched).
     """
-    router = ModelRouter(get_settings())
-    per_field_counts: dict[str, _TypeCounts] = {
-        "position": _TypeCounts(),
-        "minimum_years_experience": _TypeCounts(),
-    }
+    counts = _TypeCounts()
     detail_lines: list[str] = []
+    matched_actual_ids: set[int] = set()
 
-    for fixture in _load_fixtures():
-        source_path = _REPO_ROOT / fixture["source_file"]
-        raw_text = extract_raw_text(source_path.read_bytes(), source_path.name)
-        tdr = extract_tdr(
-            raw_text,
-            tdr_id="eval-run",
-            source_file_path=source_path.name,
-            router=router,
-            embeddings=router.get_embedding_model(),
+    for expected in fixture["expected_positions"]:
+        match = _find_match(expected, tdr.positions)
+        if match is None:
+            counts.false_negatives += 1
+            detail_lines.append(f"MISSING position title~{expected['title_contains_any']}")
+            continue
+
+        counts.true_positives += 1
+        matched_actual_ids.add(id(match))
+
+        if expected["minimum_years_experience"] is not None:
+            if match.minimum_years_experience == expected["minimum_years_experience"]:
+                counts.true_positives += 1
+            else:
+                counts.false_negatives += 1
+                detail_lines.append(
+                    "minimum_years_experience mismatch "
+                    f"expected={expected['minimum_years_experience']} "
+                    f"actual={match.minimum_years_experience}"
+                )
+
+    # Extracted positions never matched to any expected entry -- over-
+    # extraction, counted as a false positive.
+    extra = [p for p in tdr.positions if id(p) not in matched_actual_ids]
+    counts.false_positives += len(extra)
+    for position in extra:
+        detail_lines.append(f"extra unmatched position {position.position_title!r}")
+
+    return counts, detail_lines
+
+
+@pytest.mark.eval
+@pytest.mark.timeout(180)
+@pytest.mark.parametrize("fixture", _load_fixtures(), ids=lambda f: Path(f["source_file"]).stem)
+def test_tdr_extraction_field_level_f1_per_fixture(fixture: dict[str, Any]) -> None:
+    """ADQ-33: computes one fixture's TP/FP/FN and persists it to
+    `.f1_results/<fixture-stem>.json`, instead of accumulating all 12
+    fixtures in one test (see the module docstring note above
+    _BASELINE_TDR_F1 for why the original monolithic test never
+    completed). A 3-minute per-fixture timeout means one slow/quota-
+    exhausted fixture can't sink the whole run -- partial progress
+    (whichever fixtures already ran) survives.
+    """
+    source_path = _REPO_ROOT / fixture["source_file"]
+    raw_text = extract_raw_text(source_path.read_bytes(), source_path.name)
+
+    router = ModelRouter(get_settings())
+    tdr = extract_tdr(
+        raw_text,
+        tdr_id="eval-run",
+        source_file_path=source_path.name,
+        router=router,
+        embeddings=router.get_embedding_model(),
+    )
+
+    counts, detail_lines = _compute_fixture_f1(fixture, tdr)
+
+    _F1_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    result_path = _F1_RESULTS_DIR / f"{source_path.stem}.json"
+    result_path.write_text(
+        json.dumps(
+            {
+                "true_positives": counts.true_positives,
+                "false_positives": counts.false_positives,
+                "false_negatives": counts.false_negatives,
+                "details": detail_lines,
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+
+def test_tdr_extraction_field_level_f1_regression() -> None:
+    """ADQ-30's DeepEval-style regression gate. NOT skipped -- reads every
+    result file the per-fixture test above persists, sums them into one
+    aggregate F1, and asserts it hasn't regressed past
+    `_REGRESSION_TOLERANCE` below `_BASELINE_TDR_F1`. Skips (rather than
+    silently passing) if the per-fixture test hasn't populated every
+    fixture's result file yet -- e.g. on a machine that's never run
+    `pytest -m eval` for TDR extraction.
+
+    Kept entirely separate from the per-fixture test above -- that one
+    stays parametrized for its failure-localization value (which fixture
+    broke); this one gate is what CI actually asserts on, and doesn't
+    itself call any LLM.
+    """
+    fixtures = _load_fixtures()
+    result = aggregate_persisted_f1_results(_F1_RESULTS_DIR, fixtures_expected=len(fixtures))
+
+    if not result.is_complete:
+        pytest.skip(
+            f"{result.fixtures_found}/{result.fixtures_expected} fixture results computed "
+            "-- run test_tdr_extraction_field_level_f1_per_fixture first "
+            "(pytest -m eval tests/eval/test_tdr_extraction_quality.py)"
         )
 
-        matched_actual_ids = set()
-        for expected in fixture["expected_positions"]:
-            match = _find_match(expected, tdr.positions)
-            if match is None:
-                per_field_counts["position"].false_negatives += 1
-                detail_lines.append(
-                    f"{source_path.name}: MISSING position title~{expected['title_contains_any']}"
-                )
-                continue
-
-            per_field_counts["position"].true_positives += 1
-            matched_actual_ids.add(id(match))
-
-            if expected["minimum_years_experience"] is not None:
-                if match.minimum_years_experience == expected["minimum_years_experience"]:
-                    per_field_counts["minimum_years_experience"].true_positives += 1
-                else:
-                    per_field_counts["minimum_years_experience"].false_negatives += 1
-                    detail_lines.append(
-                        f"{source_path.name}: minimum_years_experience mismatch "
-                        f"expected={expected['minimum_years_experience']} "
-                        f"actual={match.minimum_years_experience}"
-                    )
-
-        # Extracted positions never matched to any expected entry -- over-
-        # extraction, counted as a false positive on the "position" field.
-        extra = [p for p in tdr.positions if id(p) not in matched_actual_ids]
-        per_field_counts["position"].false_positives += len(extra)
-        for position in extra:
-            detail_lines.append(f"{source_path.name}: extra unmatched position {position.position_title!r}")
-
-    aggregate = _TypeCounts(
-        true_positives=sum(c.true_positives for c in per_field_counts.values()),
-        false_positives=sum(c.false_positives for c in per_field_counts.values()),
-        false_negatives=sum(c.false_negatives for c in per_field_counts.values()),
-    )
-
-    summary_lines = [
-        f"{field}: precision={counts.precision:.2f} recall={counts.recall:.2f} f1={counts.f1:.2f} "
-        f"(tp={counts.true_positives} fp={counts.false_positives} fn={counts.false_negatives})"
-        for field, counts in per_field_counts.items()
-    ]
+    counts = result.counts
     report = (
-        f"TDR field-level F1 regression check -- aggregate F1={aggregate.f1:.3f} "
-        f"(baseline={_BASELINE_TDR_F1}, tolerance={_REGRESSION_TOLERANCE})\n"
-        + "\n".join(summary_lines)
-        + "\n"
-        + "\n".join(detail_lines)
+        f"TDR field-level F1 regression check -- aggregate F1={counts.f1:.3f} "
+        f"(baseline={_BASELINE_TDR_F1}, tolerance={_REGRESSION_TOLERANCE}) "
+        f"precision={counts.precision:.2f} recall={counts.recall:.2f} "
+        f"(tp={counts.true_positives} fp={counts.false_positives} fn={counts.false_negatives})"
     )
     print(report)
 
-    assert aggregate.f1 >= _BASELINE_TDR_F1 - _REGRESSION_TOLERANCE, report
+    assert counts.f1 >= _BASELINE_TDR_F1 - _REGRESSION_TOLERANCE, report

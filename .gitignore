@@ -37,6 +37,11 @@ pgdata/
 # Local tooling scratch output
 .playwright-mcp/
 
+# Persisted per-fixture F1 results from the TDR extraction eval suite
+# (tests/eval/test_tdr_extraction_quality.py) -- local run output, not
+# committed source.
+backend/tests/eval/.f1_results/
+
 # LaTeX build artifacts
 docs/report/*.aux
 docs/report/*.log

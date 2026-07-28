@@ -58,6 +58,21 @@ class NoPendingReviewError(DomainError):
     status_code = 409
 
 
+class EmbeddingBackendUnavailableError(DomainError):
+    """The Ollama embedding backend couldn't be reached for a persisted-
+    vector call site (CV/skill-taxonomy embeddings, coarse retrieval,
+    skill normalization).
+
+    Deliberately NOT retried against a different provider here -- a
+    Gemini-produced vector would be numerically valid but semantically
+    incomparable against whatever's already stored in Postgres from
+    Ollama, which is silent corruption, worse than a hard failure. See
+    ModelRouter.get_embedding_model vs. get_transient_embedding_model.
+    """
+
+    status_code = 503
+
+
 class ReviewPersistenceFailedError(DomainError):
     """The LangGraph checkpoint thread was already resumed/completed for
     this match, but writing the decision back to match_results /

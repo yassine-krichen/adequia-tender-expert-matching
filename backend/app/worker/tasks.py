@@ -59,7 +59,9 @@ async def run_tdr_extraction_job(
     only covers LLM calls -- same split extract_tdr itself already makes.
     """
     tdr_row = await session.get(TDRModel, UUID(tdr_id))
-    assert tdr_row is not None, f"TdrsService.upload_tdr must create tdr_id={tdr_id} before enqueueing"
+    assert (
+        tdr_row is not None
+    ), f"TdrsService.upload_tdr must create tdr_id={tdr_id} before enqueueing"
 
     try:
         on_progress("parsing", 0, 0)
@@ -86,7 +88,9 @@ async def run_tdr_extraction_job(
         # not append to it -- otherwise stale positions from prior extraction
         # runs pile up forever. Match results reference expert_positions via
         # FK with no ON DELETE CASCADE, so they must be cleared first.
-        await session.execute(delete(MatchResultModel).where(MatchResultModel.tdr_id == UUID(tdr_id)))
+        await session.execute(
+            delete(MatchResultModel).where(MatchResultModel.tdr_id == UUID(tdr_id))
+        )
         await session.execute(
             delete(ExpertPositionModel).where(ExpertPositionModel.tdr_id == UUID(tdr_id))
         )
@@ -112,7 +116,9 @@ async def run_tdr_extraction_job(
         # convention.
         await session.rollback()
         tdr_row.status = "failed"
-        tdr_row.error_message = exc.message if isinstance(exc, DomainError) else "TDR extraction failed"
+        tdr_row.error_message = (
+            exc.message if isinstance(exc, DomainError) else "TDR extraction failed"
+        )
         await session.commit()
         logger.warning("tdr.extraction_failed tdr_id=%s error=%s", tdr_id, type(exc).__name__)
 
@@ -130,7 +136,13 @@ async def _run(tdr_id: str, file_bytes: bytes, filename: str) -> None:
             filename,
             session=session,
             router=router,
-            embeddings=router.get_embedding_model(),
+            # extract_tdr's embeddings usage (chunk retrieval) is fully
+            # transient -- query/chunk vectors are computed and compared
+            # only within this one call, never persisted -- so it's safe to
+            # use the fallback-capable embeddings here (Class C, see
+            # ModelRouter.get_transient_embedding_model), unlike every other
+            # embedding call site in this codebase.
+            embeddings=router.get_transient_embedding_model(),
             on_progress=on_progress,
         )
 

@@ -33,6 +33,10 @@ class Settings(BaseSettings):
 
     embedding_model: str
     embedding_dimension: int = 768
+    # Gemini's embedding model name -- only used by ModelRouter's transient
+    # (Class C) fallback path for TDR chunk retrieval, never for the
+    # persisted-vector call sites (see get_transient_embedding_model).
+    gemini_embedding_model: str
 
     langsmith_api_key: str | None = None
     langsmith_project: str = "adequia"

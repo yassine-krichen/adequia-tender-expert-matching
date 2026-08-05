@@ -1,3 +1,22 @@
+x-backend-env: &backend-env
+  GROQ_API_KEYS: ${GROQ_API_KEYS}
+  GEMINI_API_KEYS: ${GEMINI_API_KEYS}
+  GROQ_EXTRACTION_MODEL: ${GROQ_EXTRACTION_MODEL}
+  GROQ_REASONING_MODEL: ${GROQ_REASONING_MODEL}
+  GEMINI_EXTRACTION_MODEL: ${GEMINI_EXTRACTION_MODEL}
+  GEMINI_REASONING_MODEL: ${GEMINI_REASONING_MODEL}
+  OLLAMA_EXTRACTION_MODEL: ${OLLAMA_EXTRACTION_MODEL}
+  OLLAMA_REASONING_MODEL: ${OLLAMA_REASONING_MODEL}
+  EMBEDDING_MODEL: ${EMBEDDING_MODEL}
+  EMBEDDING_DIMENSION: ${EMBEDDING_DIMENSION}
+  GEMINI_EMBEDDING_MODEL: ${GEMINI_EMBEDDING_MODEL}
+  LANGSMITH_TRACING: ${LANGSMITH_TRACING}
+  LANGSMITH_ENDPOINT: ${LANGSMITH_ENDPOINT}
+  LANGSMITH_API_KEY: ${LANGSMITH_API_KEY}
+  LANGSMITH_PROJECT: ${LANGSMITH_PROJECT}
+  ENVIRONMENT: ${ENVIRONMENT}
+  LOG_LEVEL: ${LOG_LEVEL}
+
 services:
   migrate:
     build: ./backend
@@ -5,9 +24,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    env_file: ./backend/.env
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/adequia
+      <<: *backend-env
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/adequia
 
   checkpointer-setup:
     build: ./backend
@@ -15,9 +34,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    env_file: ./backend/.env
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/adequia
+      <<: *backend-env
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/adequia
 
   mcp:
     build: ./backend
@@ -26,10 +45,12 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    env_file: ./backend/.env
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/adequia
-      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      <<: *backend-env
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/adequia
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+    extra_hosts:
+      - host.docker.internal:host-gateway
     healthcheck:
       test: ["CMD", "uv", "run", "--no-dev", "python", "-c", "import socket; socket.create_connection(('localhost', 8100), timeout=2)"]
       interval: 2s
@@ -50,15 +71,14 @@ services:
         condition: service_completed_successfully
       mcp:
         condition: service_healthy
-    env_file: ./backend/.env
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/adequia
-      - REDIS_URL=redis://redis:6379
-      # backend/.env's OLLAMA_BASE_URL is meant for `uv run` on the host,
-      # where localhost is the host itself — inside this container it
-      # would mean the container, not the host running Ollama.
-      - OLLAMA_BASE_URL=http://host.docker.internal:11434
-      - MCP_SERVER_URL=http://mcp:8100
+      <<: *backend-env
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/adequia
+      REDIS_URL: redis://redis:6379
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      MCP_SERVER_URL: http://mcp:8100
+    extra_hosts:
+      - host.docker.internal:host-gateway
 
   worker:
     build: ./backend
@@ -74,19 +94,20 @@ services:
         condition: service_completed_successfully
       mcp:
         condition: service_healthy
-    env_file: ./backend/.env
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/adequia
-      - REDIS_URL=redis://redis:6379
-      - OLLAMA_BASE_URL=http://host.docker.internal:11434
-      - MCP_SERVER_URL=http://mcp:8100
+      <<: *backend-env
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/adequia
+      REDIS_URL: redis://redis:6379
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      MCP_SERVER_URL: http://mcp:8100
+    extra_hosts:
+      - host.docker.internal:host-gateway
 
   postgres:
     image: pgvector/pgvector:pg16
     environment:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=adequia
-    ports: ["5433:5432"]
     volumes: ["pgdata:/var/lib/postgresql/data"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
@@ -96,13 +117,14 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports: ["6379:6379"]
 
   web:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     ports: ["3000:3000"]
     depends_on: [api]
-    env_file: ./frontend/.env
 
 volumes:
   pgdata:

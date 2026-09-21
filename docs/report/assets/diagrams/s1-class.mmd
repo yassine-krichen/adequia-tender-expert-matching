@@ -1,0 +1,60 @@
+classDiagram
+  class CandidateCV {
+    +List~Education~ education
+    +List~Certification~ certifications
+    +List~Experience~ experience
+    +List~LanguageProficiency~ languages
+  }
+  class Education {
+    +str degree
+    +str institution
+    +int graduation_year
+  }
+  class Certification {
+    +str name
+    +str issuing_body
+    +date expiry_date
+  }
+  class Experience {
+    +str title
+    +str employer
+    +date start_date
+    +date end_date
+  }
+  class LanguageProficiency {
+    +str language
+    +str level
+  }
+  class TDR {
+    +List~ExpertPosition~ positions
+    +List~LanguageRequirement~ language_requirements
+  }
+  class ExpertPosition {
+    +str position_title
+    +str mandatory_diploma
+    +float minimum_years_experience
+    +List~str~ required_skills
+  }
+  class LanguageRequirement {
+    +str language
+    +str minimum_level
+  }
+  class ModelRouter {
+    +KeyPool groq_pool
+    +KeyPool gemini_pool
+    +resolve(provider, tier) str
+    +invoke_structured_extraction(schema)
+    +invoke_reasoning(prompt)
+  }
+  class KeyPool {
+    +List~str~ keys
+    +next_key() str
+  }
+
+  CandidateCV "1" *-- "0..*" Education
+  CandidateCV "1" *-- "0..*" Certification
+  CandidateCV "1" *-- "0..*" Experience
+  CandidateCV "1" *-- "0..*" LanguageProficiency
+  TDR "1" *-- "0..*" ExpertPosition
+  TDR "1" *-- "0..*" LanguageRequirement
+  ModelRouter "1" *-- "2" KeyPool

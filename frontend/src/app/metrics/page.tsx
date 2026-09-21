@@ -1,12 +1,16 @@
 'use client';
 
-import { Clock } from 'lucide-react';
+import { AlertTriangle, Clock } from 'lucide-react';
+import { motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 
 import { EmptyState } from '@/common/components/empty-state';
 import { InfoTooltip } from '@/common/components/info-tooltip';
+import { PageTransition } from '@/common/components/page-transition';
 import { Card, CardContent, CardHeader, CardTitle } from '@/common/components/ui/card';
+import { Skeleton } from '@/common/components/ui/skeleton';
 import { getMetrics } from '@/features/metrics/api/get-metrics';
+import { MetricGroupChart } from '@/features/metrics/components/metric-group-chart';
 import type { MetricGroup, MetricsSnapshot } from '@/features/metrics/types/metrics.types';
 
 const GROUPS: { key: keyof MetricsSnapshot; title: string; explanation: string }[] = [
@@ -60,7 +64,7 @@ function formatMetricLabel(key: string): string {
   return key
     .split('_')
     .map((word) =>
-      ACRONYMS.has(word) ? word.toUpperCase() : word.charAt(0).toUpperCase() + word.slice(1),
+      ACRONYMS.has(word) ? word.toUpperCase() : word.charAt(0).toUpperCase() + word.slice(1)
     )
     .join(' ');
 }
@@ -73,14 +77,21 @@ function formatMetricValue(value: number | string): string {
 }
 
 function MetricGroupCard({
+  groupKey,
   title,
   explanation,
   group,
 }: {
+  groupKey: keyof MetricsSnapshot;
   title: string;
   explanation: string;
   group: MetricGroup;
 }) {
+  // scoring_agreement's gauge can otherwise read as a confident "100%" at a
+  // glance -- its n=2 caveat is bumped to text-foreground with an icon so it
+  // can't be missed sitting right next to the chart.
+  const isCaveatedNote = groupKey === 'scoring_agreement';
+
   return (
     <Card>
       <CardHeader>
@@ -98,6 +109,7 @@ function MetricGroupCard({
           />
         ) : (
           <div className="space-y-3">
+            <MetricGroupChart groupKey={groupKey} group={group} />
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
               {Object.entries(group.values ?? {}).map(([key, value]) => (
                 <div key={key}>
@@ -110,7 +122,15 @@ function MetricGroupCard({
               {group.dataset}
               {group.sample_size != null && ` · n=${group.sample_size}`}
             </p>
-            {group.note && <p className="text-xs text-muted-foreground">{group.note}</p>}
+            {group.note &&
+              (isCaveatedNote ? (
+                <p className="flex items-start gap-1.5 text-xs text-foreground">
+                  <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warning" />
+                  {group.note}
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">{group.note}</p>
+              ))}
           </div>
         )}
       </CardContent>
@@ -147,38 +167,58 @@ export default function MetricsPage() {
   }, []);
 
   return (
-    <main className="mx-auto max-w-6xl space-y-6 p-8">
-      <div>
-        <h1 className="font-heading text-2xl">Eval metrics</h1>
-        <p className="text-muted-foreground">
-          Eval harness output — see docs/04-evaluation-metrics.md for full methodology.
-        </p>
-      </div>
-
-      {isLoading && (
-        <p className="text-muted-foreground" role="status">
-          Loading…
-        </p>
-      )}
-
-      {error !== null && (
-        <p role="alert" className="text-destructive">
-          {error}
-        </p>
-      )}
-
-      {metrics !== null && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {GROUPS.map(({ key, title, explanation }) => (
-            <MetricGroupCard
-              key={key}
-              title={title}
-              explanation={explanation}
-              group={metrics[key]}
-            />
-          ))}
+    <PageTransition>
+      <main className="mx-auto max-w-6xl space-y-6 p-8">
+        <div>
+          <h1 className="font-heading text-2xl">Eval metrics</h1>
+          <p className="text-muted-foreground">
+            Eval harness output — see docs/04-evaluation-metrics.md for full methodology.
+          </p>
         </div>
-      )}
-    </main>
+
+        {isLoading && (
+          <div className="grid gap-4 sm:grid-cols-2" role="status" aria-label="Loading metrics">
+            {Array.from({ length: 7 }).map((_, index) => (
+              <Card key={index}>
+                <CardHeader>
+                  <Skeleton className="h-5 w-40" />
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Skeleton className="h-32 w-full" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {error !== null && (
+          <p role="alert" className="text-destructive">
+            {error}
+          </p>
+        )}
+
+        {metrics !== null && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {GROUPS.map(({ key, title, explanation }, index) => (
+              <motion.div
+                key={key}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, ease: 'easeOut', delay: index * 0.03 }}
+              >
+                <MetricGroupCard
+                  groupKey={key}
+                  title={title}
+                  explanation={explanation}
+                  group={metrics[key]}
+                />
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </main>
+    </PageTransition>
   );
 }

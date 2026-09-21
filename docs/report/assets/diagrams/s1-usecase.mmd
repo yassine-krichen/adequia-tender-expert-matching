@@ -1,0 +1,12 @@
+flowchart LR
+  actor(["HR / Bid Manager"])
+  subgraph System["AdéquIA — Sprint 1"]
+    uc1(["Upload CV"])
+    uc2(["Upload TDR"])
+    uc3(["Preview extracted CV"])
+    uc4(["Preview extracted TDR"])
+  end
+  actor --> uc1
+  actor --> uc2
+  actor --> uc3
+  actor --> uc4

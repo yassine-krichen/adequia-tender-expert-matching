@@ -3,6 +3,9 @@
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
+import { BackLink } from '@/common/components/back-link';
+import { DetailPageSkeleton } from '@/common/components/detail-page-skeleton';
+import { PageTransition } from '@/common/components/page-transition';
 import { getCandidate } from '@/features/candidates/api/get-candidate';
 import { CandidateCvDetail } from '@/features/candidates/components/candidate-cv-detail';
 import type { CandidateCvExtraction } from '@/features/candidates/types/candidate.types';
@@ -39,9 +42,8 @@ export default function CandidateDetailPage() {
   if (isLoading) {
     return (
       <main className="mx-auto max-w-6xl space-y-6 p-8">
-        <p className="text-muted-foreground" role="status">
-          Loading…
-        </p>
+        <BackLink href="/candidates" label="Back to candidates" />
+        <DetailPageSkeleton />
       </main>
     );
   }
@@ -49,6 +51,7 @@ export default function CandidateDetailPage() {
   if (error !== null) {
     return (
       <main className="mx-auto max-w-6xl space-y-6 p-8">
+        <BackLink href="/candidates" label="Back to candidates" />
         <p role="alert" className="text-destructive">
           {error}
         </p>
@@ -61,8 +64,11 @@ export default function CandidateDetailPage() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl space-y-6 p-8">
-      <CandidateCvDetail cv={cv} />
-    </main>
+    <PageTransition>
+      <main className="mx-auto max-w-6xl space-y-6 p-8">
+        <BackLink href="/candidates" label="Back to candidates" />
+        <CandidateCvDetail cv={cv} />
+      </main>
+    </PageTransition>
   );
 }

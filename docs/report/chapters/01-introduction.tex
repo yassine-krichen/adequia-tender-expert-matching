@@ -1,4 +1,5 @@
 \chapter{General Introduction}
+\enlargethispage{2\baselineskip}
 
 This chapter introduces the internship context, the problem the host company
 asked to have solved, the objectives set for the one-month engagement, and
@@ -8,9 +9,12 @@ the organization of the rest of this report.
 
 This report covers a one-month internship carried out at ST2i, a Tunisian IT
 services and consulting company (a subsidiary of the STUDI Group), between
-July 6 and July 31, 2026. The internship was organized as four one-week
-Scrum sprints, each ending with a working, demoable increment of the
-delivered system rather than a single delivery at the very end.
+July 1 and July 31, 2026. The first five days (July 1--5) were spent on
+Scrum setup and product-backlog writing (Chapter~\ref{chap:project-management}):
+defining the roles, artifacts, and events to run the internship as a solo
+Scrum cadence, and breaking the project down into the 33 stories and 170
+points delivered across the four one-week sprints that follow, each ending
+with a working, demoable increment.
 
 \section{Problem Statement}
 
@@ -18,38 +22,44 @@ ST2i bids on public and international tenders that require staffing one or
 more \textit{expert positions} defined in a Terms of Reference (TDR)
 document: each position specifies a mandatory diploma, a minimum number of
 years of experience, required certifications, languages, and sector
-experience. Before submitting a bid, ST2i must determine, for every required
-position, which of its own employees are actually qualified.
+experience. Determining, for every required position, which employees are
+actually qualified is today entirely manual: a business analyst reads the
+TDR, often 100+ pages long, and tries to recall or search which experts
+might fit, with the company even paying for a ChatGPT Plus subscription
+just to upload and read a 200-page TDR, a cost for a workaround, not a
+solution. Underneath sits the deeper problem: no analyst holds an accurate,
+up-to-date picture of every employee's diplomas, certifications, and
+project history in their head.
 
-Today this step is manual: a business analyst reads the TDR and tries to
-recall or search which internal experts might fit. This is slow, and more
-importantly it is error-prone in a way that has direct financial
-consequences -- missing a genuinely qualified expert can mean passing on a
-winnable bid, while missing a disqualifying gap can mean committing to staff
-who do not actually meet a client's mandatory requirements.
+This does not fail gracefully as the company grows: the more positions and
+employees to check, the more likely a qualified match or disqualifying gap
+gets missed, either way at a direct cost (a winnable bid passed on, or
+unqualified staff committed after a bid is won). A process whose
+reliability erodes exactly as the company gets bigger caps how many
+tenders ST2i can safely pursue, with real revenue on the other side of
+every missed bid.
 
 \section{Objectives}
 
 The internship's objective was to design and build \textbf{AdéquIA}, a
-decision-support system that automates this matching step: given a parsed
-TDR and the internal CV database, produce for each required position a
+decision-support system replacing this manual process with a repeatable one:
+given a parsed TDR and the internal CV database, produce for each position a
 ranked list of candidates with a compatibility score, a breakdown by
-criterion, flagged anomalies, and a citation-backed rationale that a human
-reviewer can approve, reject, or override.
-
-Because the internship's timeline is one month, scope was deliberately kept
-to the matching, scoring, anomaly-detection, and reporting pipeline itself,
-plus the reviewer-facing dashboard needed to actually use it -- tender
-discovery and bid submission logistics were explicitly out of scope, as was
-any model fine-tuning or self-hosted inference infrastructure.
+criterion, flagged anomalies, and a citation-backed rationale a reviewer can
+approve, reject, or override in minutes instead of hours, regardless of a
+tender's size or bench size. Given the one-month timeline, scope was kept to
+the matching, scoring, anomaly-detection, and reporting pipeline plus the
+reviewer-facing dashboard: tender discovery, bid submission logistics,
+custom model fine-tuning, and dedicated GPU-serving infrastructure were all
+out of scope. The system runs entirely on free-tier cloud LLM providers plus
+a single local model as a fallback, the same setup planned for deployment.
 
 \section{Report Organization}
 
-Chapter~\ref{chap:host-company} presents the host company and the business
-environment the project sits in. Chapter~\ref{chap:project-management}
-covers the Agile/Scrum methodology adopted for the internship, including the
-product backlog and the four-sprint plan. Chapters~4 onward each cover one
-sprint in turn -- sprint goal, backlog, analysis, design, implementation,
-testing, review, and retrospective -- following the same structure so
-progress across sprints is directly comparable. A general conclusion closes
-the report.
+Chapter~\ref{chap:host-company} presents the host company and its business
+environment. Chapter~\ref{chap:project-management} covers the Agile/Scrum
+methodology, the product backlog, and the four-sprint plan. Chapters~4
+through 7 each cover one sprint (goal, backlog, analysis, design,
+implementation, testing, review, retrospective) in the same structure;
+Chapter~\ref{chap:sprint-4} also covers post-close hardening and
+release-readiness validation. A general conclusion closes the report.

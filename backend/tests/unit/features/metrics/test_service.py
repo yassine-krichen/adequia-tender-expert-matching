@@ -117,7 +117,11 @@ async def test_get_current_metrics_reads_the_real_values_recorded_for_report_qua
 async def test_get_current_metrics_reads_the_real_values_recorded_for_efficiency() -> None:
     """Pins the real per-node latency computed by scripts/measure_efficiency.py
     (ADQ-33) against real pipeline node calls -- cost_usd is a hard $0 fact
-    (free-tier-only architecture), not a measurement."""
+    (free-tier-only architecture), not a measurement.
+    cost_usd_sonnet5_equivalent is a post-Sprint-4 addition -- a real-prompt,
+    real-tokenizer cost estimate for the same benchmark, added for the
+    report's cost-context section (see current_snapshot.json's efficiency
+    note), not a live measurement either."""
     service = MetricsService()
 
     snapshot = await service.get_current_metrics()
@@ -128,6 +132,7 @@ async def test_get_current_metrics_reads_the_real_values_recorded_for_efficiency
         "extract_tdr_p50_s": 838.65,
         "extract_cv_p50_s": 195.42,
         "cost_usd": 0.0,
+        "cost_usd_sonnet5_equivalent": "0.08 (est.)",
     }
     assert snapshot.efficiency.sample_size == 28
 

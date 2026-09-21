@@ -1,13 +1,17 @@
 'use client';
 
 import { FileText } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 
 import { EmptyState } from '@/common/components/empty-state';
 import { FileUpload } from '@/common/components/file-upload';
+import { PageTransition } from '@/common/components/page-transition';
 import { TableLink } from '@/common/components/table-link';
 import { Button } from '@/common/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/common/components/ui/card';
+import { Checkbox } from '@/common/components/ui/checkbox';
+import { Skeleton } from '@/common/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -31,7 +35,10 @@ import { useGuidedTour } from '@/features/tour/use-guided-tour';
 
 const POLL_INTERVAL_MS = 1500;
 
-const TDR_STATUS_BADGE_VARIANT: Record<string, 'success-light' | 'info-light' | 'destructive-light'> = {
+const TDR_STATUS_BADGE_VARIANT: Record<
+  string,
+  'success-light' | 'info-light' | 'destructive-light'
+> = {
   done: 'success-light',
   processing: 'info-light',
   failed: 'destructive-light',
@@ -260,164 +267,203 @@ export default function TdrsPage() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl space-y-6 p-8">
-      <h1 className="font-heading text-2xl">TDR upload</h1>
-      <p className="text-muted-foreground">
-        Upload a TDR (PDF or docx) to see its mission, client, and expert positions extracted.
-      </p>
+    <PageTransition>
+      <main className="mx-auto max-w-6xl space-y-6 p-8">
+        <h1 className="font-heading text-2xl">TDR upload</h1>
+        <p className="text-muted-foreground">
+          Upload a TDR (PDF or docx) to see its mission, client, and expert positions extracted.
+        </p>
 
-      <Card data-tour="tdr-upload">
-        <CardHeader>
-          <CardTitle>Upload TDR</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form className="space-y-3" onSubmit={handleSubmit}>
-            <FileUpload accept=".pdf,.docx" disabled={isUploading} onFileSelected={setFile} />
-            <label className="flex items-center gap-2 text-sm text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={forceReprocess}
-                onChange={(event) => setForceReprocess(event.target.checked)}
-                disabled={isUploading}
-                className="size-4 rounded border-input"
-              />
-              Force reprocess (re-run extraction even if this exact file was already processed)
-            </label>
-            <Button type="submit" disabled={!file || isUploading}>
-              {isUploading ? 'Uploading…' : 'Upload'}
-            </Button>
-          </form>
-          {isUploading && statusMessage && (
-            <p className="mt-3 text-sm text-muted-foreground" role="status">
-              {statusMessage}
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      {error && (
-        <div className="space-y-2">
-          <p role="alert" className="text-destructive">
-            {error}
-          </p>
-          {file && (
-            <Button type="button" size="sm" variant="outline" onClick={handleRetryWithForce}>
-              Retry with force reprocess
-            </Button>
-          )}
-        </div>
-      )}
-
-      {!result && !isUploading && !error && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <EmptyState
-            icon={FileText}
-            title="No expert positions yet"
-            description="Upload a TDR above to see its mission and expert positions extracted here."
-            data-tour="tdr-positions"
-          />
-          <EmptyState
-            icon={FileText}
-            title="No matches yet"
-            description="Once a TDR is uploaded, run matching to see shortlisted candidates for each position here."
-            data-tour="tdr-matches"
-          />
-        </div>
-      )}
-
-      {result && (
-        <Card>
+        <Card data-tour="tdr-upload">
           <CardHeader>
-            <CardTitle>{result.mission_title}</CardTitle>
+            <CardTitle>Upload TDR</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <p>Client: {result.client ?? '—'}</p>
-            <p>Sector: {result.sector ?? '—'}</p>
-
-            <div className="flex justify-end">
-              <Button
-                type="button"
-                size="sm"
-                onClick={handleRunMatching}
-                disabled={matchingStatus === 'processing'}
-              >
-                {matchingStatus === 'processing' ? 'Matching…' : 'Run matching'}
+          <CardContent>
+            <form className="space-y-3" onSubmit={handleSubmit}>
+              <FileUpload accept=".pdf,.docx" disabled={isUploading} onFileSelected={setFile} />
+              <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Checkbox
+                  checked={forceReprocess}
+                  onCheckedChange={(checked) => setForceReprocess(checked === true)}
+                  disabled={isUploading}
+                />
+                Force reprocess (re-run extraction even if this exact file was already processed)
+              </label>
+              <Button type="submit" disabled={!file || isUploading}>
+                {isUploading ? 'Uploading…' : 'Upload'}
               </Button>
-            </div>
-            {matchingStatus === 'processing' && matchingMessage && (
-              <p className="text-sm text-muted-foreground" role="status">
-                {matchingMessage}
+            </form>
+            {isUploading && statusMessage && (
+              <p className="mt-3 text-sm text-muted-foreground" role="status">
+                {statusMessage}
               </p>
             )}
-            {matchingError && (
-              <p role="alert" className="text-sm text-destructive">
-                {matchingError}
-              </p>
-            )}
-
-            <TdrPositionsList
-              positions={result.positions}
-              matchesByPosition={matchingStatus === 'done' ? matchesByPosition : undefined}
-            />
-
-            <details>
-              <summary className="cursor-pointer text-muted-foreground">Raw JSON</summary>
-              <pre className="overflow-x-auto text-xs">{JSON.stringify(result, null, 2)}</pre>
-            </details>
           </CardContent>
         </Card>
-      )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Past TDRs</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {pastTdrsError && (
+        {error && (
+          <div className="space-y-2">
             <p role="alert" className="text-destructive">
-              {pastTdrsError}
+              {error}
             </p>
-          )}
-          {!pastTdrsError && isLoadingPastTdrs && (
-            <p className="text-sm text-muted-foreground" role="status">
-              Loading…
-            </p>
-          )}
-          {!pastTdrsError && !isLoadingPastTdrs && pastTdrs.length === 0 && (
+            {file && (
+              <Button type="button" size="sm" variant="outline" onClick={handleRetryWithForce}>
+                Retry with force reprocess
+              </Button>
+            )}
+          </div>
+        )}
+
+        {!result && !isUploading && !error && (
+          <div className="grid gap-4 sm:grid-cols-2">
             <EmptyState
               icon={FileText}
-              title="No TDRs yet"
-              description="Upload a TDR above to see it appear here."
+              title="No expert positions yet"
+              description="Upload a TDR above to see its mission and expert positions extracted here."
+              data-tour="tdr-positions"
             />
+            <EmptyState
+              icon={FileText}
+              title="No matches yet"
+              description="Once a TDR is uploaded, run matching to see shortlisted candidates for each position here."
+              data-tour="tdr-matches"
+            />
+          </div>
+        )}
+
+        <AnimatePresence>
+          {result && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <Card>
+                <CardHeader>
+                  <CardTitle>{result.mission_title}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p>Client: {result.client ?? '—'}</p>
+                  <p>Sector: {result.sector ?? '—'}</p>
+
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleRunMatching}
+                      disabled={matchingStatus === 'processing'}
+                    >
+                      {matchingStatus === 'processing' ? 'Matching…' : 'Run matching'}
+                    </Button>
+                  </div>
+                  {matchingStatus === 'processing' && matchingMessage && (
+                    <p className="text-sm text-muted-foreground" role="status">
+                      {matchingMessage}
+                    </p>
+                  )}
+                  {matchingError && (
+                    <p role="alert" className="text-sm text-destructive">
+                      {matchingError}
+                    </p>
+                  )}
+
+                  <TdrPositionsList
+                    positions={result.positions}
+                    matchesByPosition={matchingStatus === 'done' ? matchesByPosition : undefined}
+                  />
+
+                  <details>
+                    <summary className="cursor-pointer text-muted-foreground">Raw JSON</summary>
+                    <pre className="overflow-x-auto text-xs">{JSON.stringify(result, null, 2)}</pre>
+                  </details>
+                </CardContent>
+              </Card>
+            </motion.div>
           )}
-          {!pastTdrsError && !isLoadingPastTdrs && pastTdrs.length > 0 && (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Mission</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pastTdrs.map((tdr) => (
-                  <TableRow key={tdr.tdr_id}>
-                    <TableCell>
-                      <TableLink href={`/tdrs/${tdr.tdr_id}`}>{tdr.mission_title ?? '—'}</TableLink>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={TDR_STATUS_BADGE_VARIANT[tdr.status] ?? 'outline'}>
-                        {tdr.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{new Date(tdr.created_at).toLocaleString()}</TableCell>
+        </AnimatePresence>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Past TDRs</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {pastTdrsError && (
+              <p role="alert" className="text-destructive">
+                {pastTdrsError}
+              </p>
+            )}
+            {!pastTdrsError && isLoadingPastTdrs && (
+              <Table role="status" aria-label="Loading past TDRs">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Mission</TableHead>
+                    <TableHead className="w-28">Status</TableHead>
+                    <TableHead className="w-44">Created</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-    </main>
+                </TableHeader>
+                <TableBody>
+                  {[0, 1, 2].map((row) => (
+                    <TableRow key={row}>
+                      <TableCell>
+                        <Skeleton className="h-4 w-48" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-5 w-16" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-32" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+            {!pastTdrsError && !isLoadingPastTdrs && pastTdrs.length === 0 && (
+              <EmptyState
+                icon={FileText}
+                title="No TDRs yet"
+                description="Upload a TDR above to see it appear here."
+              />
+            )}
+            {!pastTdrsError && !isLoadingPastTdrs && pastTdrs.length > 0 && (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Mission</TableHead>
+                    <TableHead className="w-28 whitespace-nowrap">Status</TableHead>
+                    <TableHead className="w-44 whitespace-nowrap">Created</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pastTdrs.map((tdr) => (
+                    <TableRow key={tdr.tdr_id}>
+                      <TableCell className="max-w-[280px]">
+                        <TableLink
+                          href={`/tdrs/${tdr.tdr_id}`}
+                          className="max-w-full"
+                          title={tdr.mission_title ?? undefined}
+                        >
+                          {tdr.mission_title ?? '—'}
+                        </TableLink>
+                      </TableCell>
+                      <TableCell className="w-28 whitespace-nowrap">
+                        <Badge variant={TDR_STATUS_BADGE_VARIANT[tdr.status] ?? 'outline'}>
+                          {tdr.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="w-44 whitespace-nowrap">
+                        {new Date(tdr.created_at).toLocaleString()}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      </main>
+    </PageTransition>
   );
 }

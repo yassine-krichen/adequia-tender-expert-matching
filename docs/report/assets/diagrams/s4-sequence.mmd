@@ -1,0 +1,20 @@
+sequenceDiagram
+  participant Node as Pipeline Node
+  participant Mask as mask_pii()
+  participant Router as ModelRouter
+  participant Cloud as Groq / Gemini
+  participant Local as Ollama
+  participant Trace as LangSmith
+
+  Node->>Mask: raw extracted text
+  Mask-->>Node: masked text
+  Node->>Router: invoke(masked text)
+  alt cloud key available
+    Router->>Cloud: chat completion (masked text)
+    Cloud-->>Router: response
+  else all keys exhausted
+    Router->>Local: chat completion (same masked text)
+    Local-->>Router: response
+  end
+  Router-->>Node: result
+  Node->>Trace: log call (input/output/latency, tagged)

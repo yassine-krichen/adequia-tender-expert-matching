@@ -1,0 +1,6 @@
+flowchart LR
+  A["Hard filters\n(Sprint 2)"] --> B["score\nLLM judgment +\nhistory calibration"]
+  B --> C["detect_anomalies\nrules + LLM pass"]
+  C --> D["generate_report\ncitation ledger"]
+  D --> E(["human_review\ninterrupt / pause"])
+  E -->|resume: approve/reject/override| F[("historical_decisions")]

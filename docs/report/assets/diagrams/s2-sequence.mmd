@@ -1,0 +1,22 @@
+sequenceDiagram
+  participant Client
+  participant API
+  participant Worker as RQ Worker
+  participant DB as PostgreSQL
+
+  Client->>API: POST /tdrs/{id}/match
+  API-->>Client: 202 Accepted
+  API->>Worker: enqueue matching job
+  loop each expert position
+    Worker->>DB: shortlist_candidates (pgvector top-30, rerank)
+    Worker->>Worker: normalize_position_skills (once)
+    loop each shortlisted candidate
+      Worker->>Worker: normalize_cv_skills
+      Worker->>Worker: check_hard_filters
+      Worker->>Worker: score_soft_criteria
+    end
+    Worker->>DB: delete stale + insert fresh MatchResults
+  end
+  Client->>API: GET /tdrs/{id}/match-status (poll)
+  Client->>API: GET /positions/{id}/matches
+  API-->>Client: ranked shortlist per position

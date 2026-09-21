@@ -1,31 +1,34 @@
-\chapter{Sprint 1}
+\chapter{Sprint 1 --- Ingestion and Structured Extraction}
+\chaptermark{Sprint 1 --- Ingestion \& Extraction}
 \label{chap:sprint-1}
 
-This chapter presents the realization of Sprint 1, the foundation every
-later sprint builds on: turning an uploaded CV or TDR into structured,
-extracted data end to end, proven with a working screen rather than just a
-backend status update.
+This chapter presents the realization of Sprint 1: turning an uploaded CV
+or TDR into structured, extracted data end to end, covering the sprint's
+backlog, design, implementation, testing, and review.
 
 \section{Sprint Goal}
 
 \begin{quote}
 Upload a real CV/TDR and see it turned into structured, extracted data
-end-to-end -- the foundation every later sprint builds on, proven with a
-working (if rough) screen, not just a backend status update.
+end-to-end: the foundation every later sprint builds on, proven with a
+working screen, not just a backend status update.
 \end{quote}
 
-Sprint 1 ran July 6--10, 2026, with 43 points committed -- deliberately
-front-loaded, since it also had to prove the riskiest technical
+Sprint 1 ran July 6--10, 2026, with 43 points committed, deliberately
+front-loaded since it also had to prove the riskiest technical
 integration of the whole project (multi-key LLM provider routing across
 free-tier providers, since there is no paid API access) rather than only
 low-complexity setup work.
 
 \section{Sprint Backlog}
 
-\begin{table}[h]
+Table~\ref{tab:sprint1-backlog} lists Sprint 1's committed stories, points, and status.
+
+\begin{table}[H]
   \centering
   \caption{Sprint 1 backlog}
-  \begin{tabular}{@{}p{1.3cm}p{7.7cm}p{1.3cm}p{2.5cm}@{}}
+  \label{tab:sprint1-backlog}
+  \begin{tabular}{@{}p{1.3cm}p{11.6cm}p{1.3cm}p{2.7cm}@{}}
     \toprule
     ID & Story & Points & Status \\
     \midrule
@@ -37,155 +40,150 @@ low-complexity setup work.
     ADQ-6 & Structured extraction for TDR + section localization & 8 & Done \\
     ADQ-7 & Bare-bones upload + extraction-preview page & 5 & Done \\
     ADQ-8 & Annotate gold extraction set (kickoff, ongoing) & 3 & Ongoing \\
-    ADQ-9 & Request historical staffing decisions + TDR variety from company & 1 & No response -- working assumptions documented \\
+    ADQ-9 & Request historical staffing decisions + TDR variety from company & 1 & Partially answered \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-ADQ-9's information request (Section~\ref{chap:sprint-1}, and in full in
-\texttt{docs/08-company-data-checklist.md}) went unanswered through the end
-of the sprint. Rather than block downstream design decisions on it
-indefinitely, each open question was resolved to an explicit, documented
-working assumption -- grounded in the 3 real TDR samples that were provided
-and in standard practice for a firm of this kind -- with the same document
-tracking which assumptions still need confirmation once the company
-responds. The single highest-risk one: whether cloud LLM APIs (Groq, Gemini)
-are acceptable for real candidate data, or whether processing must stay
-fully local. The architecture was deliberately built so that answer is a
-configuration change (disable the two cloud providers in \texttt{ModelRouter},
-run against Ollama only) rather than a redesign, precisely because it
-couldn't be confirmed in time.
-
-Full acceptance criteria for every story are documented in
-\texttt{docs/scrum/sprint-1-plan.md}, following the Definition of Ready and
-Definition of Done in \texttt{docs/scrum/definition-of-ready-and-done.md}.
+ADQ-9's information request was answered in part: the company did provide
+real TDR documents to work from, after real persistence chasing them down,
+and those documents are the real samples used throughout this chapter and
+the next. Historical staffing decisions, the single highest-value item on
+the request, went unanswered through the end of the sprint. That gap was
+resolved to an explicit, documented working assumption (grounded in the
+real TDR samples in hand and in standard practice for a firm of this
+kind), revisable the moment the company responds. The highest-risk open
+assumption: whether cloud LLM APIs (Groq, Gemini) are acceptable for real
+candidate data, or whether processing must stay fully local. The
+architecture was built so that answer is a configuration change (disable
+the two cloud providers in \texttt{ModelRouter}, run against Ollama only)
+rather than a redesign, precisely because it couldn't be confirmed in time.
 
 \section{Analysis}
 
-The sprint goal reduces to one user-facing flow: an HR or bid-management
+The sprint goal decomposes into one user-facing flow: an HR or bid-management
 user uploads a document (a candidate CV or a client TDR), and the system
 returns structured, reviewable data instead of a wall of unstructured text.
-Two actors interact with the system this sprint:
+One actor interacts with the system this sprint:
 
 \begin{description}
   \item[HR / bid manager] uploads CVs to build the internal candidate pool,
     and uploads TDRs to see what a mission actually requires (positions,
     diplomas, years of experience, sector, deadline).
-  \item[System (backend pipeline)] parses whatever file format arrives,
-    extracts structured fields via an LLM, persists the result, and returns
-    it for review.
 \end{description}
+
+The system itself parses whatever file format arrives, extracts
+structured fields via an LLM, persists the result, and returns it for
+review.
 
 Four use cases were in scope: \emph{Upload CV}, \emph{Upload TDR},
 \emph{Preview extracted CV}, and \emph{Preview extracted TDR}. Matching a
-CV against a TDR (ADQ's core value proposition) is explicitly out of scope
-for Sprint 1 -- extraction has to be trustworthy before scoring on top of it
-means anything, which is why the sprint goal is phrased around "structured
-data," not "a ranked shortlist."
+CV against a TDR (ADQ's core value proposition) is explicitly out of
+scope for Sprint 1: extraction has to be trustworthy before scoring on
+top of it means anything.
 
 Two non-functional constraints shaped every design decision this sprint,
 both already flagged during sprint planning: there is no budget for paid
 LLM APIs, so the system has to survive on free-tier quotas across multiple
-providers; and the source documents are real French-language administrative
-text -- CVs with inconsistent date formats, TDRs running to hundreds of
-pages of mostly irrelevant boilerplate. Both constraints turned out to
-matter far more in practice than in the original estimate (see
-Section~\ref{chap:sprint-1}'s Retrospective).
+providers, and the source documents are real French-language administrative
+text: CVs with inconsistent date formats, TDRs running to hundreds of
+pages of mostly irrelevant boilerplate. Both constraints mattered far more
+in practice than in the original estimate (see the Retrospective,
+Section~\ref{sec:s1-retro}).
 
 \section{Design}
 
 \subsection{Use Case Diagram}
 
-\begin{center}
-\begin{tabular}{@{}p{3.5cm}p{9.5cm}@{}}
-\toprule
-Actor & Use cases \\
-\midrule
-HR / bid manager & Upload CV; Upload TDR; Preview extracted CV; Preview extracted TDR \\
-\bottomrule
-\end{tabular}
-\end{center}
+Figure~\ref{fig:s1-usecase} shows the single actor and the four use cases
+in scope this sprint, sharing one underlying pipeline
+(\texttt{app/features/pipeline/nodes/extract.py}): \emph{parse file}
+$\to$ \emph{extract structured data} $\to$ \emph{persist} $\to$
+\emph{return for preview}.
 
-Both upload use cases share the same internal shape: \emph{parse file} $\to$
-\emph{extract structured data} $\to$ \emph{persist} $\to$ \emph{return for
-preview}, which is why they share one pipeline implementation
-(\texttt{app/features/pipeline/nodes/extract.py}) rather than two parallel
-ones.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.4\textwidth]{s1-usecase.png}
+  \caption[Sprint 1 use case diagram]{Sprint 1 use case diagram: one actor, four use cases sharing
+  one pipeline implementation.}
+  \label{fig:s1-usecase}
+\end{figure}
 
 \subsection{Class Diagram (key classes)}
 
-Three groups of classes matter this sprint:
+Figure~\ref{fig:s1-class} shows the sprint's key classes, in three groups.
+The domain models (\texttt{app/domain/\{cv,tdr\}.py})
+are the validated, structured output of the pipeline: strict Pydantic
+models with field validators that coerce the messy date/text shapes an
+LLM actually produces (partial dates, French month names, the literal
+string \texttt{"null"}) into real typed values, or fail loudly when a
+value genuinely can't be trusted. The ORM models
+(\texttt{app/database/models.py}) map these onto the Postgres schema
+from ADQ-1. \texttt{ModelRouter} (\texttt{app/common/llm/router.py})
+owns one \texttt{KeyPool} per provider (Groq, Gemini) and resolves a
+provider- and tier-specific model name (extraction vs.\ reasoning) on
+every call, falling back to a local Ollama model once both pools are
+exhausted.
 
-\begin{description}
-  \item[Domain models] (\texttt{app/domain/cv.py}, \texttt{app/domain/tdr.py})
-    -- \texttt{CandidateCV} (composed of \texttt{Education},
-    \texttt{Certification}, \texttt{Experience}, \texttt{LanguageProficiency})
-    and \texttt{TDR} (composed of \texttt{ExpertPosition},
-    \texttt{LanguageRequirement}). These are the validated, structured
-    output of the pipeline -- strict Pydantic models with field validators
-    that coerce the messy date/text shapes an LLM actually produces
-    (partial dates, French month names, the literal string \texttt{"null"})
-    into real typed values, or fail loudly when a value genuinely can't be
-    trusted.
-  \item[ORM models] (\texttt{app/database/models.py}) -- \texttt{Candidate},
-    \texttt{CV}, \texttt{TDRModel}, \texttt{ExpertPositionModel}, mapping
-    the domain models onto the Postgres schema from ADQ-1.
-  \item[LLM routing] (\texttt{app/common/llm/router.py}) -- \texttt{ModelRouter}
-    owns one \texttt{KeyPool} per provider (Groq, Gemini) and resolves a
-    provider- and tier-specific model name (extraction vs.\ reasoning) on
-    every call, falling back to a local Ollama model once both pools are
-    exhausted.
-\end{description}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{s1-class.png}
+  \caption[Sprint 1 class diagram]{Sprint 1 key classes: domain models (left, center) and LLM
+  routing (right).}
+  \label{fig:s1-class}
+\end{figure}
 
 \subsection{Sequence: Upload $\to$ Extract $\to$ Persist}
 
-\begin{enumerate}
-  \item Client (dashboard) sends \texttt{POST /candidates/cv} (or
-    \texttt{POST /tdrs}) with the raw file.
-  \item \texttt{ingest} parses the file (PDF or DOCX) into raw text,
-    raising a typed \texttt{DomainError} on a corrupt/unsupported file.
-  \item For a TDR, the raw text is chunked, embedded (local Ollama,
-    \texttt{nomic-embed-text}), and the chunks closest to a fixed
-    "profils/qualifications/personnel requis" query -- boosted by a small
-    keyword score for terms that only appear in a real requirements section
-    -- are kept for extraction (Section~\ref{chap:sprint-1}, Testing,
-    covers why this step needed rework mid-sprint).
-  \item \texttt{ModelRouter} is called once per chunk (TDR) or once for the
-    whole document (CV) with a Pydantic schema as the structured-output
-    target, rotating across Groq keys, then Gemini keys, then Ollama, on
-    any retryable failure (rate limit, quota exhaustion, or the provider
-    rejecting the generated structured output).
-  \item The wire-level extraction result is converted into the strict
-    domain model (\texttt{CandidateCV} / \texttt{TDR}), where field
-    validators do the final date/type coercion.
-  \item The service layer persists the result (\texttt{Candidate}+\texttt{CV}
-    or \texttt{TDRModel}+\texttt{ExpertPositionModel} rows, with an explicit
-    \texttt{session.flush()} between parent and child inserts) and returns
-    it to the client for the preview page.
-\end{enumerate}
+Figure~\ref{fig:s1-sequence} traces one upload from the client's request
+through parsing, retrieval (TDR only), structured extraction with
+provider fallback, domain validation, and persistence. For a TDR, the
+raw text is chunked and embedded first, and only the chunks closest to a
+fixed "profils/qualifications/personnel requis" query (boosted by a
+small keyword score for terms unique to a real requirements section) are
+kept for extraction (Section~\ref{sec:s1-testing} covers why this step
+needed rework mid-sprint).
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.5\textwidth]{s1-sequence.png}
+  \caption[Sprint 1 upload sequence]{Sprint 1 sequence: upload, extract, and persist, with
+  provider fallback inside \texttt{ModelRouter}.}
+  \label{fig:s1-sequence}
+\end{figure}
 
 \section{Implementation}
 
+This section walks through each story's real implementation, including
+two fixes that only real testing against real providers surfaced.
+
 \subsection{API endpoints}
 
-\begin{center}
-\begin{tabular}{@{}p{4cm}p{9cm}@{}}
-\toprule
-Endpoint & Purpose \\
-\midrule
-\texttt{POST /candidates/cv} & Upload a CV file, run extraction, persist, return the structured \texttt{CandidateCV}. \\
-\texttt{POST /tdrs} & Upload a TDR file, run chunk-retrieve-extract-merge, persist, return the structured \texttt{TDR}. \\
-\bottomrule
-\end{tabular}
-\end{center}
+Table~\ref{tab:s1-endpoints} lists the two endpoints this sprint adds.
+
+\begin{table}[H]
+  \centering
+  \caption{Sprint 1 API endpoints}
+  \label{tab:s1-endpoints}
+  \begin{tabular}{@{}p{4.5cm}p{13cm}@{}}
+    \toprule
+    Endpoint & Purpose \\
+    \midrule
+    \texttt{POST /candidates/cv} & Upload a CV file, run extraction, persist, return the structured \texttt{CandidateCV}. \\
+    \texttt{POST /tdrs} & Upload a TDR file, run chunk-retrieve-extract-merge, persist, return the structured \texttt{TDR}. \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
 \subsection{ModelRouter: per-provider, per-tier model resolution}
 
-The first router implementation resolved a single shared model name
-(\texttt{LLM\_EXTRACTION\_MODEL}) regardless of which provider ended up
-serving the call -- unworkable once actually exercised, since Groq, Gemini,
-and Ollama don't share a model-naming scheme (\texttt{llama-3.1-8b-instant}
-means nothing to Gemini or Ollama). The fix: six explicit settings
+An early design assumed a single shared model name
+(\texttt{LLM\_EXTRACTION\_MODEL}) would work regardless of which provider
+served the call. Testing it against Groq, Gemini, and Ollama quickly
+surfaced the real constraint before it reached any other code: the three
+providers don't share a model-naming scheme
+(\texttt{llama-3.1-8b-instant} means nothing to Gemini or Ollama). The
+design was adjusted accordingly: six explicit settings
 (\texttt{\{GROQ,GEMINI,OLLAMA\}\_\{EXTRACTION,REASONING\}\_MODEL}), and
 \texttt{ModelRouter} resolves \texttt{(provider, tier)} to a model name
 freshly on every attempt in the fallback chain, rather than reusing
@@ -198,15 +196,14 @@ self._models: dict[tuple[str, str], str] = {
     ("gemini", "extraction"): settings.gemini_extraction_model,
     ("gemini", "reasoning"): settings.gemini_reasoning_model,
     ("ollama", "extraction"): settings.ollama_extraction_model,
-    ("ollama", "reasoning"): settings.ollama_reasoning_model,
-}
+    ("ollama", "reasoning"): settings.ollama_reasoning_model }
 \end{lstlisting}
 
 \subsection{Retry escalation, not blind retry}
 
 A cheap extraction-tier model (\texttt{llama-3.1-8b-instant}) is
-unreliable at emitting valid JSON for a nested schema -- confirmed
-empirically failing 3/3 attempts on the same real CV. Retrying the same
+unreliable at emitting valid JSON for a nested schema, confirmed
+empirically by 3/3 failed attempts on the same real CV. Retrying the same
 model rarely helps; \texttt{\_invoke\_structured\_extraction}'s single
 retry instead escalates to \texttt{invoke\_reasoning()}, a stronger model,
 keeping the common case cheap while giving a hard case a real second
@@ -243,10 +240,10 @@ Groq/Gemini/Ollama calls and checks every fixture, printing an
 expected-vs-actual table on any mismatch. It is deliberately excluded from
 the default \texttt{pytest} run (real API quota, real wall-clock time) and
 run explicitly via \texttt{uv run pytest -m eval}. Going forward, improving
-extraction quality means: find a wrong extraction, add or correct its
-fixture, tune the pipeline, re-run the full suite -- every previously-fixed
-document is re-checked automatically, not just the one currently being
-looked at.
+extraction quality means finding a wrong extraction, adding or correcting
+its fixture, tuning the pipeline, and re-running the full suite. Every
+previously-fixed document is re-checked automatically, not just the one
+currently being looked at.
 
 \subsection{Frontend: Upload UX and Visual Identity}
 
@@ -258,9 +255,10 @@ the drop zone instead of silently keeping only the first. Separately, the
 dashboard's visual identity was finalized: a light/dark toggle (persisted
 via \texttt{next-themes}, with a keyboard shortcut) replaced a fixed
 dark-only palette, built on Tailwind v4's native \texttt{oklch()} color
-support. \texttt{docs/07-branding.md} documents the resulting palette.
+support.
 
 \section{Testing}
+\label{sec:s1-testing}
 
 The unit test suite (73 tests by the end of the sprint) covers: key-pool
 rotation and exhaustion-to-Ollama fallback, per-provider model resolution,
@@ -268,7 +266,15 @@ date/type coercion edge cases (partial dates, French dates, the literal
 string \texttt{"null"}), CV and TDR structured extraction against both
 synthetic and real fixtures, service-level persistence (including the
 FK-ordering fix below), and CORS configuration. All of it runs against
-fake routers/sessions -- deliberately, so CI needs no real credentials.
+fake routers and sessions by design, so CI needs no real credentials.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.75\textwidth]{unit-tests-sprint1.png}
+  \caption[Sprint 1 unit test run]{Full unit test run on the Sprint 1 branch: all 73 tests
+  passing.}
+  \label{fig:s1-unit-tests}
+\end{figure}
 
 That mocked suite was fully green for most of the sprint and still missed
 four real bugs that only a live call against the actual Groq API surfaced
@@ -277,19 +283,19 @@ in the caught-exceptions tuple; a \texttt{date}-typed field whose JSON
 schema format Groq enforces server-side before any of the project's own
 validation runs; the extraction-tier model's outright unreliability on a
 nested schema; and a SQLAlchemy insert-ordering issue that only manifests
-against a real Postgres, not a fake session. A second live pass -- this
-time against all 3 real TDR samples rather than only the synthetic CVs --
+against a real Postgres, not a fake session. A second live pass (this
+time against all 3 real TDR samples rather than only the synthetic CVs)
 surfaced three more: literal-string \texttt{"null"} values, non-ISO
 (French-written) dates, and a chunk-retrieval failure on a 268-page TDR
 whose unrelated annexes out-scored the actual staffing section on pure
 embedding similarity. Every one of these is now a permanent regression
-test, and the lesson is recorded for future sprints: a green mocked suite
-proves the code's logic is internally consistent, not that its contract
-with an external system holds.
+test. The lesson for future sprints: a green mocked suite proves the
+code's logic is internally consistent, not that its contract with an
+external system holds.
 
 Intentionally not covered this sprint: true end-to-end integration tests
 that hit a live Groq/Gemini/Ollama endpoint as part of the automated suite
-(no committed API keys, by design) -- that role is now filled by the
+(no committed API keys, by design). That role is filled by the
 extraction-quality eval harness described above, run on demand rather than
 on every commit.
 
@@ -297,12 +303,12 @@ Beyond automated tests, a full multi-angle code review pass was run
 against every change this sprint (line-by-line correctness, removed
 behavior, cross-file consistency, reuse, simplification, efficiency, and
 convention adherence), plus \texttt{ruff}/\texttt{mypy} on the backend and
-\texttt{eslint}/\texttt{tsc} on the frontend as a standing quality gate.
-It surfaced five real correctness issues not yet fixed (tracked in
-\texttt{docs/12-sprint-2-handoff.md} for pickup next sprint) -- flagging
-them here rather than only in an internal note, since finding a problem
-before it reaches production is the point of doing this review at all, not
-something to omit for looking cleaner on paper.
+\texttt{eslint}/\texttt{tsc} on the frontend as a standing quality gate. It
+surfaced five real correctness issues, carried forward for pickup in
+Sprint 2 rather than fixed under this sprint's own time pressure, flagged
+here rather than only in an internal note: finding a problem before it
+reaches production is the point of this review, not something to omit
+for looking cleaner on paper.
 
 \section{Sprint Review}
 
@@ -312,100 +318,99 @@ fields (candidate education/experience/certifications; TDR mission
 metadata and expert positions with diploma/experience requirements)
 rendered correctly on the preview screen. All 6 synthetic CVs and all 3
 real TDRs were verified end-to-end against live Groq/Gemini/Ollama calls,
-across multiple repeated runs, by the end of the sprint -- not just once.
+across multiple repeated runs, by the end of the sprint, not just once.
 
 \subsection{Live Demonstration}
 \label{sec:live-demo}
 
-\begin{figure}[h]
+The page polls \texttt{GET /tdrs/\{id\}/status} and updates the visible
+stage as the worker progresses through the document instead of blocking
+the request thread for the full extraction time: Figure~\ref{fig:tdr-flow}
+contrasts that in-progress state (left) with the finished extraction
+(right) --- mission title, client, sector, and every extracted expert
+position with its mandatory diploma and minimum years of experience.
+
+\begin{figure}[H]
   \centering
-  \includegraphics[width=0.85\textwidth]{tdr-preshowcase-extracting-state.png}
-  \caption{TDR upload in progress -- live stage text from the status-polling
-  endpoint, not a static spinner.}
-  \label{fig:tdr-extracting}
+  \begin{subfigure}[t]{0.35\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{tdr-preshowcase-extracting-state.png}
+    \caption{In progress}
+    \label{fig:tdr-extracting}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.55\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{tdr-showcase.png}
+    \caption{Completed}
+    \label{fig:tdr-showcase}
+  \end{subfigure}
+  \caption[TDR upload: in progress vs.\ completed]{TDR upload, same
+  document: in progress (left) vs.\ completed (right).}
+  \label{fig:tdr-flow}
 \end{figure}
 
-Figure~\ref{fig:tdr-extracting} shows the asynchronous pipeline from
-Section~\ref{chap:sprint-1} (Implementation) in action: the page polls
-\texttt{GET /tdrs/\{id\}/status} and updates the visible stage as the RQ
-worker progresses through the document, instead of blocking the request
-thread for the full extraction time.
-
-\begin{figure}[h]
+\begin{figure}[H]
   \centering
-  \includegraphics[width=0.85\textwidth]{tdr-showcase.png}
-  \caption{Completed TDR extraction -- mission metadata and expert
-  positions rendered from a real 268-page tender document.}
-  \label{fig:tdr-showcase}
-\end{figure}
-
-Figure~\ref{fig:tdr-showcase} is the same upload once the worker finishes:
-mission title, client, sector, and every extracted expert position with
-its mandatory diploma and minimum years of experience.
-
-\begin{figure}[h]
-  \centering
-  \includegraphics[width=0.85\textwidth]{candidate-showcase.png}
-  \caption{Completed CV extraction -- education, experience, and
-  certifications rendered from an uploaded candidate CV.}
+  \includegraphics[width=0.48\textwidth]{candidate-showcase.png}
+  \caption[Completed CV extraction]{Completed CV extraction: the mirror flow for a candidate
+  CV, extracted synchronously (fast enough not to need the async treatment
+  TDRs require), rendering education, experience, and certifications.}
   \label{fig:candidate-showcase}
 \end{figure}
 
-Figure~\ref{fig:candidate-showcase} shows the mirror flow for a candidate
-CV, extracted synchronously (fast enough not to need the async treatment
-TDRs require).
+Figure~\ref{fig:swagger} is the live API surface backing both screens
+above, generated directly from the FastAPI route definitions and Pydantic
+schemas, not hand-maintained.
 
-\begin{figure}[h]
+\begin{figure}[H]
   \centering
-  \includegraphics[width=0.85\textwidth]{swagger.png}
-  \caption{Auto-generated API documentation (Swagger UI) for the FastAPI
+  \includegraphics[width=0.6\textwidth]{swagger.png}
+  \caption[Swagger/OpenAPI documentation]{Auto-generated API documentation (Swagger UI) for the FastAPI
   backend.}
   \label{fig:swagger}
 \end{figure}
 
-Figure~\ref{fig:swagger} is the live API surface backing both screens
-above -- generated directly from the FastAPI route definitions and Pydantic
-schemas, not hand-maintained.
-
 \section{Sprint Retrospective}
+\label{sec:s1-retro}
 
 \textbf{What worked:} tackling the multi-provider LLM routing risk first,
-as flagged in sprint planning, paid off -- every bug it surfaced (provider
+as flagged in sprint planning, paid off. Every bug it surfaced (provider
 error handling, model-name resolution, retry strategy) was found and fixed
 before it could block later sprints' work on top of it. Building the
 gitignored synthetic CV fixtures early (ADQ-4/ADQ-3) meant extraction work
-never had to wait on real data that, per ADQ-9, never actually arrived.
+never had to wait on the real employee CVs that, per ADQ-9, never
+actually arrived.
 
 \textbf{What didn't:} the original 43-point estimate assumed a single pass
 of "wire the LLM call, validate the schema" would be enough. In practice,
-real documents needed two full rounds of live testing to actually trust --
-the mocked test suite's green checkmarks were necessary but not
-sufficient, and each round surfaced problems (provider-specific exception
-types, server-side schema enforcement, chunk-retrieval quality on long
-documents) that were only visible against real input, real APIs, and a
-real quota ceiling. Sprint planning should budget for this explicitly next
-time: "extraction works on the happy path" and "extraction survives real
+real documents needed two full rounds of live testing to earn trust: the
+mocked test suite's green checkmarks were necessary but not sufficient,
+and each round surfaced problems (provider-specific exception types,
+server-side schema enforcement, chunk-retrieval quality on long documents)
+that were only visible against real input, real APIs, and a real quota
+ceiling. Sprint planning should budget for this explicitly next time:
+"extraction works on the happy path" and "extraction survives real
 documents and free-tier rate limits" are different milestones, and this
 sprint's estimate only accounted for the first one.
 
 \textbf{Change for Sprint 2:} keep at least one round of live
 verification against real documents inside the sprint's own time budget,
-not as a stretch goal -- it is where most of this sprint's real bugs were
-actually found.
+not as a stretch goal. It is where most of this sprint's real bugs were
+found.
 
 \section{Conclusion}
 
 Sprint 1 delivered a working, live-verified upload-to-extraction pipeline
 for both CVs and TDRs, with a multi-provider LLM routing layer robust
 enough to survive free-tier rate limits, quota exhaustion, and unreliable
-structured-output generation -- the foundation the matching and scoring
-work in later sprints depends on. Beyond the original backlog, the sprint
-was extended to make that pipeline trustworthy under real use: an
-asynchronous processing path with live progress visibility for slow TDRs,
-a repeatable extraction-quality eval harness to replace manual
-eyeballing, and a hardened upload UX and finalized visual identity for the
-dashboard, all confirmed against the running application
-(Section~\ref{sec:live-demo}).
+structured-output generation: the foundation the matching and scoring work
+in later sprints depends on. Beyond the original backlog, the sprint was
+extended to make that pipeline trustworthy under real use: an asynchronous
+processing path with live progress visibility for slow TDRs, a repeatable
+extraction-quality eval harness to replace manual eyeballing, and a
+hardened upload UX and finalized visual identity for the dashboard, all
+confirmed against the running application (Section~\ref{sec:live-demo}).
 The two open items (ADQ-8's gold-set annotation and ADQ-9's company data
 request) carry forward, the latter now tracked as a set of explicit,
 revisable working assumptions rather than a silent blocker.

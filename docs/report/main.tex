@@ -4,14 +4,30 @@
 \usepackage[T1]{fontenc}
 \usepackage[english]{babel}
 \usepackage{graphicx}
-\usepackage[margin=2.5cm]{geometry}
+\usepackage{subcaption}
+\usepackage[top=2cm,bottom=2cm,left=1.4cm,right=1.4cm]{geometry}
 \usepackage{fancyhdr}
 \usepackage{hyperref}
 \usepackage{booktabs}
 \usepackage{listings}
 \usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{microtype}
+\usepackage[htt]{hyphenat}
+\usepackage{float}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{multicol}
 
-\graphicspath{{./assets/logos/}{./assets/screenshots/}}
+% Long \texttt{...} identifiers (file paths, function names with
+% underscores) were overflowing the right margin instead of wrapping.
+% [htt] enables hyphenation inside \texttt (monospace fonts disable it by
+% default); emergencystretch gives the line-breaker a bit more room before
+% it gives up and lets a line overflow.
+\setlength{\emergencystretch}{2.5em}
+\sloppy
+
+\graphicspath{{./assets/logos/}{./assets/screenshots/}{./assets/charts/}{./assets/diagrams/}}
 
 \hypersetup{
   colorlinks=true,
@@ -22,37 +38,115 @@
   pdfauthor={Yassine Krichen}
 }
 
-\lstset{
+\lstdefinestyle{pygments}{
   basicstyle=\ttfamily\small,
   breaklines=true,
   frame=single,
   backgroundcolor=\color{gray!5},
   columns=fullflexible,
+  keywordstyle=\color{blue!60!black}\bfseries,
+  stringstyle=\color{green!40!black},
+  commentstyle=\color{gray!60!black}\itshape,
+  numberstyle=\tiny\color{gray!60!black},
+  showstringspaces=false,
 }
+\lstset{style=pygments}
+
+% Tighter spacing around section titles and lists -- a real, meaningful
+% lever for page count on a document this dense with sections, without
+% touching body font size (kept at the standard 12pt) or cutting content.
+\titlespacing*{\section}{0pt}{1.4ex plus .5ex minus .2ex}{0.8ex plus .2ex}
+\titlespacing*{\subsection}{0pt}{1.1ex plus .4ex minus .2ex}{0.6ex plus .2ex}
+\setlist{itemsep=1pt, topsep=3pt, parsep=0pt}
+
+% LaTeX's default display-math margins (~10pt plus/minus) are tuned for
+% a page of prose, not a report using short standalone formulas as
+% callouts -- this cuts the air above/below \[...\] without touching
+% body-text line spacing.
+\setlength{\abovedisplayskip}{4pt plus 2pt minus 2pt}
+\setlength{\belowdisplayskip}{4pt plus 2pt minus 2pt}
+\setlength{\abovedisplayshortskip}{2pt plus 2pt}
+\setlength{\belowdisplayshortskip}{2pt plus 2pt}
+
+% report/book's default \chapter heading reserves a large fixed vertical
+% gap before the number, a full-size \Huge title, and another large gap
+% after -- this reclaims most of that space while keeping a clearly
+% distinct, still-large chapter heading (not a subsection-sized one).
+\titleformat{\chapter}[display]
+  {\normalfont\huge\bfseries}{\chaptertitlename\ \thechapter}{3pt}{\huge}
+\titlespacing*{\chapter}{0pt}{0pt}{8pt}
 
 \pagestyle{fancy}
 \fancyhf{}
 \renewcommand{\headrulewidth}{0.4pt}
 \renewcommand{\footrulewidth}{0.4pt}
-\fancyhead[L]{\leftmark}
-\fancyhead[R]{\rightmark}
-\fancyfoot[C]{ST2i \textbar\ Internship Report \textbar\ Page \thepage}
+\fancyhead[L]{\small\leftmark}
+\fancyhead[R]{\small\rightmark}
+\fancyfoot[C]{\small ST2i \textbar\ Internship Report \textbar\ Page \thepage}
 
 \begin{document}
 
 \input{titlepage}
+
+\input{company-approval}
 
 \pagenumbering{roman}
 \pagestyle{plain}
 
 \chapter*{Acknowledgements}
 \addcontentsline{toc}{chapter}{Acknowledgements}
-% TODO: write personally once the internship is complete.
+
+I would like to thank ST2i for hosting this internship and for the trust
+placed in a one-month, largely autonomous engagement. My thanks go in
+particular to my company supervisor, my company supervisor, for his
+availability, his feedback at each sprint review, and for giving me the
+latitude to make real technical and product decisions rather than
+following a fixed specification. I would also like to thank Mrs.\ Faten
+Znaidi for her support throughout the internship, from administrative
+coordination and interview scheduling to a warm welcome into the team. I
+also thank the Institut National des Sciences Appliqu\'ees et de
+Technologie and the Universit\'e de Carthage for making this internship
+possible as part of my third-year software engineering curriculum.
 
 \chapter*{Abstract}
 \addcontentsline{toc}{chapter}{Abstract}
-% TODO: write personally once the internship is complete -- a 200-300 word
-% summary of the problem, approach, and results.
+
+ST2i, a Tunisian IT services and consulting company, bids on public and
+international tenders that require staffing expert positions defined in
+Terms of Reference (TDR) documents against a set of mandatory criteria:
+diplomas, years of experience, certifications, and sector background.
+Today this matching step is entirely manual, and does not scale reliably
+with the size of a TDR or the number of employees available to check
+against it, with real financial consequences on both a missed qualified
+expert and an overlooked disqualifying gap.
+
+This report presents \textbf{AdéquIA}, a decision-support system built
+over a one-month, four-sprint Agile/Scrum internship to automate this
+process end to end while keeping a human reviewer in control of every
+final decision. The system parses CVs and TDRs into structured data using
+LLM-based structured extraction with retrieval-augmented section
+localization for long documents, scores each candidate against a
+position through a hybrid pipeline combining rule-based hard filters,
+embedding-based skill and sector matching, and LLM qualitative judgment,
+flags anomalies such as employment gaps and expired certifications, and
+generates a citation-grounded rationale in which every claim is verified
+in code against real source evidence before being accepted. The full
+pipeline runs on free-tier LLM providers with multi-key failover and a
+local fallback model, at zero infrastructure cost.
+
+The delivered system was validated with real, measured evaluation
+results rather than anecdotal claims: 0.978 F1 on CV field extraction,
+100\% shortlist recall at $k{=}3$, 100\% resistance to prompt-injection
+attacks (with one real vulnerability found and fixed during testing),
+and 0.91 rationale faithfulness against source evidence. The full
+33-story, 170-point product backlog was delivered on schedule across the
+four planned sprints, followed by a final release-readiness hardening
+pass ahead of the internship's live demonstration.
+\medskip
+
+\noindent\textbf{Keywords:} decision support, large language models,
+retrieval-augmented generation, human-in-the-loop, Agile/Scrum,
+candidate--position matching.
 
 \tableofcontents
 \listoffigures
@@ -60,21 +154,55 @@
 
 \chapter*{List of Acronyms}
 \addcontentsline{toc}{chapter}{List of Acronyms}
-\begin{description}
+\begin{multicols}{2}
+\begin{description}[itemsep=2pt]
+  \item[ADQ] Product backlog story-ID prefix used throughout this report
+    (e.g.\ ADQ-19)
+  \item[AfDB] African Development Bank
   \item[AI] Artificial Intelligence
   \item[API] Application Programming Interface
   \item[CI/CD] Continuous Integration / Continuous Deployment
+  \item[CORS] Cross-Origin Resource Sharing
+  \item[CSS] Cascading Style Sheets
   \item[CV] Curriculum Vitae
   \item[DoD] Definition of Done
   \item[DoR] Definition of Ready
+  \item[FK] Foreign Key
+  \item[GIS] Geographic Information Systems
+  \item[GIZ] Deutsche Gesellschaft f\"ur Internationale Zusammenarbeit
+    (German international development agency)
+  \item[GPU] Graphics Processing Unit
   \item[HITL] Human-in-the-Loop
+  \item[HR] Human Resources
+  \item[HTTP] Hypertext Transfer Protocol
+  \item[ICT] Information and Communication Technology
+  \item[ILO] International Labour Organization
+  \item[ISO] International Organization for Standardization
+  \item[JSON] JavaScript Object Notation
   \item[LLM] Large Language Model
+  \item[MCP] Model Context Protocol
+  \item[OCR] Optical Character Recognition
   \item[ORM] Object-Relational Mapping
+  \item[OWASP] Open Web Application Security Project
+  \item[PII] Personally Identifiable Information
   \item[PO] Product Owner
+  \item[QA] Quality Assurance
   \item[RAG] Retrieval-Augmented Generation
+  \item[RAGAS] Retrieval-Augmented Generation Assessment (evaluation
+    framework)
   \item[SI] Information System (Syst\`eme d'Information)
+  \item[SQL] Structured Query Language
+  \item[SSO] Single Sign-On
+  \item[SSR] Server-Side Rendering
+  \item[SVG] Scalable Vector Graphics
   \item[TDR] Terms of Reference (Termes de R\'ef\'erence)
+  \item[UI] User Interface
+  \item[UNFPA] United Nations Population Fund
+  \item[URL] Uniform Resource Locator
+  \item[UUID] Universally Unique Identifier
+  \item[UX] User Experience
 \end{description}
+\end{multicols}
 
 \clearpage
 \pagenumbering{arabic}
@@ -86,11 +214,100 @@
 \input{chapters/04-sprint-1}
 \input{chapters/05-sprint-2}
 \input{chapters/06-sprint-3}
+\input{chapters/07-sprint-4}
 
 \chapter*{General Conclusion}
 \addcontentsline{toc}{chapter}{General Conclusion}
-% TODO: fill in once all sprints are complete -- objectives achieved,
-% skills acquired, difficulties encountered, future improvements, personal
-% assessment.
+
+\section*{Objectives Achieved}
+\addcontentsline{toc}{section}{Objectives Achieved}
+
+The internship's objective, stated in Chapter~\ref{chap:host-company}, was
+to design and build a decision-support system automating the matching of
+internal experts to TDR-defined positions: structured extraction,
+scored and explained matching, anomaly detection, and a human-reviewable
+report, all the way to a usable dashboard. This was delivered in full
+across the four sprints presented in this report: 33 stories, 170 story
+points, all shipped within their committed sprint windows, with every
+major claim about the system's quality backed by a real, measured number
+rather than an assertion (Chapter~\ref{chap:sprint-4},
+Sections~\ref{sec:live-demo-sprint4} and~\ref{sec:s4-impl}).
+
+Two things were deliberately left out of scope and are stated as such
+rather than silently omitted: a bid/no-bid or pricing recommendation
+capability, discussed informally at the internship's kickoff but never
+present on the actual four-sprint backlog (a full backlog re-read
+confirms no such story across all 34); and full compliance-grade PII
+protection, where Sprint 4 delivered a stated, lightweight, regex-based
+first mitigation rather than a complete redaction system. Both are
+documented as real future-phase candidates, not silently dropped
+requirements.
+
+\section*{Skills Acquired}
+\addcontentsline{toc}{section}{Skills Acquired}
+
+% TODO: personalize this section in your own words before submission.
+% keep it concrete and specific rather than a generic skills list. Draft
+% below is a factual starting point pulled directly from the four sprint
+% chapters; add what genuinely felt like real learning to you.
+
+Beyond the specific technologies listed in Chapter~\ref{chap:project-management}
+(LangGraph, FastAPI, pgvector, Next.js/shadcn), the internship's real
+skill growth was in judgment calls that a course project rarely forces:
+choosing when redundancy is safe and when it silently corrupts data
+(embedding fallback, Section~\ref{sec:post-sprint-hardening}); designing a system
+that fails loudly and specifically instead of quietly wrong
+(typed exceptions throughout the pipeline, guardrail-forbidden extra
+fields); grounding an LLM's output against verifiable evidence instead of
+trusting its word for it (the citation-ledger design,
+Section~\ref{sec:s3-sequence}); and treating ``prove it works'' as its own
+deliverable, not an afterthought (Chapter~\ref{chap:sprint-4}'s 18 points
+of committed evaluation work). Running a full four-sprint Scrum cadence
+solo, with the company supervisor as the only external stakeholder, was
+also a real exercise in self-directed prioritization that a team setting
+would have distributed differently.
+
+\section*{Difficulties Encountered}
+\addcontentsline{toc}{section}{Difficulties Encountered}
+
+The internship had zero budget for paid AI API access, which shaped real
+engineering decisions rather than being a minor inconvenience: the
+multi-provider, multi-key failover system (Chapter~\ref{chap:sprint-1})
+exists specifically because free-tier rate limits are a routine, expected
+occurrence, not an edge case. This constraint had a direct, measurable
+cost: the efficiency numbers reported in ADQ-33 (Implementation,
+Section~\ref{sec:s4-impl}) show a
+per-candidate matching step at a healthy 3.52s median, but TDR extraction
+latency measured under a quota-exhausted run at 838.65s, a genuine,
+unedited measurement of degraded free-tier conditions, not a defect in
+the system. The same constraint is why field-level TDR extraction F1
+remained an honestly reported gap at Sprint 4's close
+(Sprint Retrospective, Section~\ref{sec:s4-retro}) rather than a
+number produced under time pressure by cutting corners on the
+measurement itself.
+
+\section*{Future Improvements}
+\addcontentsline{toc}{section}{Future Improvements}
+
+In order of what would most directly strengthen the system: completing
+the field-level TDR extraction F1 measurement under a fresh quota window;
+growing the scoring-agreement sample beyond its current honestly-small
+$n{=}2$ as more real reviewer decisions accumulate through continued use;
+closing the human-in-the-loop calibration loop so that
+\texttt{calibrate\_against\_history}'s logged signal actually influences
+future scoring rather than only being recorded
+(Chapter~\ref{chap:sprint-3}); and, if the company chooses to pursue it,
+the bid/no-bid recommendation capability discussed at kickoff, which
+would need its own planning pass and its own data (cost, bench
+utilization, historical win/loss records) that does not exist anywhere
+in the current system, rather than being retrofitted onto the existing
+matching pipeline.
+
+\section*{Personal Assessment}
+\addcontentsline{toc}{section}{Personal Assessment}
+
+% TODO: write this section personally. It is meant to be your own
+% honest reflection, not something written on your behalf.
 
 \end{document}
+

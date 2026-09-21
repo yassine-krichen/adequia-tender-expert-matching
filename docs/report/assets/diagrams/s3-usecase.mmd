@@ -1,0 +1,8 @@
+flowchart LR
+  actor(["HR / Bid Manager"])
+  subgraph System["AdéquIA — Sprint 3"]
+    uc1(["Review a Match"])
+    uc2(["Approve / Reject / Override"])
+  end
+  actor --> uc1
+  uc1 -.->|include| uc2

@@ -1,0 +1,18 @@
+sequenceDiagram
+  participant Client
+  participant API as API (ingest)
+  participant Router as ModelRouter
+  participant DB as PostgreSQL
+
+  Client->>API: POST /candidates/cv or /tdrs
+  API->>API: parse file to raw text
+  opt TDR
+    API->>API: chunk, embed (Ollama), retrieve top chunks
+  end
+  API->>Router: invoke_structured_extraction(chunk/doc)
+  Router->>Router: rotate Groq -> Gemini -> Ollama
+  Router-->>API: wire-level extraction result
+  API->>API: validate & coerce into domain model
+  API->>DB: persist (flush between parent/child)
+  DB-->>API: rows committed
+  API-->>Client: structured CandidateCV / TDR

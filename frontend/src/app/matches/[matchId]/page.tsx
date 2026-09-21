@@ -3,6 +3,9 @@
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
+import { BackLink } from '@/common/components/back-link';
+import { DetailPageSkeleton } from '@/common/components/detail-page-skeleton';
+import { PageTransition } from '@/common/components/page-transition';
 import { getMatch } from '@/features/matching/api/get-match';
 import { MatchReportView } from '@/features/matching/components/match-report-view';
 import type { MatchDetail } from '@/features/matching/types/match.types';
@@ -39,9 +42,8 @@ export default function ReportPage() {
   if (isLoading) {
     return (
       <main className="mx-auto max-w-6xl space-y-6 p-8">
-        <p className="text-muted-foreground" role="status">
-          Loading…
-        </p>
+        <BackLink href="/tdrs" label="Back to TDRs" />
+        <DetailPageSkeleton />
       </main>
     );
   }
@@ -49,6 +51,7 @@ export default function ReportPage() {
   if (error !== null) {
     return (
       <main className="mx-auto max-w-6xl space-y-6 p-8">
+        <BackLink href="/tdrs" label="Back to TDRs" />
         <p role="alert" className="text-destructive">
           {error}
         </p>
@@ -61,8 +64,11 @@ export default function ReportPage() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl space-y-6 p-8">
-      <MatchReportView match={match} />
-    </main>
+    <PageTransition>
+      <main className="mx-auto max-w-6xl space-y-6 p-8">
+        <BackLink href={`/tdrs/${match.tdr_id}`} label={`Back to ${match.tdr_mission_title}`} />
+        <MatchReportView match={match} />
+      </main>
+    </PageTransition>
   );
 }

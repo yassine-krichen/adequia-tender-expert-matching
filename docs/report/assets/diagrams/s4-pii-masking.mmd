@@ -1,0 +1,6 @@
+flowchart LR
+  A["Raw CV/TDR text"] --> B["mask_pii\nemail/phone -> name -> mask"]
+  B --> C["Masked text"]
+  C --> R{"ModelRouter\ncloud key available?"}
+  R -->|yes| D["Groq / Gemini\n(external)"]
+  R -->|no, pool exhausted| E["Ollama\n(local)"]

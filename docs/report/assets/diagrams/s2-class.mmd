@@ -1,0 +1,27 @@
+classDiagram
+  direction LR
+  class NormalizedSkill {
+    +str raw_term
+    +str canonical_id
+    +float confidence
+    +str matched_via
+  }
+  class SubScores {
+    +float skill_score
+    +float sector_score
+  }
+  class MatchResult {
+    +bool hard_filter_passed
+    +List~str~ failure_reasons
+    +float compatibility_score
+    +SubScores sub_scores
+  }
+  class SkillTaxonomy {
+    +str canonical_name
+    +List~str~ aliases
+    +vector embedding
+  }
+
+  MatchResult "1" *-- "1" SubScores
+  MatchResult "1" o-- "0..*" NormalizedSkill : uses
+  NormalizedSkill ..> SkillTaxonomy : resolves against

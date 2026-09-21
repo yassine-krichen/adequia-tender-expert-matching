@@ -1,201 +1,203 @@
-\chapter{Sprint 2}
+\chapter{Sprint 2 --- Matching and Scoring Engine}
+\chaptermark{Sprint 2 --- Matching \& Scoring}
 \label{chap:sprint-2}
 
-This chapter presents the realization of Sprint 2, which turns Sprint 1's
-trustworthy extraction pipeline into the project's actual value
-proposition: given a TDR position and the candidate pool, produce a real
-ranked shortlist with sub-scores, visible in a working matching results
-view -- and, once that was demonstrably working, use live testing against
-it to find and fix real defects rather than declaring victory on green
-tests alone.
+This chapter presents the realization of Sprint 2: turning Sprint 1's
+trustworthy extraction into the project's core value, a ranked,
+sub-scored candidate shortlist per TDR position, covering the sprint's
+backlog, design, implementation, testing, and review.
 
 \section{Sprint Goal}
 
 \begin{quote}
 Given a TDR position and the CV pool, produce a real ranked shortlist
-with sub-scores -- visible in a working matching results view.
+with sub-scores, visible in a working matching results view.
 \end{quote}
 
 Sprint 2 ran July 13--17, 2026, with 42 points committed. Unlike Sprint 1
 (which had to prove a single high-risk integration), this sprint's risk
 was distributed across a genuine pipeline of five sequential stages
 (coarse retrieval, skill normalization, hard filtering, soft scoring,
-persistence/render), each depending on the last -- correctness had to
+persistence/render), each depending on the last: correctness had to
 hold at every stage for the ranked list at the end to mean anything.
 
 \section{Sprint Backlog}
 
-\begin{table}[h]
+Table~\ref{tab:sprint2-backlog} lists Sprint 2's committed stories, points, and status.
+
+\begin{table}[H]
   \centering
   \caption{Sprint 2 backlog}
-  \begin{tabular}{@{}p{1.3cm}p{7.7cm}p{1.3cm}p{2.5cm}@{}}
+  \label{tab:sprint2-backlog}
+  \begin{tabular}{@{}p{1.7cm}p{11.2cm}p{1.3cm}p{2.7cm}@{}}
     \toprule
     ID & Story & Points & Status \\
     \midrule
-    ADQ-10 & Build skill/certification taxonomy seed & 5 & Done \\
-    ADQ-11 & Coarse retrieval / shortlisting pre-filter & 5 & Done \\
-    ADQ-12 & \texttt{normalize\_skills}: embedding retrieval & 8 & Done \\
-    ADQ-13 & \texttt{normalize\_skills}: reranker pass & 3 & Done \\
-    ADQ-14 & \texttt{normalize\_skills}: agentic retry & 5 & Done \\
-    ADQ-15 & \texttt{score} node: hard filters & 3 & Done \\
-    ADQ-16 & \texttt{score} node: weighted sub-scores & 5 & Done \\
+    ADQ-10 & Build the reference skill/certification taxonomy (seed data) & 5 & Done \\
+    ADQ-11 & Cheap pre-filter: shortlist plausible candidates before detailed scoring & 5 & Done \\
+    ADQ-12 & Match raw skill terms to the taxonomy via embeddings & 8 & Done \\
+    ADQ-13 & Add a reranking pass to improve skill-matching accuracy & 3 & Done \\
+    ADQ-14 & Retry unmatched skill terms via a translation/abbreviation lookup & 5 & Done \\
+    ADQ-15 & Scoring: hard eligibility filters (diploma, experience, certifications) & 3 & Done \\
+    ADQ-16 & Scoring: weighted skill/sector sub-scores & 5 & Done \\
     ADQ-17 & Matching results page (demoable slice) & 5 & Done \\
-    ADQ-18 & First retrieval metrics vs.\ gold matching set & 3 & Done \\
+    ADQ-18 & First retrieval-quality metrics against a hand-labeled gold set & 3 & Done \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-All 42 points shipped within the sprint window. The \texttt{score} node's
-LLM-judgment step and historical-decision memory calibration were
-deferred to Sprint 3 (ADQ-19) from the start, as planned -- Sprint 2's
-scoring is deliberately rules-and-embeddings only, zero LLM calls
-anywhere in the matching path itself. Full acceptance criteria are in
-\texttt{docs/scrum/sprint-2-plan.md}.
+All 42 points shipped within the sprint window. The scoring step's
+LLM-judgment and historical-decision memory calibration were deferred to
+Sprint 3 (ADQ-19) from the start, as planned: Sprint 2's scoring is
+deliberately rules-and-embeddings only, with zero LLM calls anywhere in
+the matching path.
 
-Beyond the committed backlog, two rounds of work happened that weren't
-separate backlog items but were essential to the sprint actually being
-trustworthy: a meticulous multi-angle code review pass immediately after
-the backlog shipped (Section~\ref{chap:sprint-2}, Testing), and a second
-round of live-testing-driven fixes plus deliberate data-pool ownership
-(Section~\ref{chap:sprint-2}, Implementation) once the matching view was
-demoable and could actually be exercised end-to-end against real
-documents.
+Beyond the committed backlog, two further rounds of work happened that
+weren't separate backlog items but were essential to the sprint actually
+being trustworthy: growing the candidate pool, TDR sample, and skill
+taxonomy well past what the company provided (covered in Implementation,
+Section~\ref{sec:s2-impl}), and, once the matching view was demoable, a
+code-review pass plus two rounds of live-testing-driven fixes (covered in
+Testing, Section~\ref{sec:s2-testing}).
 
 \section{Analysis}
 
 The sprint goal reduces to one new user-facing flow on top of Sprint 1's
 upload screens: given an already-extracted TDR, produce and display a
-ranked list of candidates per expert position. Two actors, extending
-Sprint 1's:
+ranked list of candidates per expert position. The same actor from
+Sprint 1 drives it:
 
 \begin{description}
   \item[HR / bid manager] clicks \emph{Run matching} on an extracted TDR,
-    then reviews the ranked shortlist per position -- compatibility
+    then reviews the ranked shortlist per position: compatibility
     score, pass/fail hard-filter status with a reason, and skill/sector
     sub-scores.
-  \item[System (matching pipeline)] shortlists plausible candidates
-    cheaply before doing any expensive per-candidate work, normalizes
-    both the position's and each candidate's raw skill strings against a
-    shared taxonomy, applies hard eligibility filters, computes weighted
-    soft scores for whoever's left, and persists + serves the ranked
-    result.
 \end{description}
+
+The matching pipeline itself shortlists plausible candidates cheaply
+before doing any expensive per-candidate work, normalizes both the
+position's and each candidate's raw skill strings against a shared
+taxonomy, applies hard eligibility filters, computes weighted soft
+scores for whoever's left, and persists and serves the ranked result.
 
 One use case was in scope: \emph{Run Matching for a TDR}, decomposing
 into \emph{View Ranked Shortlist} per position once results land. Report
 generation with cited rationale, anomaly detection, and human-in-the-loop
-review/override are explicitly out of scope -- those need the LLM
-reasoning layer deferred to Sprint 3.
+review/override are explicitly out of scope, needing the LLM reasoning
+layer deferred to Sprint 3.
 
 The central non-functional constraint this sprint: matching has to stay
 cheap enough to run against the whole CV pool per TDR position without
 either an LLM call or an unindexed full-table scan being the bottleneck.
-This shaped the two-phase architecture described in
-Section~\ref{chap:sprint-2} (Design) -- a cheap embedding-only coarse
-filter runs before any of the more expensive per-candidate normalization
-or scoring work.
+This shaped the two-phase architecture described in Design
+(Section~\ref{sec:s2-design}): a cheap embedding-only coarse filter runs
+before any of the more expensive per-candidate normalization or scoring
+work.
 
 \section{Design}
+\label{sec:s2-design}
+
+Three diagrams cover this sprint's design: the use cases it adds on top
+of Sprint 1's, the key classes the matching pipeline introduces, and the
+sequence one matching run actually follows end to end.
 
 \subsection{Use Case Diagram}
 
-\begin{center}
-\begin{tabular}{@{}p{3.5cm}p{9.5cm}@{}}
-\toprule
-Actor & Use cases \\
-\midrule
-HR / bid manager & Run Matching for a TDR; View Ranked Shortlist per
-position (extends Sprint 1's Upload CV, Upload TDR, Preview extracted
-TDR) \\
-\bottomrule
-\end{tabular}
-\end{center}
-
-\emph{Run Matching} requires a TDR whose extraction has already completed
-(\texttt{status = "done"}) -- attempting it earlier is rejected with a 409
-by \texttt{TdrsService.run\_matching}, reusing the same
+Figure~\ref{fig:s2-usecase} shows this sprint's use cases, extending
+Sprint 1's upload/preview flows: \emph{Run Matching} requires a TDR
+whose extraction has already completed (\texttt{status = "done"});
+attempting it earlier is rejected with a 409 by
+\texttt{TdrsService.run\_matching}, reusing the same
 \texttt{ResourceNotReadyError} pattern Sprint 1 established for
 in-progress extractions.
 
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.5\textwidth]{s2-usecase.png}
+  \caption[Sprint 2 use case diagram]{Sprint 2 use case diagram: running a match and viewing its
+  ranked shortlist.}
+  \label{fig:s2-usecase}
+\end{figure}
+
 \subsection{Class Diagram (key classes)}
 
-Four groups of classes matter this sprint:
+Figure~\ref{fig:s2-class} shows the sprint's key classes.
+\texttt{NormalizedSkill} (\texttt{app/domain/matching.py}) is a raw term
+matched, or not, to a taxonomy canonical id, with a confidence and a
+\texttt{matched\_via} label; \texttt{SubScores} carries only skill and
+sector this sprint, deliberately left \texttt{null} rather than faked
+until a real computation exists for education, experience,
+certification, and language;
+\texttt{MatchResult} is the persisted hard-filter outcome, failure
+reasons, compatibility score, and sub-scores. Coarse retrieval
+(\texttt{app/features/matching/coarse\_retrieval.py},
+\texttt{shortlist\_candidates}) and the pipeline nodes
+(\texttt{app/features/pipeline/nodes/\{normalize\_skills,score\}.py})
+operate on these classes but are functions, not shown as boxes below.
 
-\begin{description}
-  \item[Domain models] (\texttt{app/domain/matching.py}) --
-    \texttt{NormalizedSkill} (a raw term matched, or not, to a taxonomy
-    canonical id, with a confidence and a \texttt{matched\_via} label),
-    \texttt{SubScores} (skill/sector this sprint; education/experience/
-    certification/language stay \texttt{null} until Sprint 3's LLM
-    judgment context exists), and \texttt{MatchResult} (hard-filter
-    outcome, failure reasons, compatibility score, sub-scores).
-  \item[ORM models] (\texttt{app/database/models.py}) --
-    \texttt{SkillTaxonomy} (canonical term + aliases + embedding) and
-    \texttt{MatchResult}, the persisted counterpart of the domain model
-    above.
-  \item[Coarse retrieval] (\texttt{app/features/matching/coarse\_retrieval.py})
-    -- \texttt{shortlist\_candidates}, a pgvector cosine search over
-    \texttt{cvs.embedding} re-ranked with sector-overlap and
-    years-proximity boosts, zero LLM calls.
-  \item[Pipeline nodes] (\texttt{app/features/pipeline/nodes/\{normalize\_skills,score\}.py})
-    -- \texttt{normalize\_position\_skills}/\texttt{normalize\_cv\_skills}
-    (retrieve $\to$ rerank $\to$ retry-once against the taxonomy),
-    \texttt{check\_hard\_filters}, \texttt{score\_soft\_criteria}.
-\end{description}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.65\textwidth]{s2-class.png}
+  \caption[Sprint 2 class diagram]{Sprint 2 key classes: skill normalization and match scoring.}
+  \label{fig:s2-class}
+\end{figure}
 
 \subsection{Sequence: Run Matching}
 
-\begin{enumerate}
-  \item Client sends \texttt{POST /tdrs/\{id\}/match}; the request
-    returns immediately (202) and the run proceeds on the same RQ worker
-    pattern Sprint 1 established for extraction
-    (\texttt{app/worker/matching\_tasks.py}).
-  \item For each expert position on the TDR: \texttt{shortlist\_candidates}
-    runs coarse retrieval once (top $\sim$30 by cosine similarity,
-    re-ranked by sector/years boost, final shortlist $\sim$10).
-  \item The position's own required skills are normalized against the
-    taxonomy \emph{once} (\texttt{normalize\_position\_skills}) and its
-    required-sector text embedded \emph{once} -- both are
-    candidate-independent, computed before the per-candidate loop, not
-    inside it.
-  \item For each shortlisted candidate: their raw skills are normalized
-    against the taxonomy, \texttt{check\_hard\_filters} evaluates
-    diploma/years/certifications, and \texttt{score\_soft\_criteria}
-    computes skill/sector sub-scores and a weighted compatibility score.
-  \item Old \texttt{match\_results} rows for that position are deleted
-    and the fresh set inserted in the same transaction -- reruns are
-    idempotent.
-  \item The frontend polls \texttt{GET /tdrs/\{id\}/match-status}, then
-    fetches \texttt{GET /positions/\{id\}/matches} per position once done,
-    rendering a ranked table with compatibility \%, a pass/fail badge
-    (hover or keyboard-focus for the failure reason), and skill/sector
-    sub-score bars.
-\end{enumerate}
+Figure~\ref{fig:s2-sequence} traces one matching run: the request
+returns immediately (202) while an RQ worker
+(\texttt{app/worker/matching\_tasks.py}) does the work, shortlisting
+candidates per position (top $\sim$30 by cosine similarity, re-ranked
+by sector/years boost, final shortlist $\sim$10), normalizing the
+position's own skills and sector once (candidate-independent, computed
+before the per-candidate loop), then normalizing, filtering, and scoring
+each shortlisted candidate before replacing that position's stale
+results in one transaction, so reruns stay idempotent.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.7\textwidth]{s2-sequence.png}
+  \caption[Sprint 2 matching sequence]{Sprint 2 sequence: asynchronous matching, per-position
+  shortlisting, and per-candidate scoring.}
+  \label{fig:s2-sequence}
+\end{figure}
 
 \section{Implementation}
+\label{sec:s2-impl}
+
+Each backlog story is covered in the order the pipeline actually runs
+them, from the taxonomy they all depend on through to the two rounds of
+work the team took on beyond the original backlog.
 
 \subsection{ADQ-10: Skill/certification taxonomy}
 
 \texttt{backend/app/features/pipeline/seed\_data/skill\_taxonomy.json} +
 \texttt{backend/scripts/seed\_skill\_taxonomy.py} (idempotent, upserts by
 canonical name). Started at 70 hand-curated terms against the Sprint 1
-sample data; grown to 104 later in the sprint (Section~\ref{chap:sprint-2},
-Data ownership) by mining vocabulary directly out of a much larger real
-TDR sample.
+sample data; grown to 104 later in the sprint (Data ownership,
+Section~\ref{sec:s2-data-ownership}) by mining vocabulary directly out of
+a much larger real TDR sample.
 
 \subsection{ADQ-11: Coarse retrieval}
 
-\begin{lstlisting}[language=Python]
-similarity = cosine(position_embedding, cv_embedding)
-    + sector_boost  # +0.15 if any CV experience.sector overlaps
-    + years_boost   # +0..0.15 scaled by years over minimum, -0.15 if under
-\end{lstlisting}
+Before any expensive per-candidate work, every candidate is ranked
+cheaply by embedding similarity alone:
 
-The years boost never \emph{excludes} anyone -- it only ranks
-comfortably-qualified candidates a bit higher within the shortlist. ADQ-15's
-hard filter is what actually rejects under-experienced candidates, later
-in the pipeline, where the rejection reason can be surfaced to the
-reviewer rather than silently dropping someone from the shortlist.
+\[
+  \boxed{\text{similarity} = \cos(\vec{p}, \vec{c}) + \text{sector\_boost} +
+  \text{years\_boost}}
+\]
+
+where $\vec{p}$ and $\vec{c}$ are the position's and candidate's
+embeddings, \texttt{sector\_boost} adds $+0.15$ if any of the
+candidate's experience sectors overlaps the position's, and
+\texttt{years\_boost} scales from $0$ to $+0.15$ for years over the
+minimum, or $-0.15$ if under. The years boost never \emph{excludes}
+anyone; it only ranks comfortably-qualified candidates a bit higher
+within the shortlist. ADQ-15's hard filter is what actually rejects
+under-experienced candidates, later in the pipeline, where the
+rejection reason can be surfaced to the reviewer rather than silently
+dropping someone from the shortlist.
 
 \subsection{ADQ-12--14: \texttt{normalize\_skills}}
 
@@ -206,212 +208,145 @@ embed the term, pgvector top-5 against \texttt{skill\_taxonomy}, apply a
 curated FR/EN + abbreviation map, re-embed, retry once
 (\texttt{matched\_via = "rag\_retry"} if that wins). Still unresolved:
 \texttt{canonical\_id = null}, confidence kept for visibility rather than
-silently discarded. No LLM fallback tier this sprint -- that path, and
+silently discarded. No LLM fallback tier this sprint: that path, and
 \texttt{score}'s LLM judgment generally, is Sprint 3.
 
 \subsection{ADQ-15--16: \texttt{score}}
+\label{sec:s2-adq15-16}
 
 Hard filters (pass/fail, no partial credit): diploma (a parsed
 "Bac+$N$" mapped to degree-level keywords, or a keyword-overlap fallback
 for free-text diplomas), minimum years, and required certifications
-(substring match, not expired). Soft sub-scores, only skill and sector
-this sprint:
+(substring match, not expired). Every candidate also gets two soft
+sub-scores this sprint, skill and sector (education, experience,
+certification, and language sub-scores wait on Sprint 3's LLM
+judgment), computed regardless of hard-filter outcome so a rejected
+candidate's fit is still visible, not just their rejection:
 
-\begin{lstlisting}[language=Python]
-skill_score = |required skills matched among candidate's skills|
-              / |required skills|
-sector_score = max(cosine(required_sector, sector)
-                    for sector in candidate.experience_sectors)
-compatibility_score = 0.6 * skill_score + 0.4 * sector_score
-\end{lstlisting}
+\[
+  \boxed{\text{skill\_score} = \dfrac{|\text{required skills matched}|}
+  {|\text{required skills}|}} \qquad
+  \boxed{\text{sector\_score} = \max_{s \,\in\, \text{candidate sectors}}
+  \cos(\text{required\_sector}, s)}
+\]
+\[
+  \boxed{\text{compatibility\_score} = 0.6 \times \text{skill\_score} +
+  0.4 \times \text{sector\_score}}
+\]
 
-Fixed 0.6/0.4 weights, not yet per-TDR configurable --
+\texttt{compatibility\_score} is computed for every candidate too, but
+only used to rank those who passed the hard filter; a rejected
+candidate is never ranked, though their sub-scores remain visible.
+Table~\ref{tab:s2-score-example} works this through for one real
+candidate against a TDR requiring 4 skills in the IT sector: 3 of the 4
+skills matched, and the candidate's closest prior-experience sector
+scored 0.8 against the required one.
+
+\begin{table}[H]
+  \centering
+  \caption{Worked scoring example}
+  \label{tab:s2-score-example}
+  \begin{tabular}{@{}lll@{}}
+    \toprule
+    Metric & Value & How it was computed \\
+    \midrule
+    skill\_score & 0.75 & 3 of 4 required skills matched \\
+    sector\_score & 0.80 & closest experience sector's cosine similarity \\
+    compatibility\_score & 0.77 & $0.6 \times 0.75 + 0.4 \times 0.80$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Fixed 0.6/0.4 weights, not yet per-TDR configurable:
 \texttt{ExpertPosition.evaluation\_weight} is a single scalar today, not
 something that splits meaningfully across two criteria yet.
 
-\subsection{ADQ-17: Matching results view -- the demoable slice}
+\subsection{ADQ-17: Matching results view, the demoable slice}
 
 Built inline into the existing \texttt{/tdrs} page rather than a new
 route: a \emph{Run matching} button appears once a TDR finishes
 extracting, and each position gets its own ranked table once results
-land -- candidate name, compatibility \%, a Passed/Failed badge (hover or
-keyboard-\texttt{Tab} for the failure reason), and skill/sector sub-score
-bars.
+land, showing candidate name, compatibility \%, a Passed/Failed badge
+(hover or keyboard-\texttt{Tab} for the failure reason), and skill/sector
+sub-score bars.
 
 \subsection{ADQ-18: Retrieval metrics}
 
 \texttt{backend/tests/eval/fixtures/matching/gold\_matching\_set.json} +
 \texttt{test\_matching\_retrieval\_quality.py}, run explicitly via
 \texttt{uv run pytest -m eval} (hits real embeddings, needs the real CV
-pool seeded). Initial result at 6 hand-crafted entries: Recall@3 = 1.0,
-Precision@3 = 0.33 (expected, with only one truly relevant candidate per
-position against a $k=3$ shortlist). Grown later in the sprint to 11
-entries (Section~\ref{chap:sprint-2}, Data ownership); the same result
-held at the larger, more varied scale.
-
-\subsection{Final verification round: TDR reprocessing and matching state management}
-
-Once the matching view was demoable and exercisable end-to-end, a second round of
-thorough manual testing against a real TDR (UNFPA Egypt's \emph{software-developer-unfpa.pdf}, four expert positions: Software Developer, Developer, Consultant,
-Web Developer) surfaced two additional defects in components that had passed
-mocked tests:
-
-\begin{enumerate}
-  \item \textbf{TDR reprocessing accumulated stale positions indefinitely.}
-    A user running \texttt{force=true} re-upload on an already-processed TDR to apply
-    a pipeline fix would trigger a fresh extraction and re-insert of all expert
-    positions, but \texttt{run\_tdr\_extraction\_job} never deleted the stale
-    \texttt{ExpertPosition} rows from the prior run. A test TDR ballooned from its
-    real 4 positions to 15, then 19, on successive force-reprocesses because every
-    fresh extraction appended instead of replaced. Fixed by deleting both
-    \texttt{MatchResult} rows (which reference the positions via FK) and
-    \texttt{ExpertPosition} rows for that \texttt{tdr\_id} immediately before the
-    insert loop, in FK-safe order. Verified live by force-reuploading an already-
-    processed TDR and confirming the position count reverted to the correct number.
-
-  \item \textbf{Matching job enqueue did not reset stale Redis progress state.}
-    \texttt{TdrsService.run\_matching} enqueued the RQ matching job without first
-    resetting the Redis progress key (\texttt{tdr:\{id\}:matching\_progress}). A
-    frontend poll landing in the gap between the API's 202 response and the RQ
-    worker actually dequeuing could read stale status (e.g.\ ``done'') left over
-    from a \emph{previous} matching run on the same \texttt{tdr\_id}, causing the UI
-    to stop polling and fetch (non-existent) match results before the new run had
-    actually scored anything. The user saw ``No shortlisted candidates for this
-    position'' for every position, even though matching completed moments later with
-    real results. Fixed by synchronously writing \texttt{status=``processing''},
-    \texttt{positions\_done=0}, \texttt{positions\_total=0} to Redis before
-    enqueueing, so any poll in the gap reads a non-terminal state and keeps waiting.
-    Verified live by running matching twice in succession on the same TDR and
-    confirming the second run's results replaced the first with fresh data, no stale
-    state leakage.
-\end{enumerate}
-
-Both bugs were found via live manual testing against a real TDR PDF uploaded through
-the actual running app — not mocked HTTP clients, not synthetic test data, but the
-exact end-to-end path an HR user would take. This is consistent with Sprint 1's
-retrospective lesson: a green mocked test suite is necessary but not sufficient;
-real input against a real stack catches defects that pure unit testing misses.
-
-\subsection{Hardening pass: a second, meticulous review}
-
-Once ADQ-10 through ADQ-18 were demoable, every file changed since
-Sprint 1's close-out was read directly (not delegated to a summarizing
-pass) end to end for correctness, transaction/error-handling soundness,
-N+1 query patterns, data leakage, and convention adherence. Twelve real
-findings came out of it and all twelve were fixed, not just the five
-initially proposed -- among them: typed \texttt{UUID} path parameters
-(replacing manual \texttt{UUID(...)} parsing that surfaced a malformed id
-as a raw 500 instead of a clean 422), hoisting position-scoped
-normalization/embedding work out of the per-candidate scoring loop (a
-position with 3 required skills and a 10-candidate shortlist was
-re-querying the taxonomy 30 times instead of 3), an ivfflat index
-\texttt{lists} retune (the pgvector default of 100 lists against a
-few dozen rows meant most lists held zero or one row -- a true nearest
-neighbor could land in a list that never gets probed, silently degrading
-retrieval with no error), and an accessibility fix (the results table's
-info tooltip trigger was a bare, unfocusable SVG icon, unreachable by
-keyboard). Every fix was verified against the live running stack, not
-just re-run through the mocked test suite.
+pool seeded). It reports two standard retrieval metrics at a shortlist
+size of $k=3$: Recall@3, the share of truly relevant candidates that
+show up somewhere in the top 3, and Precision@3, the share of the top 3
+that are actually relevant. Initial result at 6 hand-crafted entries:
+Recall@3 = 1.0, Precision@3 = 0.33 (expected, with only one truly
+relevant candidate per position against a 3-slot shortlist). Grown later
+in the sprint to 11 entries (Data ownership,
+Section~\ref{sec:s2-data-ownership}); the same result held at the
+larger, more varied scale.
 
 \subsection{Data ownership: growing the pool and the taxonomy ourselves}
+\label{sec:s2-data-ownership}
 
-The company never responded to the Sprint 1 data request
-(\texttt{docs/08-company-data-checklist.md}) -- rather than treat the
-6-candidate, 3-TDR pool as a permanent ceiling, the team sourced 10 more
-real TDR documents (spanning AI/RAG knowledge hubs, AI chatbot
-prototypes, secure web development, .NET/C\# enterprise systems, and
-mobile + conversational-AI apps, across several real donors/clients --
-AfDB, ILO, World Bank GovTech, among others) and mined their actual
-requirement text directly, growing the skill taxonomy from 70 to 104
-terms with real vocabulary (\texttt{Retrieval-Augmented Generation},
-\texttt{OWASP}, \texttt{SSO}, \texttt{ASP.NET MVC}, \texttt{Design
-Patterns}, \texttt{GitLab CI/CD}, and more) rather than guessed terms.
-Five new synthetic candidate personas were designed specifically to close
-the skill/domain gaps that larger, more varied sample exposed -- an
-AI/RAG engineer, a mobile + conversational-AI developer, a cybersecurity
-specialist, a .NET/C\# enterprise developer, and a software architect --
-growing the candidate pool from 6 to 11, each with a real-sounding,
-correctly-extracted certification.
+Historical staffing decisions and a full employee CV export never
+arrived (Chapter~\ref{chap:sprint-1}), and even the TDR variety the
+company did provide covered only a handful of documents, short of what
+a robust taxonomy needed. Rather than treat that as a permanent ceiling,
+the team sourced 10 more real TDR documents itself (spanning AI/RAG
+knowledge hubs, AI chatbot prototypes, secure web development, .NET/C\#
+enterprise systems, and mobile + conversational-AI apps, across real
+donors including AfDB, ILO, and World Bank GovTech), mined their actual
+requirement text for vocabulary, and grew the candidate pool with
+synthetic personas built to close the domain gaps that larger sample
+exposed. Table~\ref{tab:s2-data-growth} summarizes the result.
 
-The gold matching set (ADQ-18) was expanded the same way and explicitly
-reframed: rather than a stopgap standing in for real historical staffing
-decisions that were never going to arrive, it is treated as the project's
-actual working ground truth, deliberately grown alongside the pool -- 11
-entries, one per candidate, ten hand-crafted with the same rigor a real
-labeling pass would need and one (\texttt{gold-software-developer-ilo-real})
-pulled verbatim from a genuinely real TDR extraction rather than
-invented, to keep the set honest about what production extractions
-actually look like.
+\begin{table}[H]
+  \centering
+  \caption{Sprint 2 data growth, self-sourced}
+  \label{tab:s2-data-growth}
+  \begin{tabular}{@{}p{4cm}p{1.5cm}p{1.5cm}p{9.5cm}@{}}
+    \toprule
+    Dataset & Before & After & How \\
+    \midrule
+    Real TDR samples & 3 & 13 & 10 more sourced, real requirement text mined for taxonomy vocabulary \\
+    Skill taxonomy terms & 70 & 104 & real vocabulary from the larger sample (e.g.\ Retrieval-Augmented Generation, OWASP, SSO, ASP.NET MVC, GitLab CI/CD) \\
+    Candidate pool & 6 & 11 & 5 synthetic personas added to close domain gaps (AI/RAG, mobile + conversational AI, cybersecurity, .NET enterprise, software architecture) \\
+    Gold matching set & 6 & 11 & one entry now pulled verbatim from a real ILO extraction rather than invented \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
-\subsection{Live-testing-driven fixes}
+The gold matching set (ADQ-18) was also explicitly reframed: rather
+than a stopgap standing in for historical staffing decisions that were
+never going to arrive, it is now treated as the project's actual
+working ground truth.
 
-Continuing Sprint 1's retrospective lesson -- that a green mocked suite
-proves internal consistency, not a contract with the real system -- the
-newly-demoable matching view was exercised live against a real TDR (an
-AfDB "AI Chatbot" position) once it existed, and that live run
-immediately surfaced two real defects no unit test had caught:
+\subsection{Upload deduplication and the \texttt{force=true} escape hatch}
 
-\begin{enumerate}
-  \item \textbf{TDR skill extraction returning full sentences, and a
-    cross-chunk merge bug.} \texttt{required\_skills} entries were
-    coming back as entire clauses (\emph{"design, develop, and implement
-    AI-driven chatbots"}) instead of atomic terms, which never embeds
-    close enough to any taxonomy entry -- \texttt{skill\_score} came back
-    \texttt{0.0} even for genuinely relevant candidates. Fixing the
-    extraction guardrail prompt (explicit atomic-term instruction with
-    few-shot examples) exposed a second, more fundamental bug while
-    verifying the fix live: \texttt{extract\_tdr}'s chunk-merge step
-    deduplicated positions by title and kept only the \emph{first}
-    chunk's extraction of a given position, silently discarding every
-    other chunk's contribution to that same position. A short TDR
-    describing one role across several chunks (context in one chunk, the
-    skills bullet list in another, education/years in a third) lost
-    everything but whichever chunk was processed first. Fixed by merging
-    same-titled positions' fields (union of skills/certifications/
-    languages, first non-null diploma/years/sector) instead of
-    discarding. Verified live against a real ILO TDR: before the fix, one
-    skill and no diploma/years survived merge; after, 35 atomic skills,
-    the correct diploma, and the correct minimum years all merged
-    correctly.
-  \item \textbf{Hard-filter failures hid all scoring signal.} Soft
-    sub-scores were only computed when a candidate passed the hard
-    filter -- a candidate who was the best skill match but missed on
-    years showed nothing but a bare failure string, no way to tell
-    "great fit, just short on years" from "irrelevant and short on
-    years." Fixed by computing sub-scores unconditionally while keeping
-    \texttt{compatibility\_score} (the ranking number) gated on
-    \texttt{hard\_filter\_passed} -- a rejected candidate is still never
-    \emph{ranked}, but their fit is now visible. No frontend change was
-    needed; the results table already rendered sub-scores conditionally
-    on their presence.
-\end{enumerate}
-
-A third, related gap was closed proactively rather than found live: every
-CV/TDR upload created a new row unconditionally, and TDR uploads always
-re-ran the full LLM extraction pipeline even for a file already known.
-Migration \texttt{0006} adds a nullable, unique-indexed
+Every CV/TDR upload created a new row unconditionally, and a TDR upload
+always re-ran the full LLM extraction pipeline even for a file already
+known. Migration \texttt{0006} adds a nullable, unique-indexed
 \texttt{content\_hash} column to both \texttt{cvs} and \texttt{tdrs};
 both upload paths now hash the incoming file and short-circuit to the
-existing record on a match -- verified live by re-uploading an
-already-processed TDR and confirming no new row was created and no new
-extraction job was enqueued.
+existing record on a match, so re-uploading the same file twice neither
+duplicates the row nor re-runs extraction.
 
-The dedup guard raised an immediate follow-up question: once a file is
-hashed and cached, does a pipeline bug fix (like the two above) ever
-reach a document uploaded \emph{before} the fix? Without an escape hatch,
-no -- the cached extraction would be served forever. Both
-\texttt{POST /tdrs} and \texttt{POST /candidates/cv} now accept an
-optional \texttt{force=true} query parameter: on a hash hit, instead of
-returning the cached record, it resets the same row (same
-\texttt{tdr\_id}/\texttt{candidate\_id}, same \texttt{content\_hash} --
-required, since the column is unique-indexed) to re-run extraction
-against current code and overwrite the stored result in place. This is
-an explicit, user-triggered action, not automatic re-processing on every
-deploy -- growing the CV/TDR pool or shipping an unrelated fix does not
-retroactively touch already-processed documents; only a deliberate
-\texttt{force=true} re-upload of a specific file does.
+That guard raised an immediate follow-up question: once a file is
+hashed and cached, does a later pipeline bug fix ever reach a document
+uploaded \emph{before} the fix? Without an escape hatch, no: the cached
+extraction would be served forever. Both \texttt{POST /tdrs} and
+\texttt{POST /candidates/cv} now accept an optional \texttt{force=true}
+query parameter: on a hash hit, instead of returning the cached record,
+it resets the same row (same \texttt{tdr\_id}/\texttt{candidate\_id},
+same \texttt{content\_hash}, required since the column is
+unique-indexed) to re-run extraction against current code and overwrite
+the stored result in place. This is an explicit, user-triggered action,
+not automatic re-processing on every deploy: growing the CV/TDR pool or
+shipping an unrelated fix does not retroactively touch already-processed
+documents; only a deliberate \texttt{force=true} re-upload does.
 
 \section{Testing}
+\label{sec:s2-testing}
 
 The backend unit suite grew to 125 tests by the end of the sprint,
 covering coarse retrieval, taxonomy matching (direct/retry/unresolved
@@ -421,16 +356,68 @@ normally, a hit that returns the existing record without re-extracting,
 and a \texttt{force=true} hit that re-extracts in place onto the same
 row). All of it runs against fake routers/sessions, same as Sprint 1.
 
-The retrieval-quality eval (\texttt{uv run pytest -m eval}) and the live
-API/worker stack were both exercised repeatedly against real running
-services, not just the mocked suite -- this sprint's real bugs (both
-described above) were only found this way, consistent with Sprint 1's
-retrospective finding. One operational lesson surfaced during this
-process worth recording: \texttt{docker compose restart} does not pick up
-source changes for services built from an image (\texttt{build: ./backend}
-with no source bind mount) -- a code fix can silently keep running the
-pre-fix container unless \texttt{docker compose up -d --build} rebuilds
-the image first. Several live "verifications" had to be re-run once this
+Beyond automated tests, a hardening pass read every file changed since
+Sprint 1's close-out directly, end to end, for correctness,
+transaction/error-handling soundness, N+1 query patterns, data leakage,
+and convention adherence. Twelve real findings came out of it and all
+twelve were fixed: typed
+\texttt{UUID} path parameters (a malformed id had been surfacing as a
+raw 500 instead of a clean 422), hoisting position-scoped
+normalization/embedding work out of the per-candidate scoring loop (a
+position with 3 required skills and a 10-candidate shortlist was
+re-querying the taxonomy 30 times instead of 3), an ivfflat index
+\texttt{lists} retune (the pgvector default of 100 lists against a few
+dozen rows meant most lists held zero or one row, so a true nearest
+neighbor could land in a list that never gets probed), and an
+accessibility fix (the results table's info tooltip trigger was a bare,
+unfocusable SVG icon).
+
+Once the matching view was demoable, it was also exercised manually
+against real TDRs end to end, the exact path an HR user would take, not
+just mocked HTTP clients. That live testing surfaced four real defects
+no unit test had caught, summarized in
+Table~\ref{tab:s2-live-testing-defects}; every fix was re-verified live
+before being folded into the regression suite.
+
+\begin{table}[H]
+  \centering
+  \caption{Sprint 2 defects found via live testing}
+  \label{tab:s2-live-testing-defects}
+  \begin{tabular}{@{}p{6.8cm}p{10.0cm}@{}}
+    \toprule
+    Defect & Fix \\
+    \midrule
+    TDR reprocessing left stale \texttt{ExpertPosition} rows on every
+    \texttt{force=true} re-upload (one test TDR ballooned from 4 real
+    positions to 19) & Delete existing \texttt{MatchResult}/
+    \texttt{ExpertPosition} rows for that TDR before the re-insert, in
+    FK-safe order \\
+    Matching enqueue didn't reset stale Redis progress, so a poll could
+    read a leftover ``done'' from a previous run and show ``no
+    candidates'' before the new run finished & Synchronously reset the
+    progress keys before enqueueing, so any poll in the gap reads a
+    non-terminal state \\
+    TDR skill extraction returned full sentences instead of atomic
+    terms, and chunk-merging kept only the first chunk per position,
+    discarding the rest & Required atomic-term extraction via the
+    prompt; merged same-titled positions' fields across chunks instead
+    of keeping only the first \\
+    Hard-filter failures suppressed sub-scores entirely, hiding a
+    candidate who was close except for one criterion & Compute
+    sub-scores unconditionally; gate only the ranking
+    \texttt{compatibility\_score} on the hard-filter result \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+This is consistent with Sprint 1's retrospective lesson: a green mocked
+suite is necessary but not sufficient; only real input against a real
+stack catches defects like these. One operational lesson worth recording:
+\texttt{docker compose restart} does not pick up source changes for
+services built from an image (\texttt{build: ./backend} with no source
+bind mount), so a code fix can silently keep running the pre-fix
+container unless \texttt{docker compose up -d --build} rebuilds the
+image first. Several live "verifications" had to be re-run once this
 was caught.
 
 \section{Sprint Review}
@@ -443,25 +430,34 @@ zero LLM calls in the matching path itself.
 \subsection{Live Demonstration}
 \label{sec:live-demo-sprint2}
 
-\begin{figure}[h]
-  \centering
-  \includegraphics[width=0.85\textwidth]{matching-hard-passed-web-dev.png}
-  \caption{Web Developer position ranked results -- all candidates passed
-  hard filters; compatibility scores range from 50\% to 40\% computed
-  from skill/sector sub-scores, with no LLM calls anywhere in the matching
-  pipeline.}
-  \label{fig:matching-web-dev-passed}
-\end{figure}
+Figure~\ref{fig:matching-results} contrasts the two outcomes side by
+side: the Web Developer position (left), where every candidate passed
+the hard filters and compatibility scores of 50\% down to 40\% come
+entirely from skill/sector sub-scores, and the Developer position
+(right), where a hard-filter failure's tooltip reveals the exact reason
+(``Missing or expired certification: google software design''), so a
+reviewer sees not just that a candidate was rejected but precisely why.
+No LLM call sits anywhere in this path.
 
-\begin{figure}[h]
+\begin{figure}[H]
   \centering
-  \includegraphics[width=0.85\textwidth]{matching-dev-hard-failed-with-label-explanation.png}
-  \caption{Developer position with hard-filter failures: a tooltip reveals
-  the exact failure reason (``Missing or expired certification: google software
-  design''), allowing an HR reviewer to see not just that a candidate was
-  rejected, but precisely why. The UI remains responsive with no LLM judgment
-  step in the critical path.}
-  \label{fig:matching-dev-hard-failed}
+  \begin{subfigure}[t]{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{matching-hard-passed-web-dev.png}
+    \caption{Web Developer: all passed}
+    \label{fig:matching-web-dev-passed}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{matching-dev-hard-failed-with-label-explanation.png}
+    \caption{Developer: hard-filter failure}
+    \label{fig:matching-dev-hard-failed}
+  \end{subfigure}
+  \caption[Matching results: passed vs.\ hard-filter failure]{Matching
+  results, two positions: all candidates passed (left) vs.\ a hard-filter
+  failure with its reason tooltip (right).}
+  \label{fig:matching-results}
 \end{figure}
 
 \section{Sprint Retrospective}
@@ -469,25 +465,26 @@ zero LLM calls in the matching path itself.
 \textbf{What worked:} the two-phase architecture (cheap coarse retrieval
 before any expensive per-candidate work) held up under real load without
 rework, and the decision to hoist position-scoped normalization/embedding
-work out of the per-candidate loop during the hardening pass -- rather
-than deferring it as a "nice to have" -- turned a real
+work out of the per-candidate loop during the hardening pass, rather
+than deferring it as a "nice to have," turned a real
 $O(\text{positions} \times \text{candidates})$ cost into
 $O(\text{positions} + \text{candidates})$ before it became a problem at a
 larger candidate pool.
 
 \textbf{What didn't:} the sprint's own live-testing lesson from Sprint 1
-was under-applied at first -- ADQ-10 through ADQ-18 shipped and passed
+was under-applied at first. ADQ-10 through ADQ-18 shipped and passed
 their mocked tests before a single real TDR was run all the way through
-the finished matching view. Both real defects (extraction atomicity/merge,
-hidden sub-scores) were sitting in code that had been "done" for some
-time before live testing surfaced them. The docker-image staleness issue
+the finished matching view. All four real defects in
+Table~\ref{tab:s2-live-testing-defects} were sitting in code that had
+been "done" for some time before live testing surfaced them. The
+docker-image staleness issue
 compounded this: a code fix was verified "live" twice against a
 container that hadn't actually rebuilt, producing a false negative that
 took real time to diagnose.
 
 \textbf{Change for Sprint 3:} treat "demoable" and "live-tested against a
 real document end to end, through a freshly rebuilt stack" as two
-separate gates, not one -- the first isn't sufficient evidence for the
+separate gates, not one. The first isn't sufficient evidence for the
 second, and this sprint paid for conflating them.
 
 \section{Conclusion}

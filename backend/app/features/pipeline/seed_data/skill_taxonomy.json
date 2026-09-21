@@ -414,5 +414,37 @@
   {
     "canonical_name": "IoT",
     "aliases": ["Internet of Things", "Objets connectés"]
+  },
+  {
+    "canonical_name": "Power BI",
+    "aliases": ["Microsoft Power BI", "PowerBI"]
+  },
+  {
+    "canonical_name": "Modélisation de données",
+    "aliases": ["Data modeling", "Modélisation BI", "Data modelling"]
+  },
+  {
+    "canonical_name": "Recueil de besoins",
+    "aliases": ["Requirements gathering", "Analyse des besoins", "Needs analysis"]
+  },
+  {
+    "canonical_name": "Tests de recette",
+    "aliases": ["User acceptance testing", "UAT", "Tests d'acceptation"]
+  },
+  {
+    "canonical_name": "Terraform",
+    "aliases": ["Infrastructure as Code", "IaC"]
+  },
+  {
+    "canonical_name": "Supervision applicative",
+    "aliases": ["Monitoring", "Prometheus", "Grafana", "Observabilité"]
+  },
+  {
+    "canonical_name": "Relations bailleurs de fonds",
+    "aliases": ["Donor relations", "Relations avec les bailleurs", "Gestion des bailleurs de fonds"]
+  },
+  {
+    "canonical_name": "Playwright",
+    "aliases": ["Test automation Playwright"]
   }
 ]

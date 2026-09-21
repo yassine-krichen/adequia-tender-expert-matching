@@ -1,13 +1,17 @@
 'use client';
 
 import { Users } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 
 import { EmptyState } from '@/common/components/empty-state';
 import { FileUpload } from '@/common/components/file-upload';
+import { PageTransition } from '@/common/components/page-transition';
 import { TableLink } from '@/common/components/table-link';
 import { Button } from '@/common/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/common/components/ui/card';
+import { Checkbox } from '@/common/components/ui/checkbox';
+import { Skeleton } from '@/common/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -78,97 +82,126 @@ export default function CandidatesPage() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl space-y-6 p-8">
-      <h1 className="font-heading text-2xl">Candidate CV upload</h1>
-      <p className="text-muted-foreground">
-        Upload a CV (PDF or docx) to see it turned into structured, extracted data.
-      </p>
+    <PageTransition>
+      <main className="mx-auto max-w-6xl space-y-6 p-8">
+        <h1 className="font-heading text-2xl">Candidate CV upload</h1>
+        <p className="text-muted-foreground">
+          Upload a CV (PDF or docx) to see it turned into structured, extracted data.
+        </p>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Upload CV</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form className="space-y-3" onSubmit={handleSubmit}>
-            <FileUpload accept=".pdf,.docx" disabled={isUploading} onFileSelected={setFile} />
-            <label className="flex items-center gap-2 text-sm text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={forceReprocess}
-                onChange={(event) => setForceReprocess(event.target.checked)}
-                disabled={isUploading}
-                className="size-4 rounded border-input"
-              />
-              Force reprocess (re-run extraction even if this exact file was already processed)
-            </label>
-            <Button type="submit" disabled={!file || isUploading}>
-              {isUploading ? 'Uploading…' : 'Upload'}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Upload CV</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form className="space-y-3" onSubmit={handleSubmit}>
+              <FileUpload accept=".pdf,.docx" disabled={isUploading} onFileSelected={setFile} />
+              <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Checkbox
+                  checked={forceReprocess}
+                  onCheckedChange={(checked) => setForceReprocess(checked === true)}
+                  disabled={isUploading}
+                />
+                Force reprocess (re-run extraction even if this exact file was already processed)
+              </label>
+              <Button type="submit" disabled={!file || isUploading}>
+                {isUploading ? 'Uploading…' : 'Upload'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
 
-      {error && (
-        <div className="space-y-2">
-          <p role="alert" className="text-destructive">
-            {error}
-          </p>
-          {file && (
-            <Button type="button" size="sm" variant="outline" onClick={handleRetryWithForce}>
-              Retry with force reprocess
-            </Button>
-          )}
-        </div>
-      )}
-
-      {result && <CandidateCvDetail cv={result} />}
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Candidates</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {listError && (
+        {error && (
+          <div className="space-y-2">
             <p role="alert" className="text-destructive">
-              {listError}
+              {error}
             </p>
+            {file && (
+              <Button type="button" size="sm" variant="outline" onClick={handleRetryWithForce}>
+                Retry with force reprocess
+              </Button>
+            )}
+          </div>
+        )}
+
+        <AnimatePresence>
+          {result && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <CandidateCvDetail cv={result} />
+            </motion.div>
           )}
-          {!listError && isLoadingCandidates && (
-            <p className="text-sm text-muted-foreground" role="status">
-              Loading…
-            </p>
-          )}
-          {!listError && !isLoadingCandidates && candidates.length === 0 && (
-            <EmptyState
-              icon={Users}
-              title="No candidates yet"
-              description="Upload a CV above to see it appear in the roster here."
-            />
-          )}
-          {!listError && !isLoadingCandidates && candidates.length > 0 && (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Full name</TableHead>
-                  <TableHead>Last updated</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {candidates.map((candidate) => (
-                  <TableRow key={candidate.candidate_id}>
-                    <TableCell>
-                      <TableLink href={`/candidates/${candidate.candidate_id}`}>
-                        {candidate.full_name}
-                      </TableLink>
-                    </TableCell>
-                    <TableCell>{new Date(candidate.last_updated).toLocaleString()}</TableCell>
+        </AnimatePresence>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Candidates</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {listError && (
+              <p role="alert" className="text-destructive">
+                {listError}
+              </p>
+            )}
+            {!listError && isLoadingCandidates && (
+              <Table role="status" aria-label="Loading candidates">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Full name</TableHead>
+                    <TableHead>Last updated</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-    </main>
+                </TableHeader>
+                <TableBody>
+                  {[0, 1, 2].map((row) => (
+                    <TableRow key={row}>
+                      <TableCell>
+                        <Skeleton className="h-4 w-48" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-32" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+            {!listError && !isLoadingCandidates && candidates.length === 0 && (
+              <EmptyState
+                icon={Users}
+                title="No candidates yet"
+                description="Upload a CV above to see it appear in the roster here."
+              />
+            )}
+            {!listError && !isLoadingCandidates && candidates.length > 0 && (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Full name</TableHead>
+                    <TableHead>Last updated</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {candidates.map((candidate) => (
+                    <TableRow key={candidate.candidate_id}>
+                      <TableCell>
+                        <TableLink href={`/candidates/${candidate.candidate_id}`}>
+                          {candidate.full_name}
+                        </TableLink>
+                      </TableCell>
+                      <TableCell>{new Date(candidate.last_updated).toLocaleString()}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      </main>
+    </PageTransition>
   );
 }

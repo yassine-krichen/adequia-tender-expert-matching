@@ -3,6 +3,9 @@
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
+import { BackLink } from '@/common/components/back-link';
+import { DetailPageSkeleton } from '@/common/components/detail-page-skeleton';
+import { PageTransition } from '@/common/components/page-transition';
 import { Card, CardContent, CardHeader, CardTitle } from '@/common/components/ui/card';
 import { getPositionMatches } from '@/features/matching/api/get-position-matches';
 import type { MatchResult } from '@/features/matching/types/match.types';
@@ -59,9 +62,8 @@ export default function TdrDetailPage() {
   if (isLoading) {
     return (
       <main className="mx-auto max-w-6xl space-y-6 p-8">
-        <p className="text-muted-foreground" role="status">
-          Loading…
-        </p>
+        <BackLink href="/tdrs" label="Back to TDRs" />
+        <DetailPageSkeleton />
       </main>
     );
   }
@@ -69,6 +71,7 @@ export default function TdrDetailPage() {
   if (error !== null) {
     return (
       <main className="mx-auto max-w-6xl space-y-6 p-8">
+        <BackLink href="/tdrs" label="Back to TDRs" />
         <p role="alert" className="text-destructive">
           {error}
         </p>
@@ -81,18 +84,21 @@ export default function TdrDetailPage() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl space-y-6 p-8">
-      <Card>
-        <CardHeader>
-          <CardTitle>{tdr.mission_title}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p>Client: {tdr.client ?? '—'}</p>
-          <p>Sector: {tdr.sector ?? '—'}</p>
+    <PageTransition>
+      <main className="mx-auto max-w-6xl space-y-6 p-8">
+        <BackLink href="/tdrs" label="Back to TDRs" />
+        <Card>
+          <CardHeader>
+            <CardTitle>{tdr.mission_title}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p>Client: {tdr.client ?? '—'}</p>
+            <p>Sector: {tdr.sector ?? '—'}</p>
 
-          <TdrPositionsList positions={tdr.positions} matchesByPosition={matchesByPosition} />
-        </CardContent>
-      </Card>
-    </main>
+            <TdrPositionsList positions={tdr.positions} matchesByPosition={matchesByPosition} />
+          </CardContent>
+        </Card>
+      </main>
+    </PageTransition>
   );
 }

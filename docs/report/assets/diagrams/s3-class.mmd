@@ -1,0 +1,48 @@
+classDiagram
+  direction LR
+  class Anomaly {
+    +AnomalyType type
+    +AnomalySeverity severity
+    +str description
+  }
+  class AnomalyType {
+    <<enumeration>>
+    employment_gap
+    date_overlap
+    expired_certification
+    education_date_inconsistency
+    age_graduation_implausibility
+    unverifiable_claim
+    title_seniority_mismatch
+    missing_mandatory_requirement
+  }
+  class AnomalySeverity {
+    <<enumeration>>
+    info
+    warning
+    blocking
+  }
+  class Citation {
+    +str claim
+    +str source_doc
+    +str source_span
+  }
+  class ReviewDecision {
+    <<enumeration>>
+    approved
+    rejected
+    overridden_to_approve
+    overridden_to_reject
+  }
+  class MatchResult {
+    +str rationale
+    +List~Citation~ citations
+    +ReviewDecision reviewer_decision
+    +List~Anomaly~ anomalies
+  }
+
+  MatchResult "1" o-- "0..*" Anomaly
+  MatchResult "1" o-- "0..*" Citation
+  Anomaly --> AnomalyType
+  Anomaly --> AnomalySeverity
+  MatchResult --> ReviewDecision

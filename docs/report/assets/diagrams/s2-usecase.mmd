@@ -1,0 +1,8 @@
+flowchart LR
+  actor(["HR / Bid Manager"])
+  subgraph System["AdéquIA — Sprint 2"]
+    uc1(["Run Matching for a TDR"])
+    uc2(["View Ranked Shortlist"])
+  end
+  actor --> uc1
+  uc1 -.->|include| uc2

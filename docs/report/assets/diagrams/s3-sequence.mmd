@@ -1,0 +1,21 @@
+sequenceDiagram
+  participant Worker as RQ Worker
+  participant Graph as LangGraph StateGraph
+  participant MCP as MCP Server
+  participant DB as PostgreSQL
+  participant API
+  participant Reviewer as HR / Bid Manager
+
+  Worker->>Graph: ainvoke(state, thread_id=match_id)
+  Graph->>Graph: normalize_skills -> score (hard filters)
+  Graph->>Graph: judge_qualitative_fit (LLM)
+  Graph->>MCP: calibrate_against_history (sector lookup)
+  Graph->>Graph: detect_anomalies (rules + LLM pass)
+  Graph->>Graph: generate_report (citation ledger)
+  Graph->>Graph: human_review interrupt()
+  Graph-->>Worker: paused state
+  Worker->>DB: write match_results/anomalies (decision = NULL)
+  Reviewer->>API: POST /matches/{id}/review
+  API->>Graph: aget_state() then Command(resume=decision)
+  Graph-->>API: resumed, finalized
+  API->>DB: update match_results + historical_decisions

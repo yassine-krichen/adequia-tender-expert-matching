@@ -3,94 +3,103 @@
 
 \section{Company Presentation}
 
+This section presents ST2i itself: its history, business sector, and
+internal organization.
+
 \subsection{Company Overview}
 
 ST2i (Soci\'et\'e Tunisienne d'Informatique pour l'Ing\'enierie) is a
 Tunisian information technology company founded in 1992 and a subsidiary of
 the STUDI Group, an international engineering group established in 1970
-with operations across Africa and Europe.
+with operations across Africa and Europe. With a multidisciplinary team of
+engineers, consultants, and technical experts, ST2i delivers digital
+transformation projects for both public and private organizations in
+Tunisia and internationally.
 
-The company specializes in Information Technology (IT), Information Systems
-(IS), Geographic Information Systems (GIS), and Telecommunications. ST2i
-provides end-to-end digital solutions, covering business analysis, software
-development, system integration, deployment, maintenance, and technical
-support.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.7\textwidth]{st2i-office.png}
+  \caption[ST2i offices]{ST2i's offices.}
+  \label{fig:st2i-office}
+\end{figure}
 
-With a multidisciplinary team of engineers, consultants, and technical
-experts, ST2i delivers digital transformation projects for both public and
-private organizations in Tunisia and internationally.
-
-\subsection{Business Sector}
+\subsection{Business Sector and Organization}
 
 ST2i operates in the Information and Communication Technology (ICT) sector
-as an IT services and consulting company. Its core activities include:
-
-\begin{itemize}
-  \item Information systems consulting and analysis
-  \item Custom software development
-  \item Software integration
-  \item Geographic Information Systems (GIS)
-  \item Digital transformation consulting
-  \item Telecommunications solutions
-  \item Technical support, maintenance, and user training
-\end{itemize}
-
-The company's solutions serve multiple industries, including public
-administration, telecommunications, banking, healthcare, education, energy,
-transportation, and infrastructure.
-
-\subsection{Organization}
-
-ST2i follows a collaborative organizational structure bringing together
-consulting, functional, and technical teams. Its main departments include
-Executive Management, Business Development, Project Management, Consulting
-and Business Analysis, Software Development, Infrastructure and Systems
-Integration, and Quality Assurance and Technical Support. Project teams
-typically consist of a Project Manager, Business Analysts, Software
-Engineers, QA Engineers, and Technical Experts.
+as an IT services and consulting company, spanning information systems
+consulting, custom software development, system integration, Geographic
+Information Systems (GIS), digital transformation consulting,
+telecommunications solutions, and technical support and training, across
+industries including public administration, telecommunications, banking,
+healthcare, education, energy, transportation, and infrastructure. Its
+organizational structure brings together consulting, functional, and
+technical departments (Executive Management, Business Development, Project
+Management, Consulting and Business Analysis, Software Development,
+Infrastructure and Systems Integration, Quality Assurance and Technical
+Support), with project teams typically pairing a Project Manager and
+Business Analysts with Software Engineers, QA Engineers, and Technical
+Experts.
 
 \section{Existing Environment}
 
-ST2i bids on public and international tenders (often funded by
-institutions such as the World Bank or GIZ) that specify one or more
-required expert positions. Matching internal experts to these positions is
-currently done manually: a business analyst reads the Terms of Reference
-(TDR) and searches the internal CV database by memory or keyword search,
-with no systematic scoring, no anomaly checking, and no audit trail
-explaining why a given expert was or was not selected.
+ST2i bids on public and international tenders (often funded by institutions
+such as the World Bank or GIZ) that specify one or more required expert
+positions. Matching internal experts to these positions is currently done
+manually: a business analyst reads the Terms of Reference (TDR) and searches
+the internal CV database by memory or keyword search, with no systematic
+scoring, no anomaly checking, and no audit trail explaining why a given
+expert was or was not selected. Real TDRs are often 100 to 200+ pages; the
+analyst currently relies on a paid ChatGPT Plus subscription just to be able
+to upload and read documents that size, an ongoing licensing cost incurred
+to compensate for a missing internal tool, not a real solution to the
+staffing problem itself.
 
 \subsection{Identified Limitations}
 
-\begin{itemize}
-  \item \textbf{Slow}: manually reading a TDR and cross-referencing dozens
-    of CVs does not scale as the number of active tenders grows.
-  \item \textbf{Inconsistent}: two analysts reviewing the same TDR may reach
-    different conclusions, with no documented rationale to reconcile them.
-  \item \textbf{Error-prone}: a missed qualified expert can mean passing on
-    a winnable bid; a missed disqualifying gap (an expired certification, an
-    unmet minimum-experience requirement) can mean committing to staff who
-    do not actually meet a client's mandatory requirements.
-  \item \textbf{No institutional memory}: past staffing decisions are not
-    captured in a form that could calibrate future ones.
-\end{itemize}
+Table~\ref{tab:limitations} summarizes the five recurring limitations of
+this manual process, each with a direct operational or financial cost.
+
+\begin{table}[H]
+  \centering
+  \caption{Limitations of the current manual matching process}
+  \label{tab:limitations}
+  \begin{tabular}{@{}p{3.4cm}p{14.3cm}@{}}
+    \toprule
+    Slow and costly & Manually reading a TDR and cross-referencing dozens of CVs does not scale with the number of active tenders; the ChatGPT Plus workaround for the largest documents is a recurring cost for a problem an internal tool should solve outright. \\
+    Imperfect memory & No analyst holds an accurate, up-to-date record of every employee's diplomas, certifications, and project history. People routinely misremember details of their own CV, let alone a colleague's. \\
+    Inconsistent & Two analysts reviewing the same TDR may reach different conclusions, with no documented rationale to reconcile them. \\
+    Error-prone at scale & The larger the TDR and the more personnel to check against, the more likely a genuine match or a disqualifying gap gets missed: a missed qualified expert can mean passing on a winnable bid, a missed gap can mean committing to unqualified staff after the bid is won. \\
+    No institutional memory & Past staffing decisions are not captured in a form that could calibrate future ones, so the same manual evaluation starts from zero every time. \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Taken together, these limitations cap how many tenders ST2i can safely
+pursue at once, and translate directly into missed or mishandled bids: lost
+revenue.
 
 \section{Problem Statement}
 
 Given a TDR describing one or more required expert positions and ST2i's
 internal CV database, how can the company reliably determine, for each
-position, which employees are qualified -- with enough explanation that a
-human reviewer can trust and, when necessary, override the result?
+position, which employees are qualified, with enough explanation that a
+human reviewer can trust and, when necessary, override the result, at a
+speed and consistency that does not degrade as the company and its tender
+volume grow?
 
 \section{Proposed Solution}
 
 AdéquIA automates this matching step end to end: it parses CVs and TDRs
-into structured data, retrieves and scores candidates against each
-required position using a combination of rule-based hard filters, weighted
-embedding similarity, and LLM judgment for qualitative criteria, flags
-anomalies (date inconsistencies, expired certifications, implausible
-claims), and produces a citation-backed rationale for every score. A human
-reviewer stays in the loop at every decision point: every automated
-ranking can be approved, rejected, or overridden, and that decision is
-written back to inform future scoring. The full technical design is
-detailed in the project's architecture specification; the remainder of
-this report focuses on how it was built, sprint by sprint.
+into structured data regardless of document length, retrieves and scores
+candidates against each required position using a combination of
+rule-based hard filters, weighted embedding similarity, and LLM judgment
+for qualitative criteria, flags anomalies (date inconsistencies, expired
+certifications, implausible claims), and produces a citation-backed
+rationale for every score. A human reviewer stays in the loop at every
+decision point: every automated ranking can be approved, rejected, or
+overridden, and that decision is written back to inform future scoring.
+Where the manual process degrades as ST2i grows, this one does not: the
+cost of evaluating one more candidate or one more position is a few
+seconds of automated computation, not a proportionally larger share of an
+analyst's attention. The remainder of this report focuses on how it was
+built, sprint by sprint.

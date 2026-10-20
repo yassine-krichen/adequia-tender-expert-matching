@@ -19,9 +19,7 @@ def test_rerank_prefers_exact_canonical_name_match_over_higher_raw_similarity() 
     exact = _taxonomy_row("Gestion de projet")
     looser = _taxonomy_row("Gestion des risques")
 
-    ranked = _rerank_taxonomy_candidates(
-        "gestion de projet", [(looser, 0.72), (exact, 0.70)]
-    )
+    ranked = _rerank_taxonomy_candidates("gestion de projet", [(looser, 0.72), (exact, 0.70)])
 
     assert ranked[0][0] is exact
 
@@ -121,7 +119,9 @@ def _state(cv: CandidateCV) -> PipelineState:
     }
 
 
-async def test_make_normalize_skills_node_delegates_to_normalize_cv_skills_and_returns_the_result() -> None:
+async def test_make_normalize_skills_node_delegates_to_normalize_cv_skills_and_returns_the_result() -> (
+    None
+):
     """No mock of normalize_cv_skills itself -- runs the real
     retrieval/rerank logic against a fake session/embeddings, so this both
     proves the node wires cv_extracted.raw_skills through correctly and

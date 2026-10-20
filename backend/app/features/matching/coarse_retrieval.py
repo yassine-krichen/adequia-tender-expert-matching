@@ -65,7 +65,9 @@ def rerank_shortlist_pool(
     def _score(entry: tuple[CVModel, float]) -> float:
         cv_row, similarity = entry
         cv = CandidateCV.model_validate(cv_row.extracted_json)
-        return similarity + _sector_overlap_boost(cv, position) + _years_proximity_boost(cv, position)
+        return (
+            similarity + _sector_overlap_boost(cv, position) + _years_proximity_boost(cv, position)
+        )
 
     return sorted(pool, key=_score, reverse=True)
 

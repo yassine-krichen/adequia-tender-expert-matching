@@ -27,7 +27,12 @@ def _make_settings(**overrides: object) -> Settings:
 
 
 def _pop_langsmith_env() -> None:
-    for key in ("LANGSMITH_TRACING", "LANGSMITH_API_KEY", "LANGSMITH_PROJECT", "LANGSMITH_ENDPOINT"):
+    for key in (
+        "LANGSMITH_TRACING",
+        "LANGSMITH_API_KEY",
+        "LANGSMITH_PROJECT",
+        "LANGSMITH_ENDPOINT",
+    ):
         os.environ.pop(key, None)
 
 

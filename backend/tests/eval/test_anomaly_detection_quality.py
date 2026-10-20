@@ -51,7 +51,11 @@ def _experience(
     source_span: str = "span",
 ) -> Experience:
     return Experience(
-        title=title, employer=employer, start_date=start_date, end_date=end_date, source_span=source_span
+        title=title,
+        employer=employer,
+        start_date=start_date,
+        end_date=end_date,
+        source_span=source_span,
     )
 
 
@@ -247,7 +251,9 @@ def inject_expired_certification(certifications: list[Certification]) -> list[Ce
     return [expired, *rest]
 
 
-def inject_implausible_graduation_age(birth_date: date, education: list[Education]) -> list[Education]:
+def inject_implausible_graduation_age(
+    birth_date: date, education: list[Education]
+) -> list[Education]:
     """Sets a graduation_year on one education entry so age-at-graduation
     falls just below _MIN_PLAUSIBLE_GRADUATION_AGE.
     """

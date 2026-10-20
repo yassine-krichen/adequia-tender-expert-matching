@@ -76,14 +76,20 @@ def _ledger_entry(
 def test_assemble_citations_keeps_sentence_and_citation_for_a_valid_ledger_id() -> None:
     ledger = [_ledger_entry("skill-matched-0", source_doc="cv", source_span="Python confirmé")]
     output = RationaleOutput(
-        claims=[RationaleClaim(sentence="Le candidat maîtrise Python.", cited_ledger_ids=["skill-matched-0"])]
+        claims=[
+            RationaleClaim(
+                sentence="Le candidat maîtrise Python.", cited_ledger_ids=["skill-matched-0"]
+            )
+        ]
     )
 
     sentences, citations, _total = assemble_citations(output, ledger)
 
     assert sentences == ["Le candidat maîtrise Python."]
     assert citations == [
-        Citation(claim="Le candidat maîtrise Python.", source_doc="cv", source_span="Python confirmé")
+        Citation(
+            claim="Le candidat maîtrise Python.", source_doc="cv", source_span="Python confirmé"
+        )
     ]
 
 
@@ -117,7 +123,9 @@ def test_assemble_citations_mixed_sentence_keeps_only_the_valid_citation() -> No
     assert citations[0].source_span == "Python confirmé"
 
 
-def test_assemble_citations_does_not_crash_when_every_cited_id_across_multiple_claims_is_hallucinated() -> None:
+def test_assemble_citations_does_not_crash_when_every_cited_id_across_multiple_claims_is_hallucinated() -> (
+    None
+):
     ledger = [_ledger_entry("skill-matched-0")]
     output = RationaleOutput(
         claims=[
@@ -202,9 +210,7 @@ def test_generate_rationale_guardrail_prompt_forbids_mentioning_ledger_ids_in_pr
     assert router.messages_sent is not None
     system_messages = [m for m in router.messages_sent if isinstance(m, SystemMessage)]
     assert system_messages
-    assert any(
-        "Never mention a ledger entry's id" in str(m.content) for m in system_messages
-    )
+    assert any("Never mention a ledger entry's id" in str(m.content) for m in system_messages)
 
 
 # --- make_generate_report_node ----------------------------------------------
@@ -230,7 +236,9 @@ async def test_make_generate_report_node_hard_filter_fail_never_calls_the_router
     router = _FakeReasoningRouter(RationaleOutput(claims=[]))
     session = _FakeSession(taxonomy_rows=[])
     node = make_generate_report_node(session, router)  # type: ignore[arg-type]
-    state = _state(hard_filter_passed=False, hard_filter_failures=["Missing mandatory diploma: Bac+5"])
+    state = _state(
+        hard_filter_passed=False, hard_filter_failures=["Missing mandatory diploma: Bac+5"]
+    )
 
     result = await node(state)
 
@@ -246,11 +254,15 @@ async def test_make_generate_report_node_hard_filter_fail_never_calls_the_router
     ]
 
 
-async def test_make_generate_report_node_hard_filter_fail_is_deterministic_across_repeated_calls() -> None:
+async def test_make_generate_report_node_hard_filter_fail_is_deterministic_across_repeated_calls() -> (
+    None
+):
     router = _FakeReasoningRouter(RationaleOutput(claims=[]))
     session = _FakeSession(taxonomy_rows=[])
     node = make_generate_report_node(session, router)  # type: ignore[arg-type]
-    state = _state(hard_filter_passed=False, hard_filter_failures=["Missing mandatory diploma: Bac+5"])
+    state = _state(
+        hard_filter_passed=False, hard_filter_failures=["Missing mandatory diploma: Bac+5"]
+    )
 
     first = await node(state)
     second = await node(state)

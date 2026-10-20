@@ -27,7 +27,9 @@ async def upload_cv(
 
 
 @router.get("", response_model=list[CandidateSummary])
-async def list_candidates(session: AsyncSession = Depends(get_db_session)) -> list[CandidateSummary]:
+async def list_candidates(
+    session: AsyncSession = Depends(get_db_session),
+) -> list[CandidateSummary]:
     return await service.list_candidates(session)
 
 

@@ -44,9 +44,7 @@ async def get_tdr(tdr_id: UUID, session: AsyncSession = Depends(get_db_session))
 
 
 @router.post("/{tdr_id}/match", status_code=202)
-async def run_matching(
-    tdr_id: UUID, session: AsyncSession = Depends(get_db_session)
-) -> None:
+async def run_matching(tdr_id: UUID, session: AsyncSession = Depends(get_db_session)) -> None:
     await service.run_matching(tdr_id, session)
 
 

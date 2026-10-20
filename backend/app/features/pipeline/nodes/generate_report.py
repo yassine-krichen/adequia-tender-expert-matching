@@ -51,27 +51,25 @@ _REPORT_GUARDRAIL_PROMPT = (
     "Paraphrasing a ledger entry's wording is fine; adding any descriptive "
     "elaboration, qualifier, sub-skill, or example not present in the "
     "ledger entry's own text is not -- e.g. if the fact only says the "
-    "candidate masters \"Gestion de projet\", never add a specific aspect "
+    'candidate masters "Gestion de projet", never add a specific aspect '
     "of it (\"notamment la planification et l'organisation\") that isn't "
     "itself a separate ledger entry. When a sentence cites more than one "
     "ledger id, every part of that sentence must trace to at least one of "
     "the cited entries -- never bridge two facts with an invented detail "
     "that belongs to neither.\n\n"
-    "Use natural HR language (\"ce profil...\", \"notamment...\", "
-    "\"en revanche...\"). Never surface internal technical terms such as "
-    "\"hard filter\", \"compatibility score\", \"sub-score\", or "
-    "\"canonical_id\".\n\n"
+    'Use natural HR language ("ce profil...", "notamment...", '
+    '"en revanche..."). Never surface internal technical terms such as '
+    '"hard filter", "compatibility score", "sub-score", or '
+    '"canonical_id".\n\n'
     "Never mention a ledger entry's id, or any phrase like \"comme indiqué "
-    "dans l'entrée X\" / \"as shown in entry X\" / \"mentionné dans "
+    'dans l\'entrée X" / "as shown in entry X" / "mentionné dans '
     "l'entrée X\", inside the sentence text itself. Citations are linked "
     "separately via cited_ledger_ids -- the sentence text must read as "
     "natural prose with zero reference to the ledger's existence."
 )
 
 
-def generate_rationale(
-    ledger: list[LedgerEntry], *, router: ExtractionRouter
-) -> RationaleOutput:
+def generate_rationale(ledger: list[LedgerEntry], *, router: ExtractionRouter) -> RationaleOutput:
     """ADQ-22. The LLM sees only the ledger's id/fact_type/text -- never raw
     CV/TDR text, source_span, or the cv/position objects directly -- so it
     can only cite facts the pipeline itself already vetted.

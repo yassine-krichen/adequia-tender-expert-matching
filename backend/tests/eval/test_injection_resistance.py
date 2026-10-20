@@ -247,7 +247,9 @@ class _CapturingMcpClient:
 
 
 @pytest.mark.eval
-async def test_calibrate_against_history_mcp_call_args_are_short_structured_terms_not_cv_text() -> None:
+async def test_calibrate_against_history_mcp_call_args_are_short_structured_terms_not_cv_text() -> (
+    None
+):
     mcp_client = _CapturingMcpClient()
     injected_cv = _cv(raw_skills=["Gestion de projet", "Python", _INJECTION_MARKER])
 

@@ -116,8 +116,7 @@ CANDIDATES: list[Candidate] = [
                 "2015-12",
                 [
                     "Audit et cadrage de systèmes d'aide à la décision budgétaire",
-                    "Rédaction de cahiers des charges pour des appels d'offres "
-                    "internationaux",
+                    "Rédaction de cahiers des charges pour des appels d'offres " "internationaux",
                 ],
             ),
         ],
@@ -169,8 +168,7 @@ CANDIDATES: list[Candidate] = [
                 "2019-01",
                 [
                     "Développement de modules cœur bancaire en Java/Spring",
-                    "Optimisation de requêtes PostgreSQL sur des volumes de données "
-                    "importants",
+                    "Optimisation de requêtes PostgreSQL sur des volumes de données " "importants",
                 ],
             ),
         ],
@@ -265,8 +263,7 @@ CANDIDATES: list[Candidate] = [
                 [
                     "Recueil des besoins auprès d'un ministère de l'éducation pour un "
                     "système de gestion de la scolarité",
-                    "Rédaction de spécifications fonctionnelles détaillées et de cas "
-                    "d'usage",
+                    "Rédaction de spécifications fonctionnelles détaillées et de cas " "d'usage",
                     "Animation d'ateliers utilisateurs et recette fonctionnelle",
                 ],
             ),
@@ -317,8 +314,7 @@ CANDIDATES: list[Candidate] = [
                     "Conception de plans de test pour un applicatif multi-modules "
                     "(observation de classes, suivi de formation)",
                     "Automatisation de tests de régression avec Selenium et Playwright",
-                    "Suivi des anomalies et coordination avec les équipes de "
-                    "développement",
+                    "Suivi des anomalies et coordination avec les équipes de " "développement",
                 ],
             ),
         ],
@@ -403,7 +399,12 @@ CANDIDATES: list[Candidate] = [
             "secteur public."
         ),
         education=[
-            Education("Diplôme d'ingénieur", "Data Science & Intelligence Artificielle", "ENSI, Manouba", 2018),
+            Education(
+                "Diplôme d'ingénieur",
+                "Data Science & Intelligence Artificielle",
+                "ENSI, Manouba",
+                2018,
+            ),
         ],
         certifications=[
             Certification(
@@ -552,8 +553,7 @@ CANDIDATES: list[Candidate] = [
                 [
                     "Tests d'intrusion et revues de code sécurisé pour des clients du "
                     "secteur financier",
-                    "Sensibilisation des équipes de développement aux bonnes pratiques "
-                    "OWASP",
+                    "Sensibilisation des équipes de développement aux bonnes pratiques " "OWASP",
                 ],
             ),
         ],
@@ -637,7 +637,12 @@ CANDIDATES: list[Candidate] = [
         ),
         education=[
             Education("Diplôme d'ingénieur", "Génie Logiciel", "INSAT, Tunis", 2013),
-            Education("Master", "Architecture des Systèmes Logiciels", "Faculté des Sciences de Tunis", 2015),
+            Education(
+                "Master",
+                "Architecture des Systèmes Logiciels",
+                "Faculté des Sciences de Tunis",
+                2015,
+            ),
         ],
         certifications=[
             Certification("TOGAF", "The Open Group", "2020-11"),
@@ -691,17 +696,13 @@ def _format_experience_dates(exp: Experience) -> str:
 
 def render_pdf(candidate: Candidate, output_path: Path) -> None:
     styles = getSampleStyleSheet()
-    name_style = ParagraphStyle(
-        "Name", parent=styles["Title"], fontSize=18, spaceAfter=4
-    )
+    name_style = ParagraphStyle("Name", parent=styles["Title"], fontSize=18, spaceAfter=4)
     heading_style = ParagraphStyle(
         "SectionHeading", parent=styles["Heading2"], spaceBefore=12, spaceAfter=4
     )
     body_style = styles["BodyText"]
 
-    doc = SimpleDocTemplate(
-        str(output_path), pagesize=A4, topMargin=2 * cm, bottomMargin=2 * cm
-    )
+    doc = SimpleDocTemplate(str(output_path), pagesize=A4, topMargin=2 * cm, bottomMargin=2 * cm)
     story = [
         Paragraph(candidate.full_name, name_style),
         Paragraph(f"{candidate.email} — {candidate.phone}", body_style),
@@ -712,9 +713,7 @@ def render_pdf(candidate: Candidate, output_path: Path) -> None:
     ]
     for edu in candidate.education:
         story.append(
-            Paragraph(
-                f"{edu.degree} en {edu.field} — {edu.institution} ({edu.year})", body_style
-            )
+            Paragraph(f"{edu.degree} en {edu.field} — {edu.institution} ({edu.year})", body_style)
         )
 
     story.append(Paragraph("Certifications", heading_style))
@@ -753,9 +752,7 @@ def render_docx(candidate: Candidate, output_path: Path) -> None:
 
     document.add_heading("Formation", level=1)
     for edu in candidate.education:
-        document.add_paragraph(
-            f"{edu.degree} en {edu.field} — {edu.institution} ({edu.year})"
-        )
+        document.add_paragraph(f"{edu.degree} en {edu.field} — {edu.institution} ({edu.year})")
 
     document.add_heading("Certifications", level=1)
     for cert in candidate.certifications:

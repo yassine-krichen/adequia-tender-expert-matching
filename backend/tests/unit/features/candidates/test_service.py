@@ -256,7 +256,9 @@ async def test_upload_cv_uploaded_twice_with_force_reuses_same_candidate(
     assert str(new_cv.candidate_id) == first.candidate_id
 
 
-async def test_upload_cv_returns_existing_candidate_on_duplicate_file_without_re_extracting() -> None:
+async def test_upload_cv_returns_existing_candidate_on_duplicate_file_without_re_extracting() -> (
+    None
+):
     router = _FakeRouter()
     file_bytes = _SYNTHETIC_CV_PATH.read_bytes()
     content_hash = hashlib.sha256(file_bytes).hexdigest()
@@ -273,7 +275,9 @@ async def test_upload_cv_returns_existing_candidate_on_duplicate_file_without_re
         "raw_text": "already extracted",
         "source_file_path": "nadia.pdf",
     }
-    existing_cv = CV(content_hash=content_hash, raw_text="already extracted", extracted_json=existing_extracted)
+    existing_cv = CV(
+        content_hash=content_hash, raw_text="already extracted", extracted_json=existing_extracted
+    )
     service = CandidatesService(router=router)  # type: ignore[arg-type]
     session = _FakeSession(existing_cvs=[existing_cv])
     upload = UploadFile(file=BytesIO(file_bytes), filename="nadia-again.pdf")

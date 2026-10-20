@@ -54,8 +54,15 @@ from app.features.pipeline.nodes.detect_anomalies import (
 from app.features.pipeline.nodes.extract import extract_cv, extract_tdr
 from app.features.pipeline.nodes.generate_report import generate_rationale
 from app.features.pipeline.nodes.ingest import extract_raw_text
-from app.features.pipeline.nodes.normalize_skills import normalize_cv_skills, normalize_position_skills
-from app.features.pipeline.nodes.score import check_hard_filters, judge_qualitative_fit, score_soft_criteria
+from app.features.pipeline.nodes.normalize_skills import (
+    normalize_cv_skills,
+    normalize_position_skills,
+)
+from app.features.pipeline.nodes.score import (
+    check_hard_filters,
+    judge_qualitative_fit,
+    score_soft_criteria,
+)
 from app.features.pipeline.state import PipelineState
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -110,7 +117,12 @@ async def main() -> None:
         source_path = _REPO_ROOT / cv_file
         raw_text = extract_raw_text(source_path.read_bytes(), source_path.name)
         start = time.perf_counter()
-        cv = extract_cv(raw_text, candidate_id="efficiency-run", source_file_path=source_path.name, router=router)
+        cv = extract_cv(
+            raw_text,
+            candidate_id="efficiency-run",
+            source_file_path=source_path.name,
+            router=router,
+        )
         _record("extract_cv", time.perf_counter() - start)
         cvs.append(cv)
 
@@ -131,7 +143,9 @@ async def main() -> None:
                 match_start = time.perf_counter()
 
                 start = time.perf_counter()
-                normalized_cv_skills = await normalize_cv_skills(cv, session=session, embeddings=embeddings)
+                normalized_cv_skills = await normalize_cv_skills(
+                    cv, session=session, embeddings=embeddings
+                )
                 _record("normalize_cv_skills", time.perf_counter() - start)
 
                 start = time.perf_counter()
@@ -199,7 +213,9 @@ async def main() -> None:
     for node, values in _latencies.items():
         p50 = median(values)
         p95 = _percentile(values, 0.95)
-        print(f"{node}: n={len(values)} p50={p50:.2f}s p95={p95:.2f}s samples={[round(v, 2) for v in values]}")
+        print(
+            f"{node}: n={len(values)} p50={p50:.2f}s p95={p95:.2f}s samples={[round(v, 2) for v in values]}"
+        )
 
     print(
         "\nCost: $0 (free-tier-only architecture -- Groq/Gemini free tier + "

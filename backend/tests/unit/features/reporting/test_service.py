@@ -514,7 +514,10 @@ async def test_submit_review_raises_review_persistence_failed_error_when_the_db_
     ],
 )
 async def test_submit_review_writes_a_historical_decision_with_was_selected_derived_from_the_decision(
-    decision: ReviewDecision, note: str | None, expected_was_selected: bool, monkeypatch: pytest.MonkeyPatch
+    decision: ReviewDecision,
+    note: str | None,
+    expected_was_selected: bool,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     match_id, cv_id, candidate_id, tdr_id = uuid4(), uuid4(), uuid4(), uuid4()
     row = _match_row(match_id, cv_id, tdr_id=tdr_id)

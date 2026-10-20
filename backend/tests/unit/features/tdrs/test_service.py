@@ -198,7 +198,13 @@ async def test_get_status_reports_processing_with_redis_progress() -> None:
     session = _FakeSession()
     session.added.append(TDRModel(tdr_id=tdr_id, status="processing"))
     redis = _FakeRedis(
-        {f"tdr:{tdr_id}:progress": {b"step": b"extracting", b"chunks_done": b"3", b"chunks_total": b"12"}}
+        {
+            f"tdr:{tdr_id}:progress": {
+                b"step": b"extracting",
+                b"chunks_done": b"3",
+                b"chunks_total": b"12",
+            }
+        }
     )
     service = TdrsService(queue=_FakeQueue(), redis_client=redis)  # type: ignore[arg-type]
 
@@ -241,7 +247,9 @@ async def test_get_tdr_raises_not_ready_while_still_processing() -> None:
 async def test_get_tdr_raises_not_ready_with_error_message_when_failed() -> None:
     tdr_id = uuid4()
     session = _FakeSession()
-    session.added.append(TDRModel(tdr_id=tdr_id, status="failed", error_message="TDR extraction failed"))
+    session.added.append(
+        TDRModel(tdr_id=tdr_id, status="failed", error_message="TDR extraction failed")
+    )
     service = TdrsService(queue=_FakeQueue(), redis_client=_FakeRedis())  # type: ignore[arg-type]
 
     with pytest.raises(ResourceNotReadyError, match="TDR extraction failed"):

@@ -69,9 +69,7 @@ async def _downstream_reference_count(session: AsyncSession, cv_id: UUID) -> int
 
 async def backfill() -> None:
     async with async_session_factory() as session:
-        rows = (
-            (await session.execute(select(CV).where(CV.content_hash.is_(None)))).scalars().all()
-        )
+        rows = (await session.execute(select(CV).where(CV.content_hash.is_(None)))).scalars().all()
 
         # Group NULL rows by which fixture their source_file_path matches.
         groups: dict[str, list[CV]] = {}

@@ -79,18 +79,14 @@ def _load_fixture_texts() -> dict[str, str]:
     return texts
 
 
-async def _downstream_reference_counts(
-    session: AsyncSession, tdr_id: UUID
-) -> tuple[int, int, int]:
+async def _downstream_reference_counts(session: AsyncSession, tdr_id: UUID) -> tuple[int, int, int]:
     """(historical_decisions, match_results, expert_positions) counts for tdr_id.
 
     Used to rank duplicate rows matching the same fixture -- the row with
     the most real usage is the one kept as canonical (see module docstring).
     """
     hist_count = (
-        await session.execute(
-            select(func.count()).where(HistoricalDecision.tdr_id == tdr_id)
-        )
+        await session.execute(select(func.count()).where(HistoricalDecision.tdr_id == tdr_id))
     ).scalar_one()
     match_count = (
         await session.execute(select(func.count()).where(MatchResult.tdr_id == tdr_id))
@@ -106,9 +102,7 @@ async def backfill() -> None:
 
     async with async_session_factory() as session:
         rows = (
-            (await session.execute(select(TDR).where(TDR.content_hash.is_(None))))
-            .scalars()
-            .all()
+            (await session.execute(select(TDR).where(TDR.content_hash.is_(None)))).scalars().all()
         )
 
         # Group NULL rows by which fixture their raw_text matches.

@@ -42,7 +42,9 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.execute("drop index if exists cvs_embedding_ivfflat")
-    op.execute("create index cvs_embedding_ivfflat on cvs using ivfflat (embedding vector_cosine_ops)")
+    op.execute(
+        "create index cvs_embedding_ivfflat on cvs using ivfflat (embedding vector_cosine_ops)"
+    )
     op.execute("drop index if exists skill_taxonomy_embedding_ivfflat")
     op.execute(
         "create index skill_taxonomy_embedding_ivfflat on skill_taxonomy "

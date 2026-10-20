@@ -24,9 +24,7 @@ async def backfill() -> None:
     embeddings = ModelRouter(get_settings()).get_embedding_model()
 
     async with async_session_factory() as session:
-        rows = (
-            (await session.execute(select(CV).where(CV.embedding.is_(None)))).scalars().all()
-        )
+        rows = (await session.execute(select(CV).where(CV.embedding.is_(None)))).scalars().all()
         for row in rows:
             cv = CandidateCV.model_validate(row.extracted_json)
             row.embedding = embeddings.embed_query(build_cv_embedding_text(cv))

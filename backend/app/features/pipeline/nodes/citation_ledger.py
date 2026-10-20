@@ -40,7 +40,9 @@ def build_citation_ledger(
 
     entries: list[LedgerEntry] = []
     cv_canonical_ids = {
-        skill.canonical_id for skill in state["normalized_skills"] or [] if skill.canonical_id is not None
+        skill.canonical_id
+        for skill in state["normalized_skills"] or []
+        if skill.canonical_id is not None
     }
 
     matched_index = 0

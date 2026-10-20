@@ -49,7 +49,10 @@ _REGRESSION_TOLERANCE = 0.03
 
 
 def _load_fixtures() -> list[dict[str, Any]]:
-    return [json.loads(path.read_text(encoding="utf-8")) for path in sorted(_FIXTURES_DIR.glob("*.json"))]
+    return [
+        json.loads(path.read_text(encoding="utf-8"))
+        for path in sorted(_FIXTURES_DIR.glob("*.json"))
+    ]
 
 
 def _normalize(text: str) -> str:
@@ -82,14 +85,18 @@ def _find_experience_match(expected: dict[str, Any], actual: list[Experience]) -
     return None
 
 
-def _find_certification_match(expected: dict[str, Any], actual: list[Certification]) -> Certification | None:
+def _find_certification_match(
+    expected: dict[str, Any], actual: list[Certification]
+) -> Certification | None:
     for cert in actual:
         if _contains(cert.name, expected.get("name_contains")):
             return cert
     return None
 
 
-def _find_language_match(expected: dict[str, Any], actual: list[LanguageProficiency]) -> LanguageProficiency | None:
+def _find_language_match(
+    expected: dict[str, Any], actual: list[LanguageProficiency]
+) -> LanguageProficiency | None:
     for lang in actual:
         if _contains(lang.language, expected.get("language_contains")) and _contains(
             lang.level, expected.get("level_contains")
@@ -191,7 +198,9 @@ def test_cv_extraction_matches_hand_verified_fields(fixture: dict[str, Any]) -> 
             if exp_exp["end_year"] is None:
                 assert match.end_date is None, report
             else:
-                assert match.end_date is not None and match.end_date.year == exp_exp["end_year"], report
+                assert (
+                    match.end_date is not None and match.end_date.year == exp_exp["end_year"]
+                ), report
 
     for exp_cert in expected.get("certifications", []):
         assert _find_certification_match(exp_cert, cv.certifications) is not None, report
@@ -234,7 +243,9 @@ def test_cv_extraction_field_level_f1_regression() -> None:
     for fixture in _load_fixtures():
         source_path = _REPO_ROOT / fixture["source_file"]
         raw_text = extract_raw_text(source_path.read_bytes(), source_path.name)
-        cv = extract_cv(raw_text, candidate_id="eval-run", source_file_path=source_path.name, router=router)
+        cv = extract_cv(
+            raw_text, candidate_id="eval-run", source_file_path=source_path.name, router=router
+        )
         expected = fixture["expected"]
         name = source_path.name
 
@@ -277,12 +288,18 @@ def test_cv_extraction_field_level_f1_regression() -> None:
 
             dates_expected = "start_year" in exp_exp or "end_year" in exp_exp
             if dates_expected:
-                start_ok = exp_exp.get("start_year") is None or match.start_date.year == exp_exp["start_year"]
+                start_ok = (
+                    exp_exp.get("start_year") is None
+                    or match.start_date.year == exp_exp["start_year"]
+                )
                 if "end_year" in exp_exp:
                     end_ok = (
                         match.end_date is None
                         if exp_exp["end_year"] is None
-                        else (match.end_date is not None and match.end_date.year == exp_exp["end_year"])
+                        else (
+                            match.end_date is not None
+                            and match.end_date.year == exp_exp["end_year"]
+                        )
                     )
                 else:
                     end_ok = True
@@ -303,7 +320,9 @@ def test_cv_extraction_field_level_f1_regression() -> None:
             match = _find_certification_match(exp_cert, cv.certifications)
             if match is None:
                 per_field_counts["certifications"].false_negatives += 1
-                detail_lines.append(f"{name}: MISSING certification {exp_cert.get('name_contains')!r}")
+                detail_lines.append(
+                    f"{name}: MISSING certification {exp_cert.get('name_contains')!r}"
+                )
                 continue
             per_field_counts["certifications"].true_positives += 1
             matched_cert_ids.add(id(match))
@@ -315,7 +334,9 @@ def test_cv_extraction_field_level_f1_regression() -> None:
             match = _find_language_match(exp_lang, cv.languages)
             if match is None:
                 per_field_counts["languages"].false_negatives += 1
-                detail_lines.append(f"{name}: MISSING language {exp_lang.get('language_contains')!r}")
+                detail_lines.append(
+                    f"{name}: MISSING language {exp_lang.get('language_contains')!r}"
+                )
                 continue
             per_field_counts["languages"].true_positives += 1
             matched_lang_ids.add(id(match))

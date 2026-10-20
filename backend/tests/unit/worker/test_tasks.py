@@ -123,7 +123,9 @@ async def test_run_tdr_extraction_job_marks_the_row_done_and_persists_positions(
                 client="Client",
                 positions=[
                     _ExtractedPosition(
-                        position_title="Chef de projet", mandatory_diploma="Bac+5", source_span="span"
+                        position_title="Chef de projet",
+                        mandatory_diploma="Bac+5",
+                        source_span="span",
                     )
                 ],
             )
@@ -156,7 +158,9 @@ async def test_run_tdr_extraction_job_marks_the_row_done_and_persists_positions(
     assert progress_calls[-1][0] == "merging"
 
 
-async def test_run_tdr_extraction_job_marks_the_row_failed_without_leaking_internal_details() -> None:
+async def test_run_tdr_extraction_job_marks_the_row_failed_without_leaking_internal_details() -> (
+    None
+):
     tdr_id = uuid4()
     tdr_row = TDRModel(tdr_id=tdr_id, status="processing", source_file_path="tdr.pdf")
     session = _FakeSession(tdr_row)
@@ -224,7 +228,9 @@ async def test_reprocessing_tdr_replaces_stale_positions_and_matches() -> None:
                 client="Client",
                 positions=[
                     _ExtractedPosition(
-                        position_title="Chef de projet", mandatory_diploma="Bac+5", source_span="span"
+                        position_title="Chef de projet",
+                        mandatory_diploma="Bac+5",
+                        source_span="span",
                     )
                 ],
             )

@@ -66,7 +66,9 @@ def _position() -> ExpertPosition:
 
 
 def _skill(raw_term: str, *, canonical_id: str | None) -> NormalizedSkill:
-    return NormalizedSkill(raw_term=raw_term, canonical_id=canonical_id, confidence=0.9, matched_via="direct")
+    return NormalizedSkill(
+        raw_term=raw_term, canonical_id=canonical_id, confidence=0.9, matched_via="direct"
+    )
 
 
 def _base_state(
@@ -217,7 +219,9 @@ def _judge_claim_faithfulness(
     )
 
 
-def _claim_citation_facts(claim_sentence: str, ledger: list[LedgerEntry], cited_ids: list[str]) -> list[str]:
+def _claim_citation_facts(
+    claim_sentence: str, ledger: list[LedgerEntry], cited_ids: list[str]
+) -> list[str]:
     """The ledger entries actually backing a surviving claim, in citation
     order -- assemble_citations already validated every id in cited_ids
     exists in the ledger, but the rationale_output object doesn't survive

@@ -84,7 +84,9 @@ def _position() -> ExpertPosition:
     return ExpertPosition(position_id="p1", position_title="Chef de projet", source_span="span")
 
 
-def _state(*, cv: CandidateCV | None = None, position: ExpertPosition | None = None) -> PipelineState:
+def _state(
+    *, cv: CandidateCV | None = None, position: ExpertPosition | None = None
+) -> PipelineState:
     return {
         "cv_raw_text": "raw cv",
         "tdr_raw_text": "raw tdr",
@@ -343,7 +345,9 @@ def test_judge_plausibility_logs_a_warning_when_dropping_a_hallucinated_citation
     assert "hallucinated_citation" in caplog.text
 
 
-def test_judge_plausibility_keeps_a_finding_whose_citation_is_a_genuine_verbatim_substring() -> None:
+def test_judge_plausibility_keeps_a_finding_whose_citation_is_a_genuine_verbatim_substring() -> (
+    None
+):
     experience = [_experience(source_span="Chef de projet chez ST2i, 2018-2019")]
     assessment = _PlausibilityAssessment(
         findings=[
@@ -384,7 +388,9 @@ async def test_make_detect_anomalies_node_returns_exactly_the_anomalies_key() ->
     assert set(result.keys()) == {"anomalies"}
 
 
-async def test_make_detect_anomalies_node_concatenates_rule_based_findings_before_llm_findings() -> None:
+async def test_make_detect_anomalies_node_concatenates_rule_based_findings_before_llm_findings() -> (
+    None
+):
     llm_finding = _PlausibilityFinding(
         type="unverifiable_claim",
         severity="info",

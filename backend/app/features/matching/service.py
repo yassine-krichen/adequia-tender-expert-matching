@@ -42,9 +42,11 @@ class MatchingService:
                     if match.compatibility_score is not None
                     else None
                 ),
-                sub_scores=SubScores.model_validate(match.sub_scores_json)
-                if match.sub_scores_json
-                else None,
+                sub_scores=(
+                    SubScores.model_validate(match.sub_scores_json)
+                    if match.sub_scores_json
+                    else None
+                ),
                 rationale=match.rationale,
                 candidate_full_name=full_name,
             )

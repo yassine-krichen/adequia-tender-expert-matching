@@ -35,9 +35,7 @@ def _cv(
     return CandidateCV(
         candidate_id="c1",
         full_name="Test Candidate",
-        education=[
-            Education(degree=degree, field=field, institution="INSAT", source_span="span")
-        ],
+        education=[Education(degree=degree, field=field, institution="INSAT", source_span="span")],
         certifications=certifications or [],
         experience=[
             Experience(
@@ -194,7 +192,9 @@ def test_cosine_similarity_zero_vector_is_zero_not_a_crash() -> None:
 
 
 def _normalized(canonical_id: str | None) -> NormalizedSkill:
-    return NormalizedSkill(raw_term="term", canonical_id=canonical_id, confidence=1.0, matched_via="direct")
+    return NormalizedSkill(
+        raw_term="term", canonical_id=canonical_id, confidence=1.0, matched_via="direct"
+    )
 
 
 def test_skill_score_is_one_when_position_has_no_required_skills() -> None:
@@ -240,8 +240,12 @@ def _cv_without_sector_data() -> CandidateCV:
     )
 
 
-def test_sector_score_with_span_is_one_with_no_span_when_position_has_no_sector_requirement() -> None:
-    score, span = _sector_score_with_span(_cv(), required_sector_vector=None, embeddings=_FakeEmbeddings())
+def test_sector_score_with_span_is_one_with_no_span_when_position_has_no_sector_requirement() -> (
+    None
+):
+    score, span = _sector_score_with_span(
+        _cv(), required_sector_vector=None, embeddings=_FakeEmbeddings()
+    )
 
     assert score == 1.0
     assert span is None
@@ -328,7 +332,9 @@ class _FakeReasoningRouter:
 
 
 def test_judge_qualitative_fit_passes_through_score_and_reasoning() -> None:
-    canned = _QualitativeFitJudgment(qualitative_fit_score=0.75, reasoning="Forte expérience sectorielle.")
+    canned = _QualitativeFitJudgment(
+        qualitative_fit_score=0.75, reasoning="Forte expérience sectorielle."
+    )
     router = _FakeReasoningRouter(canned)
 
     result = judge_qualitative_fit(_cv(), _position(), router=router)
@@ -521,7 +527,9 @@ async def test_make_score_node_hard_filter_fail_never_calls_router_or_mcp_client
     assert mcp_client.session_calls == []
 
 
-async def test_make_score_node_hard_filter_pass_calls_router_and_mcp_client_and_combines_score() -> None:
+async def test_make_score_node_hard_filter_pass_calls_router_and_mcp_client_and_combines_score() -> (
+    None
+):
     matched_skill = NormalizedSkill(
         raw_term="Gestion de projet", canonical_id="s1", confidence=1.0, matched_via="direct"
     )

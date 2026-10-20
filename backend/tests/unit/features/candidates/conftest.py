@@ -27,6 +27,7 @@ from sqlalchemy.pool import StaticPool
 from app.database.base import Base
 from app.database.models import CV, Candidate
 
+
 # JSONB (extracted_json) has no SQLite equivalent -- render it as SQLite's
 # native JSON type instead. Postgres in production is unaffected: this
 # compiler hook only fires for the "sqlite" dialect.

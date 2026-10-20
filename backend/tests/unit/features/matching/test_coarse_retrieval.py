@@ -86,8 +86,12 @@ def test_years_proximity_boost_penalizes_under_qualified_candidates() -> None:
 
 
 def test_years_proximity_boost_rewards_but_caps_over_qualified_candidates() -> None:
-    modestly_over = _years_proximity_boost(_cv(total_years_experience=6.0), _position(minimum_years_experience=5.0))
-    hugely_over = _years_proximity_boost(_cv(total_years_experience=30.0), _position(minimum_years_experience=5.0))
+    modestly_over = _years_proximity_boost(
+        _cv(total_years_experience=6.0), _position(minimum_years_experience=5.0)
+    )
+    hugely_over = _years_proximity_boost(
+        _cv(total_years_experience=30.0), _position(minimum_years_experience=5.0)
+    )
 
     assert modestly_over > 0.0
     assert hugely_over == modestly_over or hugely_over > modestly_over

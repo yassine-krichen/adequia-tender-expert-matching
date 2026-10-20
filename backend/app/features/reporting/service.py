@@ -83,7 +83,9 @@ class ReportingService:
         ]
         citations = [Citation.model_validate(c) for c in (match_row.citations_json or [])]
         sub_scores = (
-            SubScores.model_validate(match_row.sub_scores_json) if match_row.sub_scores_json else None
+            SubScores.model_validate(match_row.sub_scores_json)
+            if match_row.sub_scores_json
+            else None
         )
 
         return MatchReportDetail(
@@ -187,7 +189,9 @@ class ReportingService:
                         decision.value,
                     )
             elif not snapshot.interrupts:
-                raise NoPendingReviewError(f"No pending human_review interrupt for match {match_id}")
+                raise NoPendingReviewError(
+                    f"No pending human_review interrupt for match {match_id}"
+                )
             else:
                 await graph.ainvoke(
                     Command(resume={"decision": decision.value, "note": note}), config=config

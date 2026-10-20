@@ -1,246 +1,218 @@
 <div align="center">
   <img src="docs/readme-assets/cover.png" alt="AdéquIA cover" width="100%" />
-  <h1>AdéquIA <sup><sub>v0.1.0</sub></sup></h1>
-  <p><em>Le bon profil, pour la bonne mission.</em></p>
+  <h1>AdéquIA</h1>
+  <p><em>Ranks internal experts against the roles in a tender, cites the source passage for every claim, and leaves the decision to a human reviewer.</em></p>
   <br/>
 
 ![FastAPI](https://img.shields.io/badge/FastAPI-black?logo=fastapi&logoColor=white)
 ![LangGraph](https://img.shields.io/badge/LangGraph-orchestration-black)
 ![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=nextdotjs&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-black?logo=postgresql&logoColor=white)
+![License](https://img.shields.io/badge/license-PolyForm%20Strict-blue)
 
 </div>
 
----
+## Context
 
-## Contents
+Built solo during my internship at ST2i (Groupe STUDI), Tunis, July to August 2026, as a decision-support prototype for tender staffing. All candidate data in this repository is synthetic; the tenders in `docs/tdrs/` are public documents from donor and government sources.
 
-- [Pitch](#pitch)
-- [How It Works](#how-it-works)
-- [Tech Stack](#tech-stack)
-- [Getting Started](#getting-started)
-- [Configuration](#configuration)
-- [API](#api)
-- [Roadmap](#roadmap)
-- [License](#license)
+## The problem
 
----
+A consulting firm answering a tender (TDR) has to decide which of its own experts fit the roles the tender asks for. Someone reads the TDR, then searches the CV pool by hand. I estimate that at 12 to 24 person-hours per tender, and it fails in both directions: a missed good match loses a winnable bid, and a missed disqualifying gap commits unqualified staff.
 
-## Pitch
+AdéquIA parses the TDR into positions, retrieves a shortlist from the CV pool, and produces for each position a ranked list with a compatibility score, per-criterion breakdown, flagged anomalies and a rationale whose every claim points at a source passage. Once documents are extracted, scoring a candidate against a position takes 3.52 s median (4.65 s P95).
 
-A consulting firm bidding on a tender has to answer one question fast: which of our own experts actually fit the roles this TDR asks for? Today that question gets answered by someone reading the TDR and trying to recall or search the CV pool by hand — slow, and wrong in both directions, since a missed good match costs a winnable bid and a missed disqualifying gap risks committing unqualified staff.
+Scoring is not an LLM asked for a number. Hard filters (mandatory diploma, minimum years) feed weighted embedding similarity, and an LLM judgment is reserved for qualitative fit such as sector relevance. A reviewer can point at a rubric rather than a black box. The dashboard is where a person approves, rejects or overrides each ranking, and that decision is written back as calibration data.
 
-AdéquIA takes a parsed TDR and the internal CV database and produces, per required position, a ranked shortlist with a compatibility score, a per-criterion breakdown, flagged anomalies, and a rationale that cites the exact source passage for every claim it makes. Extraction happens once per CV at ingestion time; matching runs per TDR position against a cheap embedding-similarity shortlist, not the full pipeline against every employee — a 25-person firm with a 3-position TDR triggers three retrieval passes and roughly 24–30 full pipeline runs, not 75.
+## Results
 
-The scoring itself is not an LLM asked to output a number. It's rule-based hard filters (mandatory diploma present, minimum years met) feeding weighted embedding similarity for soft criteria, with an LLM judgment call reserved for the genuinely qualitative parts — whether a candidate's project history matches the TDR's sector focus, for instance. An engineer reviewing this system can point to a rubric, not a black box, which matters when the output feeds a real staffing decision.
+Measured by the eval suite in `backend/tests/eval/`; the committed numbers and their datasets are in [`backend/app/features/metrics/current_snapshot.json`](backend/app/features/metrics/current_snapshot.json) and explained in [`docs/04-evaluation-metrics.md`](docs/04-evaluation-metrics.md).
 
-This is an HR decision-support tool, not a chatbot. The dashboard is where a reviewer approves, rejects, or overrides a ranking, and every override becomes calibration signal for future scoring.
+| Metric | Result | Dataset |
+| --- | --- | --- |
+| CV field extraction F1 | 0.978 | 11 synthetic CVs, 8 field types |
+| TDR extraction pass rate | 12 of 13 | 13 real public TDR documents (the 13th is a scanned PDF awaiting OCR) |
+| Recall@3 of the shortlist | 100% | 11 gold matching cases |
+| Per-match latency | 3.52 s median, 4.65 s P95 | 28 candidate-position pairs |
+| Report faithfulness | 0.91 | 11 claims judged by an LLM against their cited entries |
+| Citation coverage | 100% | same set |
+| Rule-based anomaly detection | precision and recall 1.0 | synthetic injection set, 4 anomaly types |
+| Prompt-injection guardrails | 5 of 5 | live-LLM cases; the suite found and fixed one real vulnerability |
 
----
+Limits worth stating: the gold set is small and partly hand-built, precision@3 is 0.33 by construction (one relevant candidate per position against k=3), reviewer agreement was measured on only 2 reviews, and CV and TDR extraction took minutes per document on free-tier LLMs (p50 195 s and 839 s in the efficiency run).
 
-## How It Works
+## Features
 
-### System topology
+**Document ingestion** — Parses CV and TDR PDF/DOCX into Pydantic schemas; for 200-page TDRs it first retrieves the sections about required profiles, then extracts positions from those.
+
+**Skill normalization** — Embeds skills, retrieves taxonomy candidates, reranks, and retries agentically when no match is found.
+
+**Two-phase matching** — A cheap embedding and structured pre-filter shortlists candidates per position before the full pipeline runs on them.
+
+**Explainable reports** — Each claim in the rationale carries citation IDs from a ledger built from the CV and TDR text.
+
+**Anomaly detection** — Employment gaps, date overlaps, expired certifications and education-date inconsistencies by rule; title-seniority mismatch and unverifiable claims by LLM.
+
+**Human-in-the-loop review** — The graph pauses at a LangGraph interrupt with a PostgreSQL checkpoint; a reviewer can resume it later from another session.
+
+**PII masking** — Email, phone and candidate name are masked out of the outbound prompt before it reaches a cloud LLM provider.
+
+**Provider routing** — Rotates free-tier Groq and Gemini key pools and falls back to local Ollama; every call is traced in LangSmith.
+
+## Demo
+
+![Match report](docs/report/assets/screenshots/match-report-pending-review.png)
+_A match report awaiting review: hard-filter result, score breakdown, cited rationale, an anomaly, and the approve, reject or override controls._
+
+![Metrics dashboard](docs/report/assets/screenshots/metrics-dashboard-charts.png)
+_The metrics page, reading the eval snapshot through `GET /metrics`._
+
+## How it works
 
 ```mermaid
 graph TD
     TDR[TDR / RFP] --> API[FastAPI service<br/>LangGraph orchestrator]
-    CVDB[Internal CV / expert database] --> API
+    CVDB[CV database] --> API
     API -->|structured data + embeddings| PG[(PostgreSQL + pgvector)]
     API -->|job queue, cache| REDIS[(Redis + RQ)]
-    API -->|trace per node call| TRACE[LangSmith / Langfuse]
-    PG -->|read ranked results| WEB[Next.js dashboard]
+    API -->|trace per node call| TRACE[LangSmith]
+    API -->|lookup tools over MCP| MCP[MCP server<br/>decisions, skill taxonomy]
+    PG -->|ranked results| WEB[Next.js dashboard]
     WEB -->|approve / reject / override| API
 ```
 
-### Matching pipeline (per TDR position, against a shortlist)
-
 ```mermaid
 graph TD
-    ingest[ingest: parse CV/TDR to text] --> extract[extract: structured extraction to Pydantic schema]
-    extract --> normalize[normalize_skills: embed + retrieve + rerank + agentic retry]
+    ingest[ingest: parse to text] --> extract[extract: structured extraction]
+    extract --> normalize[normalize_skills: embed, retrieve, rerank, retry]
     normalize --> score[score: hard filters + weighted similarity + LLM judgment]
-    score -->|hard_filter_passed| anomalies[detect_anomalies: rule-based + LLM plausibility]
-    score -->|hard_filter_failed| report[generate_report: rationale + citations]
+    score -->|passed| anomalies[detect_anomalies]
+    score -->|failed| report[generate_report: rationale + citations]
     anomalies --> report
-    report --> review[human_review: HITL interrupt]
+    report --> review[human_review: interrupt]
     review -->|decision written back| historical[(historical_decisions)]
 ```
 
-Extraction is a separate, once-per-document ingestion pipeline (`ingest` → `extract` → embed) — it never re-runs per TDR. The diagram above is the second, per-position pipeline that runs only against the shortlist a coarse retrieval pass produces.
+Extraction runs once per document at ingestion. The second graph runs per TDR position, only on the shortlist.
 
 ### Key decisions
 
-- **LangGraph over a plain chain or a generic agent loop**: the pipeline needs a hard-filter short-circuit and a deterministic per-candidate audit trail — "why was this person ranked #3" has to be answerable from a checkpoint, not reconstructed by re-prompting.
-- **Hybrid scoring over asking an LLM for a score**: pure LLM scoring is non-deterministic, which is a liability when the product's value proposition is reducing human error. Hard filters plus weighted embedding similarity plus a narrow LLM judgment step gives a rubric a reviewer can actually audit.
-- **PostgreSQL + pgvector over a separate vector database**: one piece of infrastructure for a solo one-month build, and it lets a single query join structured TDR criteria with embedding similarity (`similarity > X AND certification not expired AND years_experience >= Y`) — a pure vector DB can't do that join as cleanly.
-- **Two-phase matching over running the full graph per CV**: CV extraction happens once at ingestion; per TDR position, a cheap embedding + structured pre-filter (no LLM calls) shortlists ~8–10 candidates before the expensive scoring/anomaly/report pipeline runs on them.
-- **TDR section localization before extraction, not full-document extraction**: real TDRs run 20–100+ pages of mostly administrative boilerplate. Chunking the document and retrieving only the sections closest to "profils/qualifications/personnel requis" keeps token cost down and avoids needle-in-haystack degradation over long context.
+- **LangGraph over a plain chain or agent loop**: the pipeline needs a hard-filter short-circuit and a per-candidate audit trail, so "why was this person ranked third" is answered from a checkpoint instead of by re-prompting.
+- **Hybrid scoring over an LLM-produced score**: pure LLM scoring is non-deterministic, which defeats a tool meant to reduce human error. Hard filters, weighted similarity and one narrow LLM step give a rubric a reviewer can audit.
+- **PostgreSQL with pgvector over a separate vector database**: one piece of infrastructure for a solo build, and one query can join structured criteria with similarity (`similarity > X AND years_experience >= Y`).
+- **Two-phase matching over running the graph per CV**: a 25-person pool with a 3-position TDR runs three retrieval passes and about 24 to 30 pipeline runs, not 75.
+- **TDR section localization over full-document extraction**: tenders run 20 to 200 pages, mostly administrative text. Retrieving the sections closest to "required profiles" cuts token cost and avoids long-context misses.
+- **Citation ledger as the only context for the rationale**: the report generator can cite only what the ledger contains, which is what makes the faithfulness number measurable.
 
----
+## Tech stack
 
-## Tech Stack
+| Technology | Role | Why |
+| --- | --- | --- |
+| FastAPI, Python 3.12, uv | Backend API, LangGraph host | Same ecosystem as LangChain and the eval harness |
+| LangGraph | Pipeline orchestration | Explicit branching, checkpointed interrupts |
+| PostgreSQL + pgvector | Data and embeddings | One database instead of two |
+| Redis + RQ | Job queue, cache | Keeps batch extraction off the request path |
+| Ollama | Local embeddings and fallback LLM | No data leaves the machine for embeddings |
+| Groq, Gemini | Cloud LLM tiers | Free-tier key pools, no paid access |
+| Next.js 15, shadcn/ui | Reviewer dashboard | — |
+| LangSmith | Tracing | Per-node trace of a candidate's path |
+| pytest (`eval` marker) | Eval harness | Faithfulness, F1 and recall suites in the repo's own idiom, no extra dependency |
 
-| Technology            | Role                         | Why                                                                                                    |
-| --------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------ |
-| FastAPI               | Backend API, LangGraph host  | Sits directly in the LangChain/LangGraph ecosystem; the eval harness (RAGAS/DeepEval) is Python-native |
-| LangGraph             | Pipeline orchestration       | Explicit branching and a checkpointed audit trail, over a plain chain or agent loop                    |
-| PostgreSQL + pgvector | Structured data + embeddings | One database instead of two; joins structured filters with vector similarity in a single query         |
-| Redis + RQ            | Background job queue, cache  | Keeps CV/TDR batch processing off the request path; doubles as an embedding/taxonomy cache             |
-| Next.js               | HR dashboard                 | —                                                                                                      |
-| shadcn/ui             | Dashboard components         | —                                                                                                      |
-| Framer Motion         | Dashboard transitions        | —                                                                                                      |
-| LangSmith / Langfuse  | Tracing                      | Full per-node trace of a candidate's path through the graph, tagged by TDR/position                    |
-| RAGAS / DeepEval      | Eval harness                 | Faithfulness/groundedness metrics on the RAG portion, wired into a CI regression gate                  |
-
----
-
-## Getting Started
+## Getting started
 
 ### Prerequisites
 
-- Python ≥ 3.12
-- [uv](https://docs.astral.sh/uv/)
-- Node.js ≥ 20
-- pnpm ≥ 9
-- Docker (for local Postgres/Redis)
+Python 3.12 or newer, [uv](https://docs.astral.sh/uv/), Node.js 20 or newer, pnpm 9 or newer, Docker, and Ollama with `nomic-embed-text` and `hermes3:3b` pulled.
 
-### Clone
+### Run everything
 
 ```bash
-git clone https://github.com/[user]/adequia.git
-cd adequia
-```
-
-### Run everything — one command
-
-```bash
+git clone https://github.com/yassine-krichen/adequia-tender-expert-matching.git
+cd adequia-tender-expert-matching
 ./scripts/dev.ps1
 ```
 
-Bootstraps `backend/.env`/`frontend/.env` from their `.env.example` files
-if missing, then runs `docker compose up --build`: Postgres → migrations
-(`alembic upgrade head`, runs once and exits) → API, worker, frontend all
-start. Edit real `GROQ_API_KEYS`/`GEMINI_API_KEYS` into `backend/.env`
-after the first run if you want the Groq/Gemini tiers to actually work —
-without them it falls straight through to the local Ollama fallback (see
-Configuration below). Ollama itself is separate — pull its models once,
-it's not a container here.
+The script creates `backend/.env` and `frontend/.env` from the examples if missing, then runs `docker compose up --build` (Postgres, migrations, API, worker, frontend). Add `GROQ_API_KEYS` and `GEMINI_API_KEYS` to `backend/.env` for the cloud tiers; without them the router uses local Ollama.
 
 - Dashboard: http://localhost:3000
 - API docs: http://localhost:8000/docs
 
-### Alternative: host-run backend/frontend (faster iteration, no rebuild per change)
+### Host-run backend and frontend
 
 ```bash
-# infra
 docker compose up -d postgres redis
 
-# backend
-cd backend
-cp .env.example .env
-uv sync
+cd backend && cp .env.example .env && uv sync
 uv run alembic upgrade head
-uv run uvicorn app.main:app --reload          # terminal 1 — http://localhost:8000
-uv run python -m app.worker.rq_worker         # terminal 2 — required for TDR uploads
+uv run uvicorn app.main:app --reload       # http://localhost:8000
+uv run python -m app.worker.rq_worker      # required for TDR uploads
 
-# frontend
-cd frontend
-cp .env.example .env
-pnpm install
-pnpm dev                                       # terminal 3 — http://localhost:3000
+cd frontend && cp .env.example .env && pnpm install && pnpm dev
 ```
 
-Full detail (gotchas, manual test steps, automated tests) is in
-`docs/11-sprint-1-dev-guide.md`.
+Details and gotchas: [`docs/11-sprint-1-dev-guide.md`](docs/11-sprint-1-dev-guide.md).
 
 ### Test
 
 ```bash
-cd backend && uv run pytest
+cd backend && uv run pytest                 # unit tests
+cd backend && uv run pytest tests/eval -m eval   # live-LLM eval suites; need keys and a seeded stack
 cd frontend && pnpm lint && pnpm type-check
 ```
 
----
-
 ## Configuration
 
-### `backend/.env`
+| Variable | Required | Description |
+| --- | --- | --- |
+| `DATABASE_URL` | Yes | Postgres connection string (pgvector) |
+| `REDIS_URL` | Yes | Job queue and cache |
+| `MCP_SERVER_URL` | Yes | MCP lookup server for decisions and skill taxonomy |
+| `GROQ_API_KEYS`, `GEMINI_API_KEYS` | Yes | Comma-separated free-tier key pools, rotated round-robin |
+| `OLLAMA_BASE_URL` | Yes | Local fallback and embeddings |
+| `GROQ_*_MODEL`, `GEMINI_*_MODEL`, `OLLAMA_*_MODEL` | Yes | Extraction and reasoning model per provider |
+| `EMBEDDING_MODEL`, `EMBEDDING_DIMENSION` | Yes / No | Default 768, must match the `skill_taxonomy.embedding` column |
+| `LANGSMITH_API_KEY`, `LANGSMITH_PROJECT`, `LANGSMITH_ENDPOINT` | No | Tracing; the endpoint is only for EU-region accounts |
+| `PII_MASKING_ENABLED` | No | Default `true` |
+| `NEXT_PUBLIC_API_URL` | Yes | Frontend to backend base URL (`frontend/.env`) |
 
-| Variable               | Required | Default       | Description                                                          |
-| ---------------------- | -------- | ------------- | -------------------------------------------------------------------- |
-| `DATABASE_URL`         | Yes      | —             | Postgres connection string (pgvector-enabled)                        |
-| `REDIS_URL`            | Yes      | —             | Job queue + cache                                                    |
-| `GROQ_API_KEYS`        | Yes      | —             | Comma-separated pool of free-tier Groq keys, round-robin rotated     |
-| `GEMINI_API_KEYS`      | Yes      | —             | Comma-separated pool of free-tier Gemini keys, round-robin rotated   |
-| `OLLAMA_BASE_URL`      | Yes      | —             | Local Ollama endpoint — fallback once both key pools are exhausted   |
-| `GROQ_EXTRACTION_MODEL` | Yes     | `llama-3.1-8b-instant`    | Groq fast/cheap tier                                     |
-| `GROQ_REASONING_MODEL` | Yes      | `llama-3.3-70b-versatile` | Groq stronger tier                                       |
-| `GEMINI_EXTRACTION_MODEL` | Yes   | `gemini-2.5-flash-lite`   | Gemini fast/cheap tier                                   |
-| `GEMINI_REASONING_MODEL` | Yes    | `gemini-2.5-flash`        | Gemini stronger tier (`gemini-2.5-pro` is paid-only)      |
-| `OLLAMA_EXTRACTION_MODEL` | Yes   | —             | Local fallback model, fast/cheap tier                                |
-| `OLLAMA_REASONING_MODEL` | Yes    | —             | Local fallback model, stronger tier                                  |
-| `EMBEDDING_MODEL`      | Yes      | —             | Skill taxonomy + coarse retrieval embeddings (local Ollama `nomic-embed-text`) |
-| `EMBEDDING_DIMENSION`  | No       | `768`         | Must match the embedding model and `skill_taxonomy.embedding` column |
-| `LANGSMITH_API_KEY`    | No       | —             | Tracing — omit to disable                                            |
-| `LANGSMITH_PROJECT`    | No       | `adequia`     | Trace grouping                                                       |
-| `LANGSMITH_ENDPOINT`   | No       | —             | Only for EU-region LangSmith accounts (`https://eu.api.smith.langchain.com`) — a mismatched region is the usual cause of a 403 on trace ingestion |
-| `ENVIRONMENT`          | No       | `development` | —                                                                    |
-| `LOG_LEVEL`            | No       | `INFO`        | —                                                                    |
+`backend/.env.example` has the full list with defaults.
 
-### `frontend/.env`
+## Key endpoints
 
-| Variable              | Required | Default                 | Description                 |
-| --------------------- | -------- | ----------------------- | --------------------------- |
-| `NEXT_PUBLIC_API_URL` | Yes      | `http://localhost:8000` | Frontend → backend base URL |
+`POST /candidates/cv` — uploads a CV; re-extracts and re-embeds that candidate only.
 
----
+`POST /tdrs` — uploads a TDR; returns immediately, extraction runs on the worker.
 
-## API
+`POST /tdrs/{tdr_id}/match` — runs the matching pipeline per position on a coarse-retrieval shortlist.
 
-### Key Endpoints
+`GET /matches/{match_id}` — match result with report, sub-scores, anomalies and citations.
 
-`POST /candidates/cv` — upload/update a candidate's CV, triggers re-extraction and re-embedding for that candidate only.
+`POST /matches/{match_id}/review` — approve, reject or override; resumes the paused graph and writes to `historical_decisions`.
 
-`POST /tdrs` — upload a TDR, runs section-localized extraction into mission/client/sector/positions.
-
-`POST /tdrs/{tdr_id}/match` — runs the matching pipeline for all positions on a TDR against a coarse-retrieval shortlist.
-
-`GET /positions/{position_id}/matches` — ranked match results for one TDR position.
-
-`GET /matches/{match_id}` — full match result including report, sub-scores, anomalies, and citations.
-
-`POST /matches/{match_id}/review` — submit approve/reject/override; writes back to `historical_decisions`.
-
-`GET /metrics` — current eval harness output (extraction F1, retrieval precision/recall, scoring agreement, anomaly detection, cost per CV).
-
----
+`GET /metrics` — the current eval snapshot.
 
 ## Roadmap
 
-| Status | Item                                                                                                                      |
-| ------ | ------------------------------------------------------------------------------------------------------------------------- |
-| ✅     | Repo scaffold — FastAPI skeleton, Next.js skeleton, Postgres/Redis via Docker Compose, CI/build/eval workflow definitions |
-| ✅     | Sprint 1 — DB schema, multi-provider LLM key-pool routing, document parsing, structured CV/TDR extraction (live-verified against real Groq/Gemini/Ollama), bare-bones upload + preview pages |
-| 🔲     | Week 2 — skill taxonomy, embedding retrieval + reranking + agentic retry, hybrid scoring, LangGraph wiring                |
-| 🔲     | Week 3 — anomaly detection (rule-based + LLM), citation-backed report generation, RAGAS/DeepEval regression suite         |
-| 🔲     | Week 4 — full dashboard (candidates, TDRs, matching, reports, metrics), tracing, metrics dashboard with real numbers      |
-| 🔲     | Stretch — company-level capability check for the bid/no-bid decision from the firm side, once the core system is stable   |
-
----
+| Status | Item |
+| --- | --- |
+| Done | Extraction, skill normalization, hybrid scoring, anomaly detection, cited reports |
+| Done | Human-in-the-loop review with checkpointed resume |
+| Done | Eval suites and metrics dashboard |
+| Planned | OCR for scanned TDRs (1 of 13 fixtures fails without it) |
+| Planned | Field-level F1 for TDR extraction; only the document-level pass rate is measured |
+| Planned | Real historical staffing decisions as ground truth for scoring agreement |
+| Planned | Authentication on the review endpoint (reviews are anonymous today) |
 
 ## License
 
-Internal internship deliverable. No LICENSE file yet — not published for external use.
+**Source-available, not open source.** AdéquIA is published under the
+[PolyForm Strict License 1.0.0](LICENSE) so you can read the code, run it, and learn
+from it for personal, research, or evaluation use.
 
----
+You may **not** use it commercially, redistribute it, rebrand it, or publish modified
+versions without written permission. Copyright (c) 2026 Yassine Krichen. All rights
+not granted by the license are reserved.
 
-Built by Yassine Krichen · 2026
+For commercial licensing or collaboration: krichenyassine22@gmail.com
 
-## Before You Publish
-
-- [ ] Add `docs/cover.png` — generate with: "AdéquIA — a dark, precise decision-support dashboard for matching expert CVs to tender requirements. Dark UI, high contrast, professional software screenshot aesthetic. Wide banner format, 1400×600px. No people, no text overlays." Place at `docs/cover.png`.
-- [ ] Add screenshots to `docs/demo/` once the dashboard pages from `docs/05-frontend-dashboard.md` exist — a Demo section belongs in this README as soon as there's something to show.
-- [ ] Confirm the data confidentiality policy with the company before any real CV reaches a cloud LLM API — see `docs/08-company-data-checklist.md`.
-- [ ] Populate real `GROQ_API_KEYS` / `GEMINI_API_KEYS` in `backend/.env` — model names already have working free-tier defaults in `.env.example`.
-- [ ] Add a LICENSE file if this ever moves beyond an internal internship deliverable.
+Built by [Yassine Krichen](https://github.com/yassine-krichen) · Tunis, 2026

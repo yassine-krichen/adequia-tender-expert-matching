@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, master]
 
 jobs:
   backend:
@@ -20,6 +20,8 @@ jobs:
       - run: uv run ruff check .
       - run: uv run black --check .
       - run: uv run mypy app
+      # Settings are required at import time; the example values are enough for unit tests.
+      - run: cp .env.example .env
       - run: uv run pytest
 
   frontend:
